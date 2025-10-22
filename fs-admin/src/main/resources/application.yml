@@ -1,0 +1,123 @@
+server:
+  port: 8081
+  undertow:
+    threads:
+      io: 8
+      # 它的值设置取决于系统线程执行任务的阻塞系数，默认值是IO线程数*8
+      worker: 256
+    buffer-size: 1024
+    # 是否分配的直接内存(NIO直接分配的堆外内存)
+    direct-buffers: true
+spring:
+  application:
+    name: free-fs
+  profiles:
+    active: dev
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  # 开启循环依赖
+  main:
+    allow-circular-references: true
+  # 邮件配置
+  mail:
+    #smtp服务主机  qq邮箱则为smtp.qq.com
+    host: smtp.qq.com
+    #编码集
+    default-encoding: UTF-8
+    #发送邮件的账户
+    username: 459102951@qq.com
+    form: Free-Fs <459102951@qq.com>
+    #授权码
+    password: xxxxxxxxxx
+#  web:
+#    resources:
+#      static-locations: classpath:/static
+
+--- # mybatis-flex配置
+mybatis-flex:
+  # 搜索指定包别名
+  type-aliases-package: com.xddcodec.fs.*.domain
+  # 不支持多包, 如有需要可在注解配置 或 提升扫包等级：com.**.**.mapper
+  mapper-package: com.xddcodec.fs.*.mapper
+  # 配置mapper的扫描，找到所有的mapper.xml映射文件
+  mapper-locations: classpath*:mapper/*Mapper.xml
+  configuration:
+    ## 以下为mybatis原生配置 https://mybatis.org/mybatis-3/zh/configuration.html
+    # 自动驼峰命名规则（camel case）映射
+    map_underscore_to_camel_case: true
+    # MyBatis 自动映射策略
+    # NONE：不启用 PARTIAL：只对非嵌套 resultMap 自动映射 FULL：对所有 resultMap 自动映射
+    auto_mapping_behavior: FULL
+    # MyBatis 自动映射时未知列或未知属性处理策
+    # NONE：不做处理 WARNING：打印相关警告 FAILING：抛出异常和详细信息
+    auto_mapping_unknown_column_behavior: NONE
+    # 更详细的日志输出 会有性能损耗 org.apache.ibatis.logging.stdout.StdOutImpl
+    # 关闭日志记录 org.apache.ibatis.logging.nologging.NoLoggingImpl
+    # 默认日志输出 org.apache.ibatis.logging.slf4j.Slf4jImpl
+    #log_impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    logImpl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+    cacheEnabled: true
+  global-config:
+    # 是否控制台打印 MyBatis-Flex 的 LOGO 及版本号
+    print-banner: true
+    # 全局的 ID 生成策略配置:雪花算法
+    key-config:
+      key-type: Generator
+      value: snowFlakeId
+    # 逻辑未删除值
+    normal-value-of-logic-delete: 0
+    # 逻辑已删除值(框架表均使用此值 禁止随意修改)
+    deleted-value-of-logic-delete: 1
+    # 默认的逻辑删除字段
+    logic-delete-column: del_flag
+
+--- # fs配置
+# 本地存储配置（默认）
+storage:
+  local:
+    base-path: D:/insentek/upload
+    base-url: http://localhost:8080/files
+
+  #文件预览地址，这里配置的是kkfileview的部署地址，https://kkfileview.keking.cn/
+#  preview:
+#    endpoint: xxxxxxxxxxxxxxxxxxxxxxxxx
+
+--- # 认证授权相关配置
+security:
+  # 拦截路由前缀
+  path-pattern: /apis/**
+  #排除不需要登录认证的接口
+  excludes:
+    - /apis/auth/login
+    - /apis/user/register
+
+--- #Sa-Token 配置
+sa-token:
+  # token 名称（同时也是 cookie 名称）
+  token-name: Authorization
+  # token 前缀
+  token-prefix: Bearer
+  # token 有效期（单位：秒） 默认30天，-1 代表永久有效
+  timeout: 86400
+  # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
+  active-timeout: 3600
+  # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
+  is-concurrent: false
+  # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
+  is-share: false
+  # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
+  token-style: random-128
+  # 是否输出操作日志
+  is-log: true
+  # jwt秘钥
+  jwt-secret-key: asdasdasifhueuiwyurfewbfjsdafjk
+
+--- #接口文档 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

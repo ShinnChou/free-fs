@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>验证码 - Free Fs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+            'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 头部 */
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .logo-section {
+            margin-bottom: 20px;
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .brand-slogan {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        /* 主体内容 */
+        .email-body {
+            padding: 40px 30px;
+        }
+
+        .greeting {
+            font-size: 20px;
+            font-weight: 500;
+            color: #1d2129;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            font-size: 15px;
+            color: #4e5969;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        /* 验证码区域 */
+        .code-container {
+            background: linear-gradient(135deg, #f0f2ff 0%, #faf5ff 100%);
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .code-label {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .verification-code {
+            font-size: 36px;
+            font-weight: 700;
+            color: #667eea;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            padding: 10px 20px;
+            display: inline-block;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .code-validity {
+            font-size: 13px;
+            color: #86909c;
+            margin-top: 15px;
+        }
+
+        .code-validity strong {
+            color: #f53f3f;
+            font-weight: 600;
+        }
+
+        /* 提示信息 */
+        .warning-box {
+            background: #fff7e8;
+            border-left: 4px solid #ff7d00;
+            padding: 16px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box p {
+            font-size: 14px;
+            color: #86909c;
+            margin: 6px 0;
+        }
+
+        .warning-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4e5969;
+            margin-bottom: 8px;
+        }
+
+        /* 分割线 */
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e5e6eb, transparent);
+            margin: 25px 0;
+        }
+
+        /* 页脚 */
+        .email-footer {
+            background: #f7f8fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e5e6eb;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: #86909c;
+            margin-bottom: 8px;
+        }
+
+        /* 响应式 */
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 20px 10px;
+            }
+
+            .email-header {
+                padding: 30px 20px;
+            }
+
+            .email-body {
+                padding: 30px 20px;
+            }
+
+            .brand-name {
+                font-size: 24px;
+            }
+
+            .verification-code {
+                font-size: 28px;
+                letter-spacing: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- 头部 -->
+    <div class="email-header">
+        <div class="logo-section">
+            <div class="brand-name">Free Fs</div>
+            <div class="brand-slogan">Free Cloud Storage | 自由云存储</div>
+        </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="email-body">
+        <div class="greeting">
+            你好，<span th:text="${name}">用户</span>！
+        </div>
+
+        <div class="message">
+            感谢你使用 <strong>Free Fs</strong>
+            云存储服务。我们收到了你的验证请求，请使用以下验证码完成身份验证。
+        </div>
+
+        <!-- 验证码区域 -->
+        <div class="code-container">
+            <div class="code-label">验证码 Verification Code</div>
+            <div class="verification-code" th:text="${code}">123456</div>
+            <div class="code-validity">
+                该验证码 <strong>5</strong>
+                分钟内有效，请尽快完成验证
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 安全提示 -->
+        <div class="warning-box">
+            <div class="warning-title">🔒 安全提示</div>
+            <p>• 验证码仅用于本次身份验证，请勿泄露给他人</p>
+            <p>• 如果这不是你本人的操作，请忽略此邮件</p>
+            <p>• Free Fs 不会以任何理由要求你提供验证码</p>
+        </div>
+
+        <div class="message" style="margin-top: 30px; font-size: 14px">
+            如有任何问题，请随时联系我们。祝你使用愉快！
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <div class="email-footer">
+        <div class="footer-text">此邮件由系统自动发送，请勿直接回复</div>
+    </div>
+</div>
+</body>
+</html>
