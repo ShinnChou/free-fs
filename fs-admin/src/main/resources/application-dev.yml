@@ -27,7 +27,7 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: insentek
+      password: 123456
       database: 0
       # 连接超时时间
       timeout: 10s

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <title>验证码 - Free Fs</title>
+    <!--[if mso]>
+    <style type="text/css">
+        table {
+            border-collapse: collapse;
+        }
+    </style>
+    <![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#667eea;font-family:Arial,sans-serif;">
+<!-- 外层容器 -->
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#667eea;padding:40px 0;">
+    <tr>
+        <td align="center">
+            <!-- 主容器 -->
+            <table width="600" border="0" cellspacing="0" cellpadding="0"
+                   style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+
+                <!-- 头部 -->
+                <tr>
+                    <td style="background-color:#667eea;padding:40px 30px;text-align:center;">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td style="text-align:center;">
+                                    <h1 style="margin:0 0 8px 0;padding:0;font-size:28px;font-weight:600;color:#ffffff;letter-spacing:1px;">
+                                        Free Fs
+                                    </h1>
+                                    <p style="margin:0;padding:0;font-size:14px;color:#ffffff;opacity:0.9;">
+                                        Free Cloud Storage | 自由云存储
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- 主体内容 -->
+                <tr>
+                    <td style="padding:40px 30px;">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <!-- 问候语 -->
+                            <tr>
+                                <td style="padding-bottom:20px;">
+                                    <p style="margin:0;font-size:20px;font-weight:500;color:#1d2129;">
+                                        你好，<span th:text="${name}">用户</span>！
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- 说明文字 -->
+                            <tr>
+                                <td style="padding-bottom:30px;">
+                                    <p style="margin:0;font-size:15px;color:#4e5969;line-height:1.8;">
+                                        感谢你使用 <strong>Free Fs</strong> 云存储服务。我们收到了你的验证请求，请使用以下验证码完成身份验证。
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- 验证码区域 -->
+                            <tr>
+                                <td style="padding:30px 0;">
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0"
+                                           style="background-color:#f0f2ff;border:2px dashed #667eea;border-radius:12px;">
+                                        <tr>
+                                            <td style="padding:30px;text-align:center;">
+                                                <p style="margin:0 0 12px 0;font-size:14px;color:#667eea;font-weight:500;text-transform:uppercase;letter-spacing:1px;">
+                                                    验证码 VERIFICATION CODE
+                                                </p>
+                                                <div style="margin:10px 0;padding:10px 20px;display:inline-block;background-color:#ffffff;border-radius:8px;">
+                                                        <span style="font-size:36px;font-weight:700;color:#667eea;letter-spacing:8px;font-family:'Courier New',monospace;"
+                                                              th:text="${code}">123456</span>
+                                                </div>
+                                                <p style="margin:15px 0 0 0;font-size:13px;color:#86909c;">
+                                                    该验证码 <strong style="color:#f53f3f;font-weight:600;">5
+                                                    分钟</strong> 内有效，请尽快完成验证
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- 分割线 -->
+                            <tr>
+                                <td style="padding:25px 0;">
+                                    <div style="height:1px;background-color:#e5e6eb;"></div>
+                                </td>
+                            </tr>
+
+                            <!-- 安全提示 -->
+                            <tr>
+                                <td style="padding:25px 0;">
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0"
+                                           style="background-color:#fff7e8;border-left:4px solid #ff7d00;border-radius:4px;">
+                                        <tr>
+                                            <td style="padding:16px 20px;">
+                                                <p style="margin:0 0 8px 0;font-size:14px;font-weight:600;color:#4e5969;">
+                                                    🔒 安全提示
+                                                </p>
+                                                <p style="margin:6px 0;font-size:14px;color:#86909c;">
+                                                    • 验证码仅用于本次身份验证，请勿泄露给他人
+                                                </p>
+                                                <p style="margin:6px 0;font-size:14px;color:#86909c;">
+                                                    • 如果这不是你本人的操作，请忽略此邮件
+                                                </p>
+                                                <p style="margin:6px 0;font-size:14px;color:#86909c;">
+                                                    • Free Fs 不会以任何理由要求你提供验证码
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- 结束语 -->
+                            <tr>
+                                <td style="padding-top:30px;">
+                                    <p style="margin:0;font-size:14px;color:#4e5969;">
+                                        如有任何问题，请随时联系我们。祝你使用愉快！
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- 页脚 -->
+                <tr>
+                    <td style="background-color:#f7f8fa;padding:30px;text-align:center;border-top:1px solid #e5e6eb;">
+                        <p style="margin:0;font-size:13px;color:#86909c;">
+                            此邮件由系统自动发送，请勿直接回复
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

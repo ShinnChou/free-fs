@@ -215,7 +215,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         String code = cmd.getCode();
         String redisKey = RedisKey.getVerifyCodeKey(email);
-        String redisCode = redisRepository.get2Str(redisKey);
+        String redisCode = (String) redisRepository.get(redisKey);
         if (!code.equals(redisCode)) {
             throw new BusinessException("验证码错误");
         }

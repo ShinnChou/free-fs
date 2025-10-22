@@ -113,14 +113,6 @@ public class RedisRepository {
         return key == null ? null : redisTemplate.opsForValue().get(key);
     }
 
-    public String get2Str(String key) {
-        Object value = get(key);
-        if (value != null) {
-            return JsonUtils.toJsonString(value);
-        }
-        return null;
-    }
-
     /**
      * 普通缓存放入
      *

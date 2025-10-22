@@ -22,8 +22,8 @@ public class MailService {
     @Autowired
     private TemplateEngine templateEngine;
 
-    @Value("${spring.mail.username}")
-    private String username;
+    @Value("${spring.mail.form}")
+    private String form;
 
     /**
      * 发送普通文本
@@ -34,7 +34,7 @@ public class MailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false);
-            helper.setFrom(username);
+            helper.setFrom(form);
             helper.setTo(mail.getRecipient());
             helper.setSubject(mail.getSubject());
             helper.setText(mail.getContent(), true);
@@ -42,6 +42,7 @@ public class MailService {
             log.info("Email sent successfully to {} with subject '{}', content: {}", mail.getRecipient(), mail.getSubject(), mail.getContent());
         } catch (Exception e) {
             log.error("Failed to send email to {} with subject '{}', content: {}", mail.getRecipient(), mail.getSubject(), mail.getContent());
+            e.printStackTrace();
         }
     }
 
@@ -55,7 +56,7 @@ public class MailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            helper.setFrom(username);
+            helper.setFrom(form);
             helper.setTo(mail.getRecipient());
             helper.setSubject(mail.getSubject());
             Context context = new Context();
@@ -68,6 +69,7 @@ public class MailService {
         } catch (Exception e) {
             log.error("Failed to send email to {} with subject '{}', htmlTemplate: {}, content: {}",
                     mail.getRecipient(), mail.getSubject(), mail.getHtmlTemplate(), JsonUtils.toJsonString(mail.getParams()));
+            e.printStackTrace();
         }
 
     }

@@ -425,7 +425,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         wrapper.and(FILE_INFO.STORAGE_PLATFORM_IDENTIFIER.eq(storagePlatformIdentifier));
         //  父目录过滤
         if (qry.getParentId() == null) {
-            wrapper.isNull(FileInfo::getParentId);
+            wrapper.and(FILE_INFO.PARENT_ID.isNull());
         } else {
             wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
         }
@@ -470,7 +470,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
                     .and(
                             FILE_INFO.SUFFIX.notIn(knownSuffixes)
-                                    .or(FILE_INFO.SUFFIX.isNull())
+                                    .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
                     );
 
             return;
