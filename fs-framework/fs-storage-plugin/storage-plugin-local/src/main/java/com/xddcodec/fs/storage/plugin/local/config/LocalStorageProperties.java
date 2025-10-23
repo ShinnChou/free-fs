@@ -1,4 +1,4 @@
-package com.xddcodec.fs.storage.config;
+package com.xddcodec.fs.storage.plugin.local.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

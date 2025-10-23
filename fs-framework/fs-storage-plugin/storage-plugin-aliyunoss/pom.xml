@@ -4,34 +4,26 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.xddcodec.fs</groupId>
-        <artifactId>fs-modules</artifactId>
+        <artifactId>fs-storage-plugin</artifactId>
         <version>${revision}</version>
     </parent>
-    <artifactId>fs-file</artifactId>
+    <artifactId>storage-plugin-aliyunoss</artifactId>
 
     <description>
-        fs-file - 文件管理模块
+        storage-plugin-aliyunoss - 存储插件-阿里云OSS
     </description>
 
     <dependencies>
+
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-orm</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-swagger</artifactId>
-        </dependency>
-        <!-- 存储插件依赖 -->
-        <dependency>
-            <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-storage</artifactId>
+            <artifactId>storage-plugin-core</artifactId>
         </dependency>
 
+        <!-- aliyun-java-sdk -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+        </dependency>
     </dependencies>
-
 </project>

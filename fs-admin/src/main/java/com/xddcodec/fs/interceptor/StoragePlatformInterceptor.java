@@ -1,8 +1,10 @@
 package com.xddcodec.fs.interceptor;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
-import com.xddcodec.fs.framework.common.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContext;
+import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +26,13 @@ public class StoragePlatformInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String platform = request.getHeader(CommonConstant.X_STORAGE_PLATFORM);
-
+        String userId = StpUtil.getLoginIdAsString();
         if (StrUtil.isNotBlank(platform)) {
-            StoragePlatformContextHolder.setPlatform(platform);
+            StoragePlatformContext context = StoragePlatformContext.builder()
+                    .platformIdentifier(platform)
+                    .userId(userId)
+                    .build();
+            StoragePlatformContextHolder.setContext(context);
             log.debug("从请求头获取存储平台: {}", platform);
         } else {
             log.debug("请求头中未包含存储平台标识，将使用默认平台");

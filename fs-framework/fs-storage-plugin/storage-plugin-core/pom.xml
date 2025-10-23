@@ -4,23 +4,21 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.xddcodec.fs</groupId>
-        <artifactId>free-fs</artifactId>
+        <artifactId>fs-storage-plugin</artifactId>
         <version>${revision}</version>
     </parent>
-    <artifactId>fs-framework</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>storage-plugin-core</artifactId>
 
     <description>
-        fs-framework - 基础设施模块
+        storage-plugin-core - 存储插件核心模块
     </description>
 
-    <modules>
-        <module>fs-common-core</module>
-        <module>fs-notify</module>
-        <module>fs-orm</module>
-        <module>fs-redis</module>
-        <module>fs-security</module>
-        <module>fs-swagger</module>
-        <module>fs-storage-plugin</module>
-    </modules>
+    <dependencies>
+
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>fs-common-core</artifactId>
+        </dependency>
+
+    </dependencies>
 </project>

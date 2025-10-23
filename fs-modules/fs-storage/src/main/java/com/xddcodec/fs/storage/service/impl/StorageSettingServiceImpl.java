@@ -5,14 +5,14 @@ import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.storage.domain.StorageSetting;
 import com.xddcodec.fs.storage.domain.dto.StorageSettingEditCmd;
 import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
-import com.xddcodec.fs.storage.provider.StorageServiceFactory;
+import com.xddcodec.fs.storage.plugin.boot.StoragePluginManager;
 import com.xddcodec.fs.storage.service.StorageSettingService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -29,8 +29,7 @@ import static com.xddcodec.fs.storage.domain.table.StorageSettingTableDef.STORAG
 @RequiredArgsConstructor
 public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper, StorageSetting> implements StorageSettingService {
 
-    @Autowired(required = false)
-    private StorageServiceFactory storageServiceFactory;
+    private final StoragePluginManager pluginManager;
 
     @Override
     public StorageSetting getStorageSettingByPlatform(String storagePlatformIdentifier, String userId) {
@@ -55,15 +54,13 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
             storageSetting.setEnabled(action == 0 ? CommonConstant.N : CommonConstant.Y);
             this.updateById(storageSetting);
         }
-        
+
         // 清除缓存，确保下次获取时重新初始化
-        if (storageServiceFactory != null) {
-            storageServiceFactory.clearCache(userId, storagePlatformIdentifier);
-            log.info("配置变更，已清除存储服务缓存: userId={}, platform={}", userId, storagePlatformIdentifier);
-        }
+        pluginManager.invalidateConfig(userId, storagePlatformIdentifier);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void saveOrUpdateStorageSetting(StorageSettingEditCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         StorageSetting storageSetting = this.getStorageSettingByPlatform(cmd.getIdentifier(), userId);
@@ -78,12 +75,9 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
             storageSetting.setEnabled(CommonConstant.Y);
             this.save(storageSetting);
         }
-        
+
         // 清除缓存，确保下次获取时使用新配置重新初始化
-        if (storageServiceFactory != null) {
-            storageServiceFactory.clearCache(userId, cmd.getIdentifier());
-            log.info("配置更新，已清除存储服务缓存: userId={}, platform={}", userId, cmd.getIdentifier());
-        }
+        pluginManager.invalidateConfig(userId, cmd.getIdentifier());
     }
 
     @Override

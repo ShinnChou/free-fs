@@ -1,0 +1,155 @@
+package com.xddcodec.fs.storage.plugin.core;
+
+import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 存储平台操作接口
+ * 定义了存储平台的基本操作，如上传、下载、删除等
+ *
+ * @Author: xddcode
+ * @Date: 2025/10/22 10:00
+ */
+public interface IStorageOperationService extends Closeable {
+
+    /**
+     * 获取平台标识符
+     *
+     * @return 平台标识符（如：local、aliyun_oss、minio）
+     */
+    String getPlatformIdentifier();
+
+    /**
+     * 创建配置化实例（工厂方法）
+     *
+     * @param config 存储配置
+     * @return 配置化的实例
+     */
+    IStorageOperationService createConfiguredInstance(StorageConfig config);
+
+    /**
+     * 获取配置Schema（用于前端动态表单）
+     *
+     * @return JSON Schema字符串
+     */
+    default String getConfigSchema() {
+        return "{}";
+    }
+
+    // ========== 基础文件操作 ==========
+
+    /**
+     * 上传文件
+     *
+     * @param inputStream 文件流
+     * @param objectKey   对象键（文件路径）
+     * @param contentType 文件类型
+     * @param size        文件大小
+     * @return 文件访问URL
+     */
+    String uploadFile(InputStream inputStream, String objectKey,
+                      String contentType, long size);
+
+    /**
+     * 下载文件
+     *
+     * @param objectKey 对象键
+     * @return 文件流
+     */
+    InputStream downloadFile(String objectKey);
+
+    /**
+     * 删除文件
+     *
+     * @param objectKey 对象键
+     * @return 是否成功
+     */
+    boolean deleteFile(String objectKey);
+
+    /**
+     * 获取文件访问URL
+     *
+     * @param objectKey     对象键
+     * @param expireSeconds 过期时间（秒），null表示永久
+     * @return 访问URL
+     */
+    String getFileUrl(String objectKey, Integer expireSeconds);
+
+    /**
+     * 检查文件是否存在
+     *
+     * @param objectKey 对象键
+     * @return 是否存在
+     */
+    boolean isFileExist(String objectKey);
+
+    // ========== 分片上传 ==========
+
+    /**
+     * 初始化分片上传
+     *
+     * @param objectKey      对象键
+     * @param mimeType       文件类型
+     * @param fileIdentifier 文件标识符
+     * @return 上传ID
+     */
+    String initiateMultipartUpload(String objectKey, String mimeType,
+                                   String fileIdentifier);
+
+    /**
+     * 上传分片
+     *
+     * @param objectKey              对象键
+     * @param uploadId               上传ID
+     * @param partNumber             分片序号
+     * @param partSize               分片大小
+     * @param partInputStream        分片流
+     * @param partIdentifierForLocal 本地存储的分片标识
+     * @return ETag
+     */
+    String uploadPart(String objectKey, String uploadId, int partNumber,
+                      long partSize, InputStream partInputStream,
+                      String partIdentifierForLocal);
+
+    /**
+     * 完成分片上传
+     *
+     * @param objectKey 对象键
+     * @param uploadId  上传ID
+     * @param partETags 分片ETag列表
+     * @return 文件访问URL
+     */
+    String completeMultipartUpload(String objectKey, String uploadId,
+                                   List<Map<String, Object>> partETags);
+
+    /**
+     * 取消分片上传
+     *
+     * @param objectKey 对象键
+     * @param uploadId  上传ID
+     */
+    void abortMultipartUpload(String objectKey, String uploadId);
+
+    /**
+     * 列出已上传的分片
+     *
+     * @param objectKey 对象键
+     * @param uploadId  上传ID
+     * @return 分片信息列表
+     */
+    List<Map<String, Object>> listParts(String objectKey, String uploadId);
+
+    /**
+     * 关闭资源
+     */
+    @Override
+    default void close() throws IOException {
+        // 默认空实现
+    }
+}
+

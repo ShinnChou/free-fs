@@ -99,10 +99,10 @@
             <artifactId>hutool-http</artifactId>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>com.alibaba</groupId>-->
-<!--            <artifactId>transmittable-thread-local</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>transmittable-thread-local</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.github.linpeilie</groupId>

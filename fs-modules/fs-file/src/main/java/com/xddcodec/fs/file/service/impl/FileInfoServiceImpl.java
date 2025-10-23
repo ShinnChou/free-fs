@@ -17,13 +17,13 @@ import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.enums.FileTypeEnum;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
-import com.xddcodec.fs.framework.common.context.StoragePlatformContextHolder;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
-import com.xddcodec.fs.storage.provider.StorageOperationService;
-import com.xddcodec.fs.storage.provider.StorageServiceFacade;
+import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.storage.provider.StorageServiceFacade;
 import io.github.linpeilie.Converter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,7 +74,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             throw new StorageOperationException("上传文件不能为空");
         }
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = StoragePlatformContextHolder.getPlatformOrDefault();
+        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
         try {
             return uploadFile(
                     file.getInputStream(),
@@ -124,7 +124,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }
 
         // 获取存储服务（根据平台标识）
-        StorageOperationService storageService = storageServiceFacade.getService(storagePlatformIdentifier);
+        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
         String platformIdentifier = storageService.getPlatformIdentifier();
 
         // 生成文件ID和对象键
@@ -198,7 +198,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }
 
         // 根据文件记录中的平台标识获取对应的存储服务
-        StorageOperationService storageService = storageServiceFacade.getService(fileInfo.getStoragePlatformIdentifier());
+        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
         return storageService.downloadFile(fileInfo.getObjectKey());
     }
 
@@ -216,7 +216,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }
 
         // 根据文件记录中的平台标识获取对应的存储服务
-        StorageOperationService storageService = storageServiceFacade.getService(fileInfo.getStoragePlatformIdentifier());
+        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
         return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
     }
 
@@ -242,7 +242,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = storageServiceFacade.getCurrentService().getPlatformIdentifier();
+        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
 
         String baseName = dto.getFolderName().trim();
         String finalName = baseName;
@@ -358,7 +358,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public void clearRecycles() {
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = storageServiceFacade.getCurrentService().getPlatformIdentifier();
+        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
         remove(new QueryWrapper()
                 .where(FILE_INFO.USER_ID.eq(userId)
                         .and(FILE_INFO.IS_DELETED.eq(true)
@@ -417,7 +417,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformIdentifier = storageServiceFacade.getCurrentService().getPlatformIdentifier();
+        String storagePlatformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
         // 构建查询条件
         QueryWrapper wrapper = new QueryWrapper();
         wrapper.where(FILE_INFO.USER_ID.eq(userId));
@@ -486,7 +486,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public List<FileRecycleVO> getRecycles() {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformIdentifier = storageServiceFacade.getCurrentService().getPlatformIdentifier();
+        String storagePlatformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
         List<FileInfo> fileInfos = this.list(
                 new QueryWrapper()
                         .where(FILE_INFO.USER_ID.eq(userId)
