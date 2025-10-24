@@ -1,11 +1,14 @@
 package com.xddcodec.fs.storage.plugin.boot;
 
+import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContext;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Component;
@@ -22,7 +25,13 @@ import java.util.function.Supplier;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class StoragePluginManager implements DisposableBean {
+
+    /**
+     * Local 存储配置（从配置文件加载）
+     */
+    private final LocalStorageProperties localStorageProperties;
 
     /**
      * 原型实例：platformIdentifier -> 原型
@@ -39,6 +48,13 @@ public class StoragePluginManager implements DisposableBean {
      * 创建实例的锁（防止并发创建重复实例）
      */
     private final Map<String, Lock> creationLocks = new ConcurrentHashMap<>();
+
+    /**
+     * Local 实例（全局单例，懒加载）
+     */
+    private volatile IStorageOperationService localInstance;
+
+    private final Lock localInstanceLock = new ReentrantLock();
 
     /**
      * 初始化：加载SPI插件
@@ -63,8 +79,13 @@ public class StoragePluginManager implements DisposableBean {
         log.info("存储插件管理器初始化完成，共加载 {} 个插件", loadedCount);
 
         if (loadedCount == 0) {
-            log.warn("未加载到任何存储插件，请检查 META-INF/services 配置");
+            log.warn("⚠未加载到任何存储插件，请检查 META-INF/services 配置");
         }
+
+        log.info("Local 存储配置: basePath={}, baseUrl={}",
+                localStorageProperties.getBasePath(),
+                localStorageProperties.getBaseUrl()
+        );
     }
 
     /**
@@ -75,14 +96,17 @@ public class StoragePluginManager implements DisposableBean {
      */
     public IStorageOperationService getCurrentInstance() {
         StoragePlatformContext context = StoragePlatformContextHolder.getContext();
-        String cacheKey = buildCacheKey(context.getUserId(), context.getPlatformIdentifier());
+        String platformIdentifier = context.getPlatformIdentifier();
 
+        if (StoragePlatformIdentifierEnum.LOCAL.getIdentifier().equals(platformIdentifier)) {
+            return getOrCreateLocalInstance();
+        }
+
+        String cacheKey = buildCacheKey(context.getUserId(), platformIdentifier);
         IStorageOperationService instance = instanceCache.get(cacheKey);
         if (instance != null) {
             return instance;
         }
-
-        // 缓存未命中，应该由 Factory 调用 getOrCreateInstance 创建
         throw new StorageOperationException(
                 "存储实例未初始化，请检查配置: " + cacheKey
         );
@@ -99,15 +123,18 @@ public class StoragePluginManager implements DisposableBean {
             StorageConfig configBuilder,
             Supplier<StorageConfig> configLoader) {
 
+        String platformIdentifier = configBuilder.getPlatformIdentifier();
+
+        if (StoragePlatformIdentifierEnum.LOCAL.getIdentifier().equals(platformIdentifier)) {
+            return getOrCreateLocalInstance();
+        }
+
         String cacheKey = configBuilder.getCacheKey();
 
-        // 缓存命中
         IStorageOperationService instance = instanceCache.get(cacheKey);
         if (instance != null) {
             return instance;
         }
-
-        // 需要创建实例（首次访问或配置变更后）
         Lock lock = creationLocks.computeIfAbsent(cacheKey, k -> new ReentrantLock());
         lock.lock();
         try {
@@ -115,24 +142,9 @@ public class StoragePluginManager implements DisposableBean {
             if (instance != null) {
                 return instance;
             }
-
-            // 仅在缓存未命中时加载完整配置（避免不必要的数据库查询）
             StorageConfig fullConfig = configLoader.get();
-
-            // 验证配置
             validateConfig(fullConfig);
-
-            // 获取原型并创建实例
-            IStorageOperationService prototype = prototypes.get(fullConfig.getPlatformIdentifier());
-            if (prototype == null) {
-                throw new StorageOperationException(
-                        "不支持的存储平台: " + fullConfig.getPlatformIdentifier()
-                );
-            }
-
-            instance = prototype.createConfiguredInstance(fullConfig);
-
-            // 放入缓存（永久缓存，不淘汰）
+            instance = createInstance(fullConfig);
             instanceCache.put(cacheKey, instance);
 
             log.info("创建存储实例: {} (当前缓存: {})", cacheKey, instanceCache.size());
@@ -145,7 +157,6 @@ public class StoragePluginManager implements DisposableBean {
             );
         } finally {
             lock.unlock();
-            // 清理锁对象（避免内存泄漏）
             creationLocks.remove(cacheKey);
         }
     }
@@ -158,14 +169,51 @@ public class StoragePluginManager implements DisposableBean {
     }
 
     /**
+     * 获取或创建 Local 实例（全局单例，懒加载）
+     * 从配置文件加载配置
+     */
+    private IStorageOperationService getOrCreateLocalInstance() {
+        if (localInstance != null) {
+            return localInstance;
+        }
+
+        localInstanceLock.lock();
+        try {
+            if (localInstance != null) {
+                return localInstance;
+            }
+
+            StorageConfig localConfig = StorageConfig.builder()
+                    .platformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier())
+                    .userId("system")
+                    .enabled(true)
+                    .properties(localStorageProperties.toPropertiesMap())
+                    .build();
+
+            localInstance = createInstance(localConfig);
+
+            log.info("创建 Local 全局实例（系统默认存储），basePath={}",
+                    localStorageProperties.getBasePath());
+            return localInstance;
+
+        } finally {
+            localInstanceLock.unlock();
+        }
+    }
+
+    /**
      * 使配置失效
      *
      * @param userId             用户ID
      * @param platformIdentifier 平台标识符
      */
     public void invalidateConfig(String userId, String platformIdentifier) {
-        String cacheKey = buildCacheKey(userId, platformIdentifier);
+        if (StoragePlatformIdentifierEnum.LOCAL.getIdentifier().equals(platformIdentifier)) {
+            log.debug("Local 平台为全局单例，不支持失效操作");
+            return;
+        }
 
+        String cacheKey = buildCacheKey(userId, platformIdentifier);
         IStorageOperationService instance = instanceCache.remove(cacheKey);
 
         if (instance != null) {
@@ -231,7 +279,6 @@ public class StoragePluginManager implements DisposableBean {
     public Map<String, Object> getCacheStats() {
         Map<String, Integer> platformCount = new HashMap<>();
 
-        // 统计每个平台的实例数
         instanceCache.keySet().forEach(key -> {
             String platform = key.substring(key.indexOf('_') + 1);
             platformCount.merge(platform, 1, Integer::sum);
@@ -240,6 +287,11 @@ public class StoragePluginManager implements DisposableBean {
         return Map.of(
                 "totalPrototypes", prototypes.size(),
                 "cachedInstances", instanceCache.size(),
+                "hasLocalInstance", localInstance != null,
+                "localConfig", Map.of(
+                        "basePath", localStorageProperties.getBasePath(),
+                        "baseUrl", localStorageProperties.getBaseUrl()
+                ),
                 "platformDistribution", platformCount,
                 "cacheKeys", new ArrayList<>(instanceCache.keySet())
         );
@@ -250,7 +302,13 @@ public class StoragePluginManager implements DisposableBean {
      */
     @Override
     public void destroy() {
-        log.info("关闭所有存储实例，当前实例数: {}", instanceCache.size());
+        log.info("开始关闭所有存储实例，当前实例数: {}",
+                instanceCache.size() + (localInstance != null ? 1 : 0));
+
+        if (localInstance != null) {
+            closeInstanceSafely(localInstance, StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
+            localInstance = null;
+        }
 
         instanceCache.forEach((key, instance) -> {
             closeInstanceSafely(instance, key);
@@ -268,6 +326,16 @@ public class StoragePluginManager implements DisposableBean {
      */
     private String buildCacheKey(String userId, String platformIdentifier) {
         return String.format("%s_%s", userId, platformIdentifier);
+    }
+
+    private IStorageOperationService createInstance(StorageConfig config) {
+        IStorageOperationService prototype = prototypes.get(config.getPlatformIdentifier());
+        if (prototype == null) {
+            throw new StorageOperationException(
+                    "不支持的存储平台: " + config.getPlatformIdentifier()
+            );
+        }
+        return prototype.createConfiguredInstance(config);
     }
 
     /**
@@ -301,7 +369,7 @@ public class StoragePluginManager implements DisposableBean {
             log.debug("成功关闭实例: {}", cacheKey);
         } catch (IOException e) {
             log.error("关闭实例失败: {}, 错误: {}", cacheKey, e.getMessage());
-            // 🔥 即使关闭失败，也已经从缓存中移除了
+            // 即使关闭失败，也已经从缓存中移除了
         } catch (Exception e) {
             log.error("关闭实例时发生未知错误: {}", cacheKey, e);
         }

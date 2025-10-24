@@ -44,7 +44,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         //注册存储平台切换拦截器
         registry.addInterceptor(storagePlatformInterceptor)
-                .addPathPatterns("/**")
+                .addPathPatterns(securityProperties.getPathPattern())
+                .excludePathPatterns(securityProperties.getExcludes())
                 .order(2);
     }
 }

@@ -1,7 +1,6 @@
 package com.xddcodec.fs.storage.plugin.local;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
@@ -21,27 +20,25 @@ import java.util.Map;
  * @Date: 2024/10/26 17:00
  */
 @Slf4j
-public class LocalStorageServiceImpl extends AbstractStorageOperationService {
+public class LocalStorageOperationService extends AbstractStorageOperationService {
 
     private final String basePath;
     private final String baseUrl;
 
-    /**
-     * 原型构造函数
-     */
-    public LocalStorageServiceImpl() {
+    public LocalStorageOperationService() {
         super();
         this.basePath = null;
         this.baseUrl = null;
     }
 
-    /**
-     * 配置化构造函数
-     */
-    public LocalStorageServiceImpl(StorageConfig config) {
+    public LocalStorageOperationService(StorageConfig config) {
         super(config);
-        this.basePath = config.getRequiredProperty("basePath", String.class);
-        this.baseUrl = config.getRequiredProperty("baseUrl", String.class);
+        // 在父类 initialize() 执行后才安全赋值
+        this.basePath = normalizeBasePath(config.getRequiredProperty("basePath", String.class));
+        this.baseUrl = normalizeBaseUrl(config.getRequiredProperty("baseUrl", String.class));
+
+        log.info("{} LocalStorage 实例创建完成: basePath={}, baseUrl={}",
+                getLogPrefix(), this.basePath, this.baseUrl);
     }
 
     @Override
@@ -51,46 +48,53 @@ public class LocalStorageServiceImpl extends AbstractStorageOperationService {
 
     @Override
     protected void validateConfig(StorageConfig config) {
-        String basePath = config.getRequiredProperty("basePath", String.class);
-        String baseUrl = config.getRequiredProperty("baseUrl", String.class);
 
-        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            throw new StorageOperationException("baseUrl必须以http://或https://开头");
-        }
     }
 
     @Override
     protected void initialize(StorageConfig config) {
+        String basePath = config.getRequiredProperty("basePath", String.class);
+        String normalizedPath = normalizeBasePath(basePath);
         // 创建存储目录
-        File baseDir = new File(basePath);
-        if (!baseDir.exists() && !baseDir.mkdirs()) {
-            throw new StorageOperationException("无法创建存储目录: " + basePath);
+        File baseDir = new File(normalizedPath);
+        if (!baseDir.exists()) {
+            if (!baseDir.mkdirs()) {
+                throw new StorageOperationException("无法创建存储目录: " + normalizedPath);
+            }
+            log.info("创建存储目录: {}", normalizedPath);
         }
-
-        log.info("{} 本地存储初始化完成: basePath={}, baseUrl={}",
-                getLogPrefix(), basePath, baseUrl);
+        log.debug("{} Local 存储初始化完成: {}", getLogPrefix(), normalizedPath);
     }
 
-    @Override
-    public String getConfigSchema() {
-        return """
-                {
-                  "type": "object",
-                  "properties": {
-                    "basePath": {
-                      "type": "string",
-                      "title": "存储路径",
-                      "description": "文件存储的本地绝对路径"
-                    },
-                    "baseUrl": {
-                      "type": "string",
-                      "title": "访问URL",
-                      "description": "文件访问的基础URL（需配置Nginx等）"
-                    }
-                  },
-                  "required": ["basePath", "baseUrl"]
-                }
-                """;
+    private String normalizeBasePath(String path) {
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("basePath 不能为空");
+        }
+        return path.endsWith(File.separator)
+                ? path.substring(0, path.length() - 1)
+                : path;
+    }
+
+    /**
+     * 规范化基础URL（去除末尾斜杠）
+     */
+    private String normalizeBaseUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            throw new IllegalArgumentException("baseUrl 不能为空");
+        }
+        return url.endsWith("/")
+                ? url.substring(0, url.length() - 1)
+                : url;
+    }
+
+    /**
+     * 解析完整文件路径
+     */
+    private String resolveFullPath(String objectKey) {
+        String normalizedObjectKey = objectKey.startsWith("/") || objectKey.startsWith("\\")
+                ? objectKey.substring(1)
+                : objectKey;
+        return basePath + File.separator + normalizedObjectKey;
     }
 
     @Override
@@ -99,7 +103,7 @@ public class LocalStorageServiceImpl extends AbstractStorageOperationService {
         ensureNotPrototype();
 
         try {
-            String fullPath = basePath + File.separator + objectKey;
+            String fullPath = resolveFullPath(objectKey);
             File targetFile = new File(fullPath);
 
             File parentDir = targetFile.getParentFile();
@@ -124,7 +128,7 @@ public class LocalStorageServiceImpl extends AbstractStorageOperationService {
         ensureNotPrototype();
 
         try {
-            String fullPath = basePath + File.separator + objectKey;
+            String fullPath = resolveFullPath(objectKey);
             File file = new File(fullPath);
 
             if (!file.exists()) {
@@ -141,7 +145,7 @@ public class LocalStorageServiceImpl extends AbstractStorageOperationService {
     public boolean deleteFile(String objectKey) {
         ensureNotPrototype();
 
-        String fullPath = basePath + File.separator + objectKey;
+        String fullPath = resolveFullPath(objectKey);
         File file = new File(fullPath);
 
         if (!file.exists()) {
@@ -157,13 +161,17 @@ public class LocalStorageServiceImpl extends AbstractStorageOperationService {
     @Override
     public String getFileUrl(String objectKey, Integer expireSeconds) {
         ensureNotPrototype();
-        return baseUrl + "/" + objectKey;
+        String normalizedObjectKey = objectKey.startsWith("/")
+                ? objectKey.substring(1)
+                : objectKey;
+
+        return baseUrl + "/" + normalizedObjectKey;
     }
 
     @Override
     public boolean isFileExist(String objectKey) {
         ensureNotPrototype();
-        String fullPath = basePath + File.separator + objectKey;
+        String fullPath = resolveFullPath(objectKey);
         return new File(fullPath).exists();
     }
 
