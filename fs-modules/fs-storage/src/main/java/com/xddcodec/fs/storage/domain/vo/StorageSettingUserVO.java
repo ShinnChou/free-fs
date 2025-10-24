@@ -38,4 +38,9 @@ public class StorageSettingUserVO implements Serializable {
      * 用户ID
      */
     private String userId;
+
+    /**
+     * 备注
+     */
+    private String remark;
 }

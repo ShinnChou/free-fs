@@ -1,16 +1,15 @@
 package com.xddcodec.fs.interceptor;
 
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContext;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-
 
 /**
  * 存储平台拦截器
@@ -24,27 +23,40 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class StoragePlatformInterceptor implements HandlerInterceptor {
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String platform = request.getHeader(CommonConstant.X_STORAGE_PLATFORM);
-        String userId = StpUtil.getLoginIdAsString();
-        if (StrUtil.isNotBlank(platform)) {
-            StoragePlatformContext context = StoragePlatformContext.builder()
-                    .platformIdentifier(platform)
-                    .userId(userId)
-                    .build();
-            StoragePlatformContextHolder.setContext(context);
-            log.debug("从请求头获取存储平台: {}", platform);
+    public boolean preHandle(HttpServletRequest request,
+                             HttpServletResponse response,
+                             Object handler) {
+        // 从请求头获取 configId
+        String configId = request.getHeader(CommonConstant.X_STORAGE_PLATFORM_CONFIG_ID);
+
+        // 规范化 configId（Local 统一转为 null）
+        configId = StorageUtils.normalizeConfigId(configId);
+
+        // 日志记录
+        if (configId == null) {
+            log.debug("使用 Local 存储");
         } else {
-            log.debug("请求头中未包含存储平台标识，将使用默认平台");
+            log.debug("使用用户配置存储: configId={}", configId);
         }
+
+        // 构建上下文
+        StoragePlatformContext context = StoragePlatformContext.builder()
+                .configId(configId)
+                .userId(StpUtil.getLoginIdAsString())
+                .build();
+
+        // 设置到 ThreadLocal
+        StoragePlatformContextHolder.setContext(context);
 
         return true;
     }
 
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-                                Object handler, Exception ex) {
-        // 请求完成后清理ThreadLocal，防止内存泄漏
+    public void afterCompletion(HttpServletRequest request,
+                                HttpServletResponse response,
+                                Object handler,
+                                Exception ex) {
+        // 清理 ThreadLocal，防止内存泄漏
         StoragePlatformContextHolder.clear();
     }
 }

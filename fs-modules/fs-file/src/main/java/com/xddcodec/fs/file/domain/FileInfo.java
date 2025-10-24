@@ -81,7 +81,7 @@ public class FileInfo implements Serializable {
     /**
      * 存储平台标识符
      */
-    private String storagePlatformIdentifier;
+    private String storagePlatformSettingId;
 
     /**
      * 上传时间

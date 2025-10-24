@@ -22,21 +22,15 @@ import java.util.Map;
 @Slf4j
 public class LocalStorageOperationService extends AbstractStorageOperationService {
 
-    private final String basePath;
-    private final String baseUrl;
+    private String basePath;
+    private String baseUrl;
 
     public LocalStorageOperationService() {
         super();
-        this.basePath = null;
-        this.baseUrl = null;
     }
 
     public LocalStorageOperationService(StorageConfig config) {
         super(config);
-        // 在父类 initialize() 执行后才安全赋值
-        this.basePath = normalizeBasePath(config.getRequiredProperty("basePath", String.class));
-        this.baseUrl = normalizeBaseUrl(config.getRequiredProperty("baseUrl", String.class));
-
         log.info("{} LocalStorage 实例创建完成: basePath={}, baseUrl={}",
                 getLogPrefix(), this.basePath, this.baseUrl);
     }
@@ -48,43 +42,48 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
     @Override
     protected void validateConfig(StorageConfig config) {
+        String basePath = config.getRequiredProperty("basePath", String.class);
+        String baseUrl = config.getRequiredProperty("baseUrl", String.class);
 
+        if (basePath == null || basePath.trim().isEmpty()) {
+            throw new StorageOperationException("Local 存储配置错误：basePath 不能为空");
+        }
+
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            throw new StorageOperationException("Local 存储配置错误：baseUrl 不能为空");
+        }
     }
 
     @Override
     protected void initialize(StorageConfig config) {
-        String basePath = config.getRequiredProperty("basePath", String.class);
-        String normalizedPath = normalizeBasePath(basePath);
+        String rawBasePath = config.getRequiredProperty("basePath", String.class);
+        this.basePath = normalizePath(rawBasePath, File.separator, "basePath 不能为空");
+
+        String rawBaseUrl = config.getRequiredProperty("baseUrl", String.class);
+        this.baseUrl = normalizePath(rawBaseUrl, "/", "baseUrl 不能为空");
         // 创建存储目录
-        File baseDir = new File(normalizedPath);
+        File baseDir = new File(this.basePath);
         if (!baseDir.exists()) {
             if (!baseDir.mkdirs()) {
-                throw new StorageOperationException("无法创建存储目录: " + normalizedPath);
+                throw new StorageOperationException("无法创建存储目录: " + this.basePath);
             }
-            log.info("创建存储目录: {}", normalizedPath);
+            log.info("创建存储目录: {}", this.basePath);
         }
-        log.debug("{} Local 存储初始化完成: {}", getLogPrefix(), normalizedPath);
-    }
 
-    private String normalizeBasePath(String path) {
-        if (path == null || path.isEmpty()) {
-            throw new IllegalArgumentException("basePath 不能为空");
-        }
-        return path.endsWith(File.separator)
-                ? path.substring(0, path.length() - 1)
-                : path;
+        log.debug("{} Local 存储初始化完成: {}", getLogPrefix(), this.basePath);
     }
 
     /**
-     * 规范化基础URL（去除末尾斜杠）
+     * 规范化路径（去除末尾分隔符）
      */
-    private String normalizeBaseUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            throw new IllegalArgumentException("baseUrl 不能为空");
+    private String normalizePath(String path, String separator, String errorMsg) {
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException(errorMsg);
         }
-        return url.endsWith("/")
-                ? url.substring(0, url.length() - 1)
-                : url;
+        String trimmed = path.trim();
+        return trimmed.endsWith(separator)
+                ? trimmed.substring(0, trimmed.length() - separator.length())
+                : trimmed;
     }
 
     /**

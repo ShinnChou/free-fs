@@ -37,7 +37,7 @@ public interface CommonConstant {
     /**
      * 存储平台请求头标识
      */
-    String X_STORAGE_PLATFORM = "X-Storage-Platform";
+    String X_STORAGE_PLATFORM_CONFIG_ID = "X-Storage-Platform-Config-Id";
 
     /**
      * 验证码长度

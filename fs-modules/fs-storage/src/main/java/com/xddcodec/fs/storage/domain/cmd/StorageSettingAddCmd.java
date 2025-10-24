@@ -12,4 +12,6 @@ public class StorageSettingAddCmd {
 
     @NotBlank(message = "configData不能为空")
     private String configData;
+
+    private String remark;
 }

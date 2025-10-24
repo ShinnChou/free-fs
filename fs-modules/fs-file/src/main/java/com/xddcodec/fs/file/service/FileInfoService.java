@@ -6,7 +6,6 @@ import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
-import com.xddcodec.fs.framework.common.domain.PageResult;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;

@@ -23,7 +23,7 @@ import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
-import com.xddcodec.fs.storage.provider.StorageServiceFacade;
+import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import io.github.linpeilie.Converter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,7 +74,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             throw new StorageOperationException("上传文件不能为空");
         }
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
+        String configId = StoragePlatformContextHolder.getConfigId();
         try {
             return uploadFile(
                     file.getInputStream(),
@@ -83,7 +83,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                     file.getContentType(),
                     userId,
                     parentId,
-                    platformIdentifier
+                    configId
             );
         } catch (IOException e) {
             log.error("读取上传文件流失败: {}", e.getMessage(), e);
@@ -94,7 +94,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-                               String userId, String parentId, String storagePlatformIdentifier) {
+                               String userId, String parentId, String storagePlatformSettingId) {
         if (inputStream == null) {
             throw new StorageOperationException("上传文件流不能为空");
         }
@@ -117,15 +117,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }
 
         // 秒传检查
-        FileInfo existingFile = checkSecondUpload(md5, storagePlatformIdentifier, userId, originalName);
+        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
         if (existingFile != null) {
             log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
             return existingFile;
         }
 
-        // 获取存储服务（根据平台标识）
+        // 获取存储服务
         IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
-        String platformIdentifier = storageService.getPlatformIdentifier();
 
         // 生成文件ID和对象键
         String fileId = IdUtil.fastSimpleUUID();
@@ -153,7 +152,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             fileInfo.setParentId(parentId);
             fileInfo.setUserId(userId);
             fileInfo.setContentMd5(md5);
-            fileInfo.setStoragePlatformIdentifier(platformIdentifier);
+            fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
             fileInfo.setUploadTime(LocalDateTime.now());
             fileInfo.setUpdateTime(LocalDateTime.now());
             fileInfo.setIsDeleted(false);
@@ -168,14 +167,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName) {
-        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformIdentifier)) {
+    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
+        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
             return null;
         }
         FileInfo existingFile = getOne(
                 new QueryWrapper()
                         .where(FILE_INFO.CONTENT_MD5.eq(md5)
-                                .and(FILE_INFO.STORAGE_PLATFORM_IDENTIFIER.eq(storagePlatformIdentifier))
+                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                                 .and(FILE_INFO.USER_ID.eq(userId))
                                 .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
                                 .and(FILE_INFO.IS_DELETED.eq(false))
@@ -242,7 +241,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
+        String platformConfigId = StoragePlatformContextHolder.getConfigId();
 
         String baseName = dto.getFolderName().trim();
         String finalName = baseName;
@@ -283,7 +282,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setIsDir(true);
         dirInfo.setParentId(dto.getParentId());
         dirInfo.setUserId(userId);
-        dirInfo.setStoragePlatformIdentifier(platformIdentifier);
+        dirInfo.setStoragePlatformSettingId(platformConfigId);
         dirInfo.setUploadTime(LocalDateTime.now());
         dirInfo.setUpdateTime(LocalDateTime.now());
         dirInfo.setIsDeleted(false);
@@ -358,11 +357,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public void clearRecycles() {
         String userId = StpUtil.getLoginIdAsString();
-        String platformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         remove(new QueryWrapper()
                 .where(FILE_INFO.USER_ID.eq(userId)
                         .and(FILE_INFO.IS_DELETED.eq(true)
-                                .and(FILE_INFO.STORAGE_PLATFORM_IDENTIFIER.eq(platformIdentifier))
+                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                         ))
         );
     }
@@ -417,12 +416,12 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         // 构建查询条件
         QueryWrapper wrapper = new QueryWrapper();
         wrapper.where(FILE_INFO.USER_ID.eq(userId));
         wrapper.and(FILE_INFO.IS_DELETED.eq(false));
-        wrapper.and(FILE_INFO.STORAGE_PLATFORM_IDENTIFIER.eq(storagePlatformIdentifier));
+        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         //  父目录过滤
         if (qry.getParentId() == null) {
             wrapper.and(FILE_INFO.PARENT_ID.isNull());
@@ -486,12 +485,12 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public List<FileRecycleVO> getRecycles() {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformIdentifier = StoragePlatformContextHolder.getPlatformIdentifier();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         List<FileInfo> fileInfos = this.list(
                 new QueryWrapper()
                         .where(FILE_INFO.USER_ID.eq(userId)
                                 .and(FILE_INFO.IS_DELETED.eq(true))
-                                .and(FILE_INFO.STORAGE_PLATFORM_IDENTIFIER.eq(storagePlatformIdentifier))
+                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                         ));
         return converter.convert(fileInfos, FileRecycleVO.class);
     }

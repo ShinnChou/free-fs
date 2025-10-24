@@ -25,15 +25,6 @@ public interface StorageSettingService extends IService<StorageSetting> {
     List<StorageSettingUserVO> getStorageSettingsByUser();
 
     /**
-     * 根据存储平台标识和用户ID获取存储平台配置信息
-     *
-     * @param storagePlatformIdentifier 存储平台标识
-     * @param userId                    用户ID
-     * @return
-     */
-    StorageSetting getStorageSettingByPlatform(String storagePlatformIdentifier, String userId);
-
-    /**
      * 获取所有已启用的存储平台信息
      * @return
      */

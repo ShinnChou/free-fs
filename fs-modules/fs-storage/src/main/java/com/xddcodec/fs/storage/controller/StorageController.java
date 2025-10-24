@@ -58,14 +58,6 @@ public class StorageController {
         return Result.ok();
     }
 
-    @Operation(summary = "根据标识符获取用户存储设置信息")
-    @GetMapping("/settings/{identifier}")
-    public Result<StorageSetting> getStorageSettingByPlatform(@PathVariable("identifier") String identifier) {
-        String userId = StpUtil.getLoginIdAsString();
-        StorageSetting setting = storageSettingService.getStorageSettingByPlatform(identifier, userId);
-        return Result.ok(setting);
-    }
-
     @Operation(summary = "新增存储平台配置")
     @PostMapping("/settings")
     public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingAddCmd cmd) {

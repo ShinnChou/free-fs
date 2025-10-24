@@ -39,6 +39,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
 
     /**
      * 验证配置（子类实现）
+     * 职责：验证插件特有字段（如 endpoint、bucket、accessKey）
      */
     protected abstract void validateConfig(StorageConfig config);
 

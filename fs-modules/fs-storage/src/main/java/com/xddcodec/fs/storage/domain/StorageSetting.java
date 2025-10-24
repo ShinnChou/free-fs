@@ -1,5 +1,6 @@
 package com.xddcodec.fs.storage.domain;
 
+import com.mybatisflex.annotation.Column;
 import com.mybatisflex.core.keygen.KeyGenerators;
 import com.xddcodec.fs.framework.orm.entity.BaseEntity;
 import com.mybatisflex.annotation.Id;
@@ -44,4 +45,15 @@ public class StorageSetting extends BaseEntity {
      * 用户ID
      */
     private String userId;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 是否逻辑删除 0-否 1-是
+     */
+    @Column(isLogicDelete = true)
+    private Integer deleted;
 }
