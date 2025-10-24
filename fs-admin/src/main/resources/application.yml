@@ -39,7 +39,7 @@ spring:
     username: dh_freedom@qq.com
     form: Free-Fs <dh_freedom@qq.com>
     #授权码
-    password: pedtgwcewmlkbgda
+    password: xxxxxxx
     properties:
       mail:
         smtp:
