@@ -4,8 +4,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.storage.domain.StoragePlatform;
 import com.xddcodec.fs.storage.domain.StorageSetting;
-import com.xddcodec.fs.storage.domain.dto.StorageSettingEditCmd;
+import com.xddcodec.fs.storage.domain.cmd.StorageSettingAddCmd;
+import com.xddcodec.fs.storage.domain.cmd.StorageSettingEditCmd;
+import com.xddcodec.fs.storage.domain.vo.StorageActivePlatformsVO;
 import com.xddcodec.fs.storage.domain.vo.StoragePlatformVO;
+import com.xddcodec.fs.storage.domain.vo.StorageSettingUserVO;
 import com.xddcodec.fs.storage.service.StoragePlatformService;
 import com.xddcodec.fs.storage.service.StorageSettingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,8 +32,15 @@ public class StorageController {
 
     @Operation(summary = "获取存储平台列表")
     @GetMapping("/platforms")
-    public Result<List<StoragePlatformVO>> getPlatforms(@RequestParam(value = "keywords", required = false) String keywords) {
-        List<StoragePlatformVO> result = storagePlatformService.listStoragePlatformsByUser(keywords);
+    public Result<List<StoragePlatformVO>> getPlatforms() {
+        List<StoragePlatformVO> result = storagePlatformService.getList();
+        return Result.ok(result);
+    }
+
+    @Operation(summary = "获取用户存储平台配置列表")
+    @GetMapping("/platform/settings")
+    public Result<List<StorageSettingUserVO>> getStorageSettingsByUser() {
+        List<StorageSettingUserVO> result = storageSettingService.getStorageSettingsByUser();
         return Result.ok(result);
     }
 
@@ -41,10 +51,10 @@ public class StorageController {
         return Result.ok(detail);
     }
 
-    @Operation(summary = "开通或取消开通存储平台")
-    @PostMapping("/platform/{identifier}/{action}")
-    public Result<StorageSetting> openOrCancelStoragePlatform(@PathVariable("identifier") String identifier, @PathVariable("action") Integer action) {
-        storageSettingService.openOrCancelStoragePlatform(identifier, action);
+    @Operation(summary = "启用或禁用存储平台")
+    @PostMapping("/settings/{id}/{action}")
+    public Result<StorageSetting> enableOrDisableStoragePlatform(@PathVariable("id") String id, @PathVariable("action") Integer action) {
+        storageSettingService.enableOrDisableStoragePlatform(id, action);
         return Result.ok();
     }
 
@@ -56,42 +66,31 @@ public class StorageController {
         return Result.ok(setting);
     }
 
-    @Operation(summary = "新增或更新存储平台配置")
+    @Operation(summary = "新增存储平台配置")
     @PostMapping("/settings")
-    public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingEditCmd cmd) {
-        storageSettingService.saveOrUpdateStorageSetting(cmd);
+    public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingAddCmd cmd) {
+        storageSettingService.addStorageSetting(cmd);
         return Result.ok();
     }
 
-    @Operation(summary = "获取用户已开通已配置的存储平台列表")
-    @GetMapping("/active-platforms")
-    public Result<List<StoragePlatformVO>> getEnabledStorageSettingByUser() {
-        String userId = StpUtil.getLoginIdAsString();
-        List<StoragePlatformVO> settings = storagePlatformService.listEnabledStorageSettingByUser(userId);
-        return Result.ok(settings);
+    @Operation(summary = "新增存储平台配置")
+    @PutMapping("/settings")
+    public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingEditCmd cmd) {
+        storageSettingService.editStorageSetting(cmd);
+        return Result.ok();
     }
 
+    @Operation(summary = "删除存储平台配置")
+    @DeleteMapping("/settings/{id}")
+    public Result<StorageSetting> saveOrUpdateStorageSetting(@PathVariable String id) {
+        storageSettingService.deleteStorageSettingById(id);
+        return Result.ok();
+    }
 
-//    @Operation(summary = "新增存储平台")
-//    @PostMapping("/platform")
-//    public Result<?> createStoragePlatform(@Validated @RequestBody StoragePlatformAddCmd cmd) {
-//        storagePlatformService.saveStoragePlatform(cmd);
-//        return Result.ok();
-//    }
-
-//    @Operation(summary = "编辑存储平台")
-//    @PutMapping("/platform")
-//    public Result<?> editStoragePlatform(@Validated @RequestBody StoragePlatformEditCmd cmd) {
-//        storagePlatformService.editStoragePlatform(cmd);
-//        return Result.ok();
-//    }
-
-//    @Operation(summary = "删除存储平台")
-//    @DeleteMapping("/platform/{id}")
-//    public Result<?> saveStoragePlatform(@PathVariable Long id) {
-//        storagePlatformService.deleteStoragePlatformById(id);
-//        return Result.ok();
-//    }
-
-
+    @Operation(summary = "获取用户已开通存储平台列表")
+    @GetMapping("/active-platforms")
+    public Result<List<StorageActivePlatformsVO>> getActiveStoragePlatforms() {
+        List<StorageActivePlatformsVO> settings = storageSettingService.getActiveStoragePlatforms();
+        return Result.ok(settings);
+    }
 }

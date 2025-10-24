@@ -21,7 +21,5 @@ public class StoragePlatformVO implements Serializable {
     private String icon;
     private String link;
     private String desc;
-    private Integer isEnabled;
     private Integer isDefault;
-    private Integer isSetting;
 }

@@ -1,8 +1,11 @@
 package com.xddcodec.fs.storage.service;
 
 import com.xddcodec.fs.storage.domain.StorageSetting;
-import com.xddcodec.fs.storage.domain.dto.StorageSettingEditCmd;
+import com.xddcodec.fs.storage.domain.cmd.StorageSettingAddCmd;
 import com.mybatisflex.core.service.IService;
+import com.xddcodec.fs.storage.domain.cmd.StorageSettingEditCmd;
+import com.xddcodec.fs.storage.domain.vo.StorageActivePlatformsVO;
+import com.xddcodec.fs.storage.domain.vo.StorageSettingUserVO;
 
 import java.util.List;
 
@@ -15,6 +18,13 @@ import java.util.List;
 public interface StorageSettingService extends IService<StorageSetting> {
 
     /**
+     * 根据用户ID获取所有存储平台配置信息
+     *
+     * @return
+     */
+    List<StorageSettingUserVO> getStorageSettingsByUser();
+
+    /**
      * 根据存储平台标识和用户ID获取存储平台配置信息
      *
      * @param storagePlatformIdentifier 存储平台标识
@@ -24,19 +34,39 @@ public interface StorageSettingService extends IService<StorageSetting> {
     StorageSetting getStorageSettingByPlatform(String storagePlatformIdentifier, String userId);
 
     /**
-     * 开通或关闭存储平台
-     *
-     * @param storagePlatformIdentifier 存储平台标识
-     * @param action                    0: 关闭 1: 开通
+     * 获取所有已启用的存储平台信息
+     * @return
      */
-    void openOrCancelStoragePlatform(String storagePlatformIdentifier, Integer action);
+    List<StorageActivePlatformsVO> getActiveStoragePlatforms();
 
     /**
-     * 新增或更新存储平台配置信息
+     * 启用或禁用配置
+     *
+     * @param settingId 配置ID
+     * @param action    0: 禁用 1: 启用
+     */
+    void enableOrDisableStoragePlatform(String settingId, Integer action);
+
+    /**
+     * 新增存储平台配置信息
      *
      * @param cmd
      */
-    void saveOrUpdateStorageSetting(StorageSettingEditCmd cmd);
+    void addStorageSetting(StorageSettingAddCmd cmd);
+
+    /**
+     * 编辑存储平台配置信息
+     *
+     * @param cmd
+     */
+    void editStorageSetting(StorageSettingEditCmd cmd);
+
+    /**
+     * 删除存储平台配置信息
+     *
+     * @param id
+     */
+    void deleteStorageSettingById(String id);
 
     /**
      * 根据存储平台标识查询所有配置（用于检查是否有用户开通）

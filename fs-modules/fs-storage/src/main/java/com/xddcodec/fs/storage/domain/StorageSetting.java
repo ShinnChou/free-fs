@@ -1,5 +1,6 @@
 package com.xddcodec.fs.storage.domain;
 
+import com.mybatisflex.core.keygen.KeyGenerators;
 import com.xddcodec.fs.framework.orm.entity.BaseEntity;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
@@ -21,8 +22,8 @@ public class StorageSetting extends BaseEntity {
     /**
      * 自增id
      */
-    @Id(keyType = KeyType.Auto)
-    private Long id;
+    @Id(keyType = KeyType.Generator, value = KeyGenerators.uuid)
+    private String id;
 
     /**
      * 存储平台标识符

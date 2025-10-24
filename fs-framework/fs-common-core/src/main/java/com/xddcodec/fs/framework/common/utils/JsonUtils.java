@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -91,7 +92,7 @@ public class JsonUtils {
         }
         try {
             return OBJECT_MAPPER.readValue(text,
-                OBJECT_MAPPER.getTypeFactory().constructType(Dict.class));
+                    OBJECT_MAPPER.getTypeFactory().constructType(Dict.class));
         } catch (MismatchedInputException e) {
             // 类型不匹配说明不是json
             return null;
@@ -106,7 +107,7 @@ public class JsonUtils {
         }
         try {
             return OBJECT_MAPPER.readValue(text,
-                OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, Dict.class));
+                    OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, Dict.class));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -118,9 +119,24 @@ public class JsonUtils {
         }
         try {
             return OBJECT_MAPPER.readValue(text,
-                OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, clazz));
+                    OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, clazz));
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 标准化JSON字符串（用于比较）
+     */
+    public static String normalizeJson(String jsonStr) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            // 配置：排序key、去除空格
+            mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+            Object obj = mapper.readValue(jsonStr, Object.class);
+            return mapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return jsonStr;
         }
     }
 

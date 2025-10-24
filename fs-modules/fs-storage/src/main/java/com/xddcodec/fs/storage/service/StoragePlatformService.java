@@ -1,9 +1,6 @@
 package com.xddcodec.fs.storage.service;
 
 import com.xddcodec.fs.storage.domain.StoragePlatform;
-import com.xddcodec.fs.storage.domain.StorageSetting;
-import com.xddcodec.fs.storage.domain.cmd.StoragePlatformAddCmd;
-import com.xddcodec.fs.storage.domain.cmd.StoragePlatformEditCmd;
 import com.xddcodec.fs.storage.domain.vo.StoragePlatformVO;
 import com.mybatisflex.core.service.IService;
 
@@ -18,12 +15,12 @@ import java.util.List;
 public interface StoragePlatformService extends IService<StoragePlatform> {
 
     /**
-     * 查询用户的存储平台列表
+     * 查询所有存储平台列表
      *
-     * @param keywords 关键字
      * @return
      */
-    List<StoragePlatformVO> listStoragePlatformsByUser(String keywords);
+    List<StoragePlatformVO> getList();
+
 
     /**
      * 根据标识符查询存储平台
@@ -39,26 +36,26 @@ public interface StoragePlatformService extends IService<StoragePlatform> {
      * @param userId 用户ID
      * @return
      */
-    List<StoragePlatformVO> listEnabledStorageSettingByUser(String userId);
+//    List<StoragePlatformVO> listEnabledStorageSettingByUser(String userId);
 
     /**
      * 新增存储平台
      *
      * @param cmd
      */
-    void saveStoragePlatform(StoragePlatformAddCmd cmd);
-
-    /**
-     * 编辑存储平台
-     *
-     * @param cmd
-     */
-    void editStoragePlatform(StoragePlatformEditCmd cmd);
-
-    /**
-     * 删除存储平台
-     *
-     * @param id
-     */
-    void deleteStoragePlatformById(Long id);
+//    void saveStoragePlatform(StoragePlatformAddCmd cmd);
+//
+//    /**
+//     * 编辑存储平台
+//     *
+//     * @param cmd
+//     */
+//    void editStoragePlatform(StoragePlatformEditCmd cmd);
+//
+//    /**
+//     * 删除存储平台
+//     *
+//     * @param id
+//     */
+//    void deleteStoragePlatformById(Long id);
 }
