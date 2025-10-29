@@ -1,6 +1,5 @@
 package com.xddcodec.fs.file.service;
 
-import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileUserFavorites;
 import com.mybatisflex.core.service.IService;
 
@@ -13,13 +12,6 @@ import java.util.List;
  * @Date: 2025/5/12 13:49
  */
 public interface FileUserFavoritesService extends IService<FileUserFavorites> {
-
-    /**
-     * 获取用户收藏的文件列表
-     *
-     * @return 收藏的文件列表
-     */
-    List<FileInfo> getFavoritesFileList();
 
     /**
      * 收藏文件

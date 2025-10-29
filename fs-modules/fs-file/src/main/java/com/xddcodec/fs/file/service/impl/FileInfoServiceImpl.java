@@ -11,6 +11,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.mybatisflex.core.update.UpdateChain;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
@@ -36,16 +37,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
+import static com.xddcodec.fs.file.domain.table.FileUserFavoritesTableDef.FILE_USER_FAVORITES;
 
 
 /**
@@ -221,19 +220,29 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteFile(String fileId) {
-        FileInfo fileInfo = getById(fileId);
-        if (fileInfo == null) {
-            return false;
+    public void deleteFiles(List<String> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
         }
-        if (fileInfo.getIsDeleted()) {
-            return true;
+        List<FileInfo> fileInfoList = listByIds(fileIds);
+        if (fileInfoList.isEmpty()) {
+            return;
         }
-        // 更新文件状态为已删除
-        fileInfo.setIsDeleted(true);
-        fileInfo.setDeletedTime(LocalDateTime.now());
-        return updateById(fileInfo);
+        List<FileInfo> toDeleteList = fileInfoList.stream()
+                .filter(fileInfo -> !fileInfo.getIsDeleted())
+                .collect(Collectors.toList());
+
+        if (toDeleteList.isEmpty()) {
+            return;
+        }
+        toDeleteList.forEach(fileInfo -> {
+            fileInfo.setIsDeleted(true);
+            fileInfo.setDeletedTime(LocalDateTime.now());
+        });
+
+        this.updateBatch(toDeleteList);
     }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -242,38 +251,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
         String platformConfigId = StoragePlatformContextHolder.getConfigId();
-
         String baseName = dto.getFolderName().trim();
-        String finalName = baseName;
-        int suffixNum = 0;
-        // 查询同级目录下是否存在同名文件夹
-        QueryWrapper query = new QueryWrapper();
-        query.where(FILE_INFO.PARENT_ID.eq(dto.getParentId()))
-                .and(FILE_INFO.USER_ID.eq(userId))
-                .and(FILE_INFO.IS_DIR.eq(true))
-                .and(FILE_INFO.IS_DELETED.eq(false))
-                .and(FILE_INFO.ORIGINAL_NAME.like(baseName + "%"));
-        List<FileInfo> existingFolders = list(query);
-        if (!existingFolders.isEmpty()) {
-            // 提取所有匹配 `(n)` 后缀的数字
-            Set<Integer> usedSuffixes = existingFolders.stream()
-                    .map(f -> {
-                        String name = f.getOriginalName();
-                        Matcher matcher = Pattern.compile("\\((\\d+)\\)$").matcher(name);
-                        if (matcher.find()) {
-                            return Integer.parseInt(matcher.group(1));
-                        }
-                        return name.equals(baseName) ? 0 : -1;
-                    })
-                    .filter(n -> n >= 0)
-                    .collect(Collectors.toSet());
-
-            // 递增生成唯一名称
-            do {
-                suffixNum++;
-                finalName = baseName + "(" + suffixNum + ")";
-            } while (usedSuffixes.contains(suffixNum));
-        }
+        String finalName = generateUniqueName(
+                userId,
+                dto.getParentId(),
+                baseName,
+                true,
+                null
+        );
         // 创建目录信息记录
         FileInfo dirInfo = new FileInfo();
         dirInfo.setId(folderId);
@@ -286,10 +271,188 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setUploadTime(LocalDateTime.now());
         dirInfo.setUpdateTime(LocalDateTime.now());
         dirInfo.setIsDeleted(false);
-        // 保存目录信息到数据库
         save(dirInfo);
-        log.info("创建文件夹成功，folderId: {}, name: {}, parentId: {}, userId: {}", folderId, finalName, dto.getParentId(), userId);
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void renameFile(String fileId, RenameFileCmd cmd) {
+        FileInfo fileInfo = getById(fileId);
+        if (fileInfo == null) {
+            throw new StorageOperationException("文件不存在: " + fileId);
+        }
+        if (fileInfo.getDisplayName().equals(cmd.getDisplayName())) {
+            return;
+        }
+        String newName = cmd.getDisplayName().trim();
+        //判断同目录下是否有重名
+        String finalName = generateUniqueName(
+                fileInfo.getUserId(),
+                fileInfo.getParentId(),
+                newName,
+                fileInfo.getIsDir(),
+                fileId
+        );
+        fileInfo.setDisplayName(finalName);
+        fileInfo.setUpdateTime(LocalDateTime.now());
+        updateById(fileInfo);
+    }
+
+    /**
+     * 生成唯一的文件名（处理重名冲突）
+     * <p>
+     * - 如果不存在重名：返回原名称
+     * - 如果存在重名：自动添加 (1), (2), (3)... 后缀
+     *
+     * @param userId        用户ID
+     * @param parentId      父目录ID
+     * @param desiredName   期望的文件名
+     * @param isDir         是否是文件夹
+     * @param excludeFileId 排除的文件ID（可选，用于重命名场景）
+     * @return 唯一的文件名
+     */
+    private String generateUniqueName(String userId, String parentId,
+                                      String desiredName, Boolean isDir,
+                                      String excludeFileId) {
+
+        String nameWithoutExt = desiredName;
+        String extension = "";
+        if (!isDir && desiredName.contains(".")) {
+            int lastDotIndex = desiredName.lastIndexOf(".");
+            nameWithoutExt = desiredName.substring(0, lastDotIndex);
+            extension = desiredName.substring(lastDotIndex); // 包含点号
+        }
+        QueryWrapper query = buildSameLevelQuery(
+                userId,
+                parentId,
+                nameWithoutExt,
+                isDir,
+                excludeFileId
+        );
+        List<FileInfo> existingFiles = list(query);
+        if (existingFiles.isEmpty()) {
+            return desiredName;
+        }
+        Set<Integer> usedSuffixes = extractUsedSuffixes(existingFiles, nameWithoutExt, isDir);
+        int suffixNum = 0;
+        String finalName;
+        do {
+            suffixNum++;
+            finalName = buildNameWithSuffix(nameWithoutExt, suffixNum, extension, isDir);
+        } while (usedSuffixes.contains(suffixNum));
+        log.info("检测到重名，自动重命名：{} -> {}", desiredName, finalName);
+        return finalName;
+    }
+
+    /**
+     * 构建查询同级目录下同类型文件的条件 ✨
+     */
+    private QueryWrapper buildSameLevelQuery(String userId, String parentId,
+                                             String baseName, Boolean isDir,
+                                             String excludeFileId) {
+        QueryWrapper query = new QueryWrapper();
+
+        query.where(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.PARENT_ID.eq(parentId))
+                .and(FILE_INFO.IS_DIR.eq(isDir))
+                .and(FILE_INFO.IS_DELETED.eq(false))
+                .and(FILE_INFO.DISPLAY_NAME.like(baseName + "%"));
+
+        // 如果是重命名场景，排除当前文件
+        if (StrUtil.isNotBlank(excludeFileId)) {
+            query.and(FILE_INFO.ID.ne(excludeFileId));
+        }
+
+        return query;
+    }
+
+    /**
+     * 提取已使用的后缀数字
+     * <p>
+     * 示例：
+     * - photo.jpg       -> 0
+     * - photo(1).jpg    -> 1
+     * - photo(2).jpg    -> 2
+     * - photo(abc).jpg  -> -1 (忽略)
+     */
+    private Set<Integer> extractUsedSuffixes(List<FileInfo> existingFiles,
+                                             String nameWithoutExt,
+                                             Boolean isDir) {
+        return existingFiles.stream()
+                .map(f -> {
+                    String displayName = f.getDisplayName();
+
+                    // 移除扩展名（如果是文件）
+                    if (!isDir && displayName.contains(".")) {
+                        int lastDotIndex = displayName.lastIndexOf(".");
+                        displayName = displayName.substring(0, lastDotIndex);
+                    }
+
+                    // 检查是否完全匹配基础名称（表示原始文件，后缀为 0）
+                    if (displayName.equals(nameWithoutExt)) {
+                        return 0;
+                    }
+
+                    // 匹配 (n) 格式的后缀
+                    String pattern = "^" + Pattern.quote(nameWithoutExt) + "\\((\\d+)\\)$";
+                    Matcher matcher = Pattern.compile(pattern).matcher(displayName);
+
+                    if (matcher.find()) {
+                        return Integer.parseInt(matcher.group(1));
+                    }
+
+                    return -1; // 不匹配的名称（忽略）
+                })
+                .filter(n -> n >= 0)  // 只保留有效的后缀数字
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * 构建带后缀的文件名
+     *
+     * @param nameWithoutExt 不含扩展名的文件名
+     * @param suffixNum      后缀数字
+     * @param extension      扩展名（含点号）
+     * @param isDir          是否是文件夹
+     * @return 完整的文件名
+     */
+    private String buildNameWithSuffix(String nameWithoutExt, int suffixNum,
+                                       String extension, Boolean isDir) {
+        if (isDir) {
+            // 文件夹：baseName(1)
+            return nameWithoutExt + "(" + suffixNum + ")";
+        } else {
+            // 文件：baseName(1).ext
+            return nameWithoutExt + "(" + suffixNum + ")" + extension;
+        }
+    }
+
+    @Override
+    public List<FileVO> getDirectoryTreePath(String dirId) {
+        FileInfo fileInfo = getById(dirId);
+        if (fileInfo == null) {
+            return List.of();
+        }
+
+        List<FileVO> pathList = new ArrayList<>();
+        FileInfo current = fileInfo;
+
+        // 递归向上查找，直到根节点（parent_id 为 null）
+        while (current != null) {
+            FileVO fileVO = converter.convert(current, FileVO.class);
+            pathList.add(0, fileVO);
+
+            // 查找父节点
+            if (current.getParentId() != null) {
+                current = getById(current.getParentId());
+            } else {
+                break;
+            }
+        }
+
+        return pathList;
+    }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -417,19 +580,35 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+
         // 构建查询条件
         QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_INFO.USER_ID.eq(userId));
-        wrapper.and(FILE_INFO.IS_DELETED.eq(false));
-        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
-        //  父目录过滤
+
+        // 【修改】添加 LEFT JOIN 查询收藏状态
+        wrapper.select(
+                        "fi.*",
+                        "CASE WHEN fuf.file_id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite"
+                )
+                .from(FILE_INFO.as("fi"))
+                .leftJoin(FILE_USER_FAVORITES.as("fuf"))
+                .on(FILE_INFO.ID.eq(FILE_USER_FAVORITES.FILE_ID)
+                        .and(FILE_USER_FAVORITES.USER_ID.eq(userId)))
+                .where(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.IS_DELETED.eq(false))
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+
+        // 收藏过滤
+        if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
+            wrapper.and("fuf.file_id IS NOT NULL");
+        }
+
+        // 父目录过滤
         if (qry.getParentId() == null) {
             wrapper.and(FILE_INFO.PARENT_ID.isNull());
         } else {
             wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
         }
-
-        // 关键词搜索（搜索原始文件名和显示文件名）
+        // 关键词搜索
         if (StrUtil.isNotBlank(qry.getKeyword())) {
             String keyword = "%" + qry.getKeyword().trim() + "%";
             wrapper.and(
@@ -437,16 +616,23 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                             .or(FILE_INFO.DISPLAY_NAME.like(keyword))
             );
         }
-        // 文件类型过滤,全部查询特殊处理
-        applyFileTypeFilter(wrapper, qry);
 
+        // 文件类型过滤
+        applyFileTypeFilter(wrapper, qry);
         String orderBy = StrUtil.toUnderlineCase(qry.getOrderBy());
         boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
-
         wrapper.orderBy(FILE_INFO.IS_DIR.desc())
                 .orderBy(orderBy, isAsc);
 
-        List<FileInfo> fileInfos = this.list(wrapper);
+        return this.listAs(wrapper, FileVO.class);
+    }
+
+    @Override
+    public List<FileVO> getByFileIds(List<String> fileIds) {
+        if (CollUtil.isEmpty(fileIds)) {
+            return List.of();
+        }
+        List<FileInfo> fileInfos = this.list(new QueryWrapper().where(FILE_INFO.ID.in(fileIds)));
         return converter.convert(fileInfos, FileVO.class);
     }
 

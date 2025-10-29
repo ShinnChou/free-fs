@@ -2,6 +2,7 @@ package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -74,10 +75,10 @@ public interface FileInfoService extends IService<FileInfo> {
     /**
      * 删除文件
      *
-     * @param fileId 文件ID
+     * @param fileIds 文件ID集合
      * @return 是否删除成功
      */
-    boolean deleteFile(String fileId);
+    void deleteFiles(List<String> fileIds);
 
     /**
      * 创建目录
@@ -88,12 +89,36 @@ public interface FileInfoService extends IService<FileInfo> {
     void createDirectory(CreateDirectoryDTO dto);
 
     /**
+     * 重命名文件
+     *
+     * @param fileId 文件ID
+     * @param cmd    重命名请求参数
+     */
+    void renameFile(String fileId, RenameFileCmd cmd);
+
+    /**
+     * 获取目录层级
+     *
+     * @param dirId 目录ID
+     * @return
+     */
+    List<FileVO> getDirectoryTreePath(String dirId);
+
+    /**
      * 查询文件列表
      *
      * @param qry 查询参数（包含关键词、文件类型、分页参数等）
      * @return 分页结果
      */
     List<FileVO> getList(FileQry qry);
+
+    /**
+     * 根据文件ID列表查询文件信息
+     *
+     * @param fileIds
+     * @return
+     */
+    List<FileVO> getByFileIds(List<String> fileIds);
 
     /**
      * 查询回收站文件列表

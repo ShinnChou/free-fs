@@ -22,4 +22,7 @@ public class FileQry {
 
     @Schema(description = "排序方向", example = "DESC", allowableValues = {"ASC", "DESC"})
     private String orderDirection = "DESC";
+
+    @Schema(description = "是否收藏", example = "true")
+    private Boolean isFavorite;
 }

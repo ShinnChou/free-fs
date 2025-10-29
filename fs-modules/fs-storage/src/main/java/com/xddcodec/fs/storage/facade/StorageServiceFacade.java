@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.domain.StorageSetting;
+import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
 import com.xddcodec.fs.storage.plugin.boot.StoragePluginManager;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
@@ -34,7 +35,7 @@ import java.util.Map;
 public class StorageServiceFacade {
 
     private final StoragePluginManager pluginManager;
-    private final StorageSettingService storageSettingService;
+    private final StorageSettingMapper storageSettingMapper;
     private final ObjectMapper objectMapper;
 
     /**
@@ -108,7 +109,7 @@ public class StorageServiceFacade {
         log.debug("从数据库加载存储配置: configId={}", configId);
 
         // 查询配置
-        StorageSetting settings = storageSettingService.getById(configId);
+        StorageSetting settings = storageSettingMapper.selectOneById(configId);
 
         // 配置验证
         if (settings == null) {

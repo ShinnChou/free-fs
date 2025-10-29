@@ -1,9 +1,12 @@
 package com.xddcodec.fs.storage.domain.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.xddcodec.fs.framework.common.utils.DateUtils;
 import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Data
 public class StorageActivePlatformsVO implements Serializable {
@@ -18,4 +21,14 @@ public class StorageActivePlatformsVO implements Serializable {
     private String platformName;
 
     private String platformIcon;
+
+    private String remark;
+
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
+    private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
+    private LocalDateTime updatedAt;
+
+    private Boolean isEnabled;
 }

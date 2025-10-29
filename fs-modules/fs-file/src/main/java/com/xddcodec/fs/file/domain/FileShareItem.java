@@ -10,23 +10,33 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 用户收藏文件实体类
+ * 分享文件关联实体类
  *
  * @Author: xddcode
- * @Date: 2025/5/12 13:47
+ * @Date: 2025/10/29 15:13
  */
 @Data
-@Table("file_user_favorites")
-public class FileUserFavorites implements Serializable {
+@Table("file_share_items")
+public class FileShareItem implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 4725335083497380636L;
+    private static final long serialVersionUID = 1L;
 
+    /**
+     * 分享ID
+     */
     @Id(keyType = KeyType.None)
-    private String userId;
+    private Long shareId;
 
+    /**
+     * 文件/文件夹ID
+     */
     @Id(keyType = KeyType.None)
     private String fileId;
 
-    private LocalDateTime favoriteTime;
+
+    /**
+     * 创建时间
+     */
+    private LocalDateTime createdAt;
 }

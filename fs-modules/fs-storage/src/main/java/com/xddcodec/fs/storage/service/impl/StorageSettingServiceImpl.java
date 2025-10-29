@@ -1,6 +1,7 @@
 package com.xddcodec.fs.storage.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
@@ -14,6 +15,7 @@ import com.xddcodec.fs.storage.domain.vo.StoragePlatformVO;
 import com.xddcodec.fs.storage.domain.vo.StorageSettingUserVO;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
+import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import com.xddcodec.fs.storage.service.StoragePlatformService;
 import com.xddcodec.fs.storage.service.StorageSettingService;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -49,7 +51,13 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     @Override
     public List<StorageSettingUserVO> getStorageSettingsByUser() {
         String userId = StpUtil.getLoginIdAsString();
-        List<StorageSetting> storageSettings = this.list(new QueryWrapper().where(STORAGE_SETTING.USER_ID.eq(userId)));
+        List<StorageSetting> storageSettings = this.list(
+                new QueryWrapper()
+                        .where(STORAGE_SETTING.USER_ID
+                                .eq(userId))
+                        .orderBy(STORAGE_SETTING.ENABLED.desc()
+                        )
+        );
         return storageSettings.stream().map(storageSetting -> {
             StorageSettingUserVO vo = converter.convert(storageSetting, StorageSettingUserVO.class);
             StoragePlatform storagePlatform = storagePlatformService.getStoragePlatformByIdentifier(storageSetting.getPlatformIdentifier());
@@ -62,12 +70,23 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     @Override
     public List<StorageActivePlatformsVO> getActiveStoragePlatforms() {
         String userId = StpUtil.getLoginIdAsString();
-        List<StorageSetting> storageSettings = this.list(
+
+        StorageSetting storageSetting = this.getOne(
                 new QueryWrapper().where(STORAGE_SETTING.ENABLED.eq(CommonConstant.Y)
                         .and(STORAGE_SETTING.USER_ID.eq(userId))
                 )
         );
-        List<StorageActivePlatformsVO> result = new ArrayList<>(storageSettings.stream().map(storageSetting -> {
+        List<StorageActivePlatformsVO> result = new ArrayList<>();
+        // 添加默认本地存储平台
+        StorageActivePlatformsVO localInstance = new StorageActivePlatformsVO();
+        localInstance.setSettingId(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
+        localInstance.setPlatformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
+        localInstance.setPlatformIcon(StoragePlatformIdentifierEnum.LOCAL.getIcon());
+        localInstance.setPlatformName(StoragePlatformIdentifierEnum.LOCAL.getDescription());
+        localInstance.setIsEnabled(true);
+        localInstance.setRemark("系统默认");
+        if (storageSetting != null) {
+            localInstance.setIsEnabled(false);
             StoragePlatform storagePlatform = storagePlatformService.getStoragePlatformByIdentifier(storageSetting.getPlatformIdentifier());
             StorageActivePlatformsVO vo = new StorageActivePlatformsVO();
             vo.setSettingId(storageSetting.getId());
@@ -75,17 +94,14 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
             if (storagePlatform != null) {
                 vo.setPlatformIcon(storagePlatform.getIcon());
                 vo.setPlatformName(storagePlatform.getName());
-
             }
-            return vo;
-        }).toList());
-        // 添加本地存储平台，插到元素第一条
-        StorageActivePlatformsVO localInstance = new StorageActivePlatformsVO();
-        localInstance.setSettingId(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
-        localInstance.setPlatformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
-        localInstance.setPlatformIcon(StoragePlatformIdentifierEnum.LOCAL.getIcon());
-        localInstance.setPlatformName(StoragePlatformIdentifierEnum.LOCAL.getDescription());
-        result.add(0, localInstance);
+            vo.setRemark(storageSetting.getRemark());
+            vo.setCreatedAt(storageSetting.getCreatedAt());
+            vo.setUpdatedAt(storageSetting.getUpdatedAt());
+            vo.setIsEnabled(true);
+            result.add(vo);
+        }
+        result.add(localInstance);
         return result;
     }
 
@@ -99,11 +115,26 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
         if (!storageSetting.getUserId().equals(userId)) {
             throw new BusinessException("无权限修改此配置");
         }
+
         Integer newStatus = action == 0 ? CommonConstant.N : CommonConstant.Y;
+
+        //如果是启用保证只能启用一个配置
+        if (newStatus.equals(CommonConstant.Y)) {
+            //先把所有配置禁用
+            List<StorageSetting> storageSettings = this.list(
+                    new QueryWrapper()
+                            .where(STORAGE_SETTING.USER_ID.eq(userId)
+                                    .and(STORAGE_SETTING.ENABLED.eq(CommonConstant.Y)
+                                    )
+                            )
+            );
+            storageSettings.forEach(s -> s.setEnabled(CommonConstant.N));
+            this.updateBatch(storageSettings);
+        }
         storageSetting.setEnabled(newStatus);
         this.updateById(storageSetting);
         // 禁用时移除缓存，启用时刷新缓存
-        if (newStatus == CommonConstant.N) {
+        if (newStatus.equals(CommonConstant.N)) {
             storageServiceFacade.removeInstance(settingId);
             log.info("存储配置已禁用并移除缓存: settingId={}, userId={}", settingId, userId);
         } else {
@@ -218,6 +249,12 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
         if (!storageSetting.getUserId().equals(userId)) {
             throw new BusinessException("无权限删除此配置");
         }
+        //判断当前配置是否被使用
+        String cacheSettingId = StoragePlatformContextHolder.getConfigId();
+        if (id.equals(cacheSettingId)) {
+            throw new BusinessException("当前配置正在使用中，无法删除");
+        }
+
         // 逻辑删除
         this.removeById(id);
         // 移除缓存

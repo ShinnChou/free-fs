@@ -74,4 +74,9 @@ public class FileVO implements Serializable {
      * 修改时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 是否收藏
+     */
+    private Boolean isFavorite;
 }

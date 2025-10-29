@@ -2,7 +2,6 @@ package com.xddcodec.fs.file.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileUserFavorites;
 import com.xddcodec.fs.file.mapper.FileUserFavoritesMapper;
@@ -35,60 +34,32 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
 
     private final FileInfoServiceImpl fileInfoService;
 
-    @Override
-    public List<FileInfo> getFavoritesFileList() {
-        return List.of();
-    }
-
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void favoritesFile(List<String> fileIds) {
-        // 校验输入
         if (CollUtil.isEmpty(fileIds)) {
-            log.warn("收藏文件列表为空");
-            throw new BusinessException("文件ID列表不能为空");
+            throw new BusinessException("收藏文件ID列表不能为空");
         }
 
-        // 移除无效的 fileId
-        List<String> validFileIds = fileIds.stream()
-                .filter(StrUtil::isNotBlank)
-                .distinct()
-                .collect(Collectors.toList());
-        if (validFileIds.isEmpty()) {
-            log.warn("收藏文件列表无有效ID");
-            throw new BusinessException("无有效的文件ID");
-        }
-
+        List<String> distinctFileIds = fileIds.stream().distinct().collect(Collectors.toList());
         String userId = StpUtil.getLoginIdAsString();
 
-        // 查询文件是否存在
+        // 查询当前用户的文件
         List<FileInfo> fileInfos = fileInfoService.list(
-                new QueryWrapper()
-                        .where(FILE_INFO.ID.in(validFileIds))
-                        .and(FILE_INFO.USER_ID.eq(userId))
+                QueryWrapper.create()
+                        .where(FILE_INFO.ID.in(distinctFileIds))
+                        .and(FILE_INFO.USER_ID.eq(userId))  // 限制只能收藏自己的文件
                         .and(FILE_INFO.IS_DELETED.eq(false))
         );
 
-        if (CollUtil.isEmpty(fileInfos)) {
-            log.warn("用户 {} 无可收藏的文件，fileIds: {}", userId, validFileIds);
-            throw new BusinessException("无可收藏的文件");
-        }
-
-        // 验证查询结果与输入一致
-        Set<String> foundFileIds = fileInfos.stream()
-                .map(FileInfo::getId)
-                .collect(Collectors.toSet());
-        List<String> notFoundFileIds = validFileIds.stream()
-                .filter(fileId -> !foundFileIds.contains(fileId))
-                .collect(Collectors.toList());
-        if (!notFoundFileIds.isEmpty()) {
-            log.warn("部分文件不存在或无权限，userId: {}, fileIds: {}", userId, notFoundFileIds);
+        if (fileInfos.isEmpty()) {
+            throw new BusinessException("没有找到可收藏的文件或文件不属于您");
         }
 
         // 查询已收藏的文件
         List<FileUserFavorites> existingFavorites = list(
                 new QueryWrapper()
-                        .where(FILE_USER_FAVORITES.FILE_ID.in(foundFileIds))
+                        .where(FILE_USER_FAVORITES.FILE_ID.in(fileIds))
                         .and(FILE_USER_FAVORITES.USER_ID.eq(userId))
         );
         Set<String> existingFileIds = existingFavorites.stream()
@@ -107,7 +78,7 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
                 .collect(Collectors.toList());
 
         if (favoritesToAdd.isEmpty()) {
-            log.info("用户 {} 的文件已全部收藏，fileIds: {}", userId, validFileIds);
+            log.info("用户 {} 的文件已全部收藏，fileIds: {}", userId, fileIds);
             return;
         }
         this.saveBatch(favoritesToAdd);

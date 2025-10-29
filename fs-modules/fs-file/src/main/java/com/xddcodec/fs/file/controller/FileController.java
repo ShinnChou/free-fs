@@ -2,11 +2,12 @@ package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileInfoService;
-import com.xddcodec.fs.framework.common.domain.PageResult;
+import com.xddcodec.fs.file.service.FileUserFavoritesService;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +45,9 @@ public class FileController {
 
     @Autowired
     private FileInfoService fileInfoService;
+
+    @Autowired
+    private FileUserFavoritesService fileUserFavoritesService;
 
     @GetMapping("/list")
     @Operation(summary = "查询文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
@@ -92,17 +96,11 @@ public class FileController {
         return Result.ok(url);
     }
 
-    @DeleteMapping("/{fileId}")
-    @Operation(summary = "删除文件", description = "将文件移动到回收站")
-    public ResponseEntity<Boolean> deleteFile(@Parameter(description = "文件ID") @PathVariable("fileId") String fileId) {
-
-        try {
-            boolean result = fileInfoService.deleteFile(fileId);
-            return ResponseEntity.ok(result);
-        } catch (StorageOperationException e) {
-            log.error("删除文件失败: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
-        }
+    @DeleteMapping()
+    @Operation(summary = "移到回收站", description = "将文件移动到回收站")
+    public Result<?> deleteFiles(@RequestBody List<String> fileIds) {
+        fileInfoService.deleteFiles(fileIds);
+        return Result.ok();
     }
 
     @PostMapping("/directory")
@@ -111,6 +109,21 @@ public class FileController {
         fileInfoService.createDirectory(dto);
         return Result.ok();
     }
+
+    @PutMapping("/{fileId}/rename")
+    @Operation(summary = "文件重命名", description = "文件重命名")
+    public Result<?> createDirectory(@PathVariable String fileId, @RequestBody @Validated RenameFileCmd cmd) {
+        fileInfoService.renameFile(fileId, cmd);
+        return Result.ok();
+    }
+
+    @GetMapping("/directory/{dirId}/path")
+    @Operation(summary = "获取目录层级", description = "根据目录ID获取目录层级")
+    public Result<List<FileVO>> createDirectory(@PathVariable String dirId) {
+        List<FileVO> fileVOS = fileInfoService.getDirectoryTreePath(dirId);
+        return Result.ok(fileVOS);
+    }
+
 
     @GetMapping("/recycles")
     @Operation(summary = "获取回收站列表", description = "获取回收站列表")
@@ -137,6 +150,20 @@ public class FileController {
     @Operation(summary = "清空回收站", description = "清空回收站，永久删除所有文件")
     public Result<?> clearRecycles() {
         fileInfoService.clearRecycles();
+        return Result.ok();
+    }
+
+    @PostMapping("/favorites")
+    @Operation(summary = "收藏文件", description = "收藏文件")
+    public Result<?> favoritesFile(@RequestBody List<String> fileIds) {
+        fileUserFavoritesService.favoritesFile(fileIds);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/favorites")
+    @Operation(summary = "取消收藏文件", description = "取消收藏文件")
+    public Result<?> unFavoritesFile(@RequestBody List<String> fileIds) {
+        fileUserFavoritesService.unFavoritesFile(fileIds);
         return Result.ok();
     }
 }

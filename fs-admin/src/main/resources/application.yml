@@ -117,6 +117,7 @@ security:
     - /apis/user/register
     - /apis/user/forget-password/code/**
     - /apis/user/forget-password
+    - /apis/share/**
 
 --- #Sa-Token 配置
 sa-token:

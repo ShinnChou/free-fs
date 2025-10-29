@@ -79,7 +79,7 @@ public class StorageController {
         return Result.ok();
     }
 
-    @Operation(summary = "获取用户已开通存储平台列表")
+    @Operation(summary = "获取用户已启用存储平台列表")
     @GetMapping("/active-platforms")
     public Result<List<StorageActivePlatformsVO>> getActiveStoragePlatforms() {
         List<StorageActivePlatformsVO> settings = storageSettingService.getActiveStoragePlatforms();
