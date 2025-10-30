@@ -10,7 +10,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.mybatisflex.core.update.UpdateChain;
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -246,15 +246,15 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createDirectory(CreateDirectoryDTO dto) {
+    public void createDirectory(CreateDirectoryCmd cmd) {
         // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
         String platformConfigId = StoragePlatformContextHolder.getConfigId();
-        String baseName = dto.getFolderName().trim();
+        String baseName = cmd.getFolderName().trim();
         String finalName = generateUniqueName(
                 userId,
-                dto.getParentId(),
+                cmd.getParentId(),
                 baseName,
                 true,
                 null
@@ -265,7 +265,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setOriginalName(finalName);
         dirInfo.setDisplayName(finalName);
         dirInfo.setIsDir(true);
-        dirInfo.setParentId(dto.getParentId());
+        dirInfo.setParentId(cmd.getParentId());
         dirInfo.setUserId(userId);
         dirInfo.setStoragePlatformSettingId(platformConfigId);
         dirInfo.setUploadTime(LocalDateTime.now());
@@ -669,15 +669,21 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public List<FileRecycleVO> getRecycles() {
+    public List<FileRecycleVO> getRecycles(String keyword) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        List<FileInfo> fileInfos = this.list(
-                new QueryWrapper()
-                        .where(FILE_INFO.USER_ID.eq(userId)
-                                .and(FILE_INFO.IS_DELETED.eq(true))
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                        ));
+        QueryWrapper wrapper = new QueryWrapper();
+        wrapper.where(FILE_INFO.USER_ID.eq(userId));
+        wrapper.and(FILE_INFO.IS_DELETED.eq(true));
+        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        if (StrUtil.isNotBlank(keyword)) {
+            keyword = "%" + keyword.trim() + "%";
+            wrapper.and(
+                    FILE_INFO.ORIGINAL_NAME.like(keyword)
+                            .or(FILE_INFO.DISPLAY_NAME.like(keyword))
+            );
+        }
+        List<FileInfo> fileInfos = this.list(wrapper);
         return converter.convert(fileInfos, FileRecycleVO.class);
     }
 

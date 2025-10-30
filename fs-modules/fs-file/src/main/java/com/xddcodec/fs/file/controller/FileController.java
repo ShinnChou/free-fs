@@ -1,7 +1,7 @@
 package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -105,8 +105,8 @@ public class FileController {
 
     @PostMapping("/directory")
     @Operation(summary = "创建目录", description = "在指定目录下创建新目录")
-    public Result<?> createDirectory(@RequestBody @Validated CreateDirectoryDTO dto) {
-        fileInfoService.createDirectory(dto);
+    public Result<?> createDirectory(@RequestBody @Validated CreateDirectoryCmd cmd) {
+        fileInfoService.createDirectory(cmd);
         return Result.ok();
     }
 
@@ -127,8 +127,8 @@ public class FileController {
 
     @GetMapping("/recycles")
     @Operation(summary = "获取回收站列表", description = "获取回收站列表")
-    public Result<?> getRecycles() {
-        List<FileRecycleVO> list = fileInfoService.getRecycles();
+    public Result<?> getRecycles(String keyword) {
+        List<FileRecycleVO> list = fileInfoService.getRecycles(keyword);
         return Result.ok(list);
     }
 

@@ -1,7 +1,7 @@
 package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
@@ -83,10 +83,10 @@ public interface FileInfoService extends IService<FileInfo> {
     /**
      * 创建目录
      *
-     * @param dto 创建目录请求参数
+     * @param cmd 创建目录请求参数
      * @return
      */
-    void createDirectory(CreateDirectoryDTO dto);
+    void createDirectory(CreateDirectoryCmd cmd);
 
     /**
      * 重命名文件
@@ -125,7 +125,7 @@ public interface FileInfoService extends IService<FileInfo> {
      *
      * @return
      */
-    List<FileRecycleVO> getRecycles();
+    List<FileRecycleVO> getRecycles(String keyword);
 
     /**
      * 恢复已删除的文件
