@@ -106,8 +106,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
                     .replaceAll("\\.\\\\", "");
             String objectKey = prefix + IdUtil.fastSimpleUUID() + "-" + safeFileName;
 
-            return uploadFile(file.getInputStream(), objectKey,
-                    file.getContentType(), file.getSize());
+            return uploadFile(file.getInputStream(), objectKey);
         } catch (IOException e) {
             throw new StorageOperationException("Upload file failed: " + e.getMessage(), e);
         }

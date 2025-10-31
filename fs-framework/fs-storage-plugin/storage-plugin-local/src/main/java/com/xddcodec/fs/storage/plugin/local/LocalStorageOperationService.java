@@ -2,6 +2,7 @@ package com.xddcodec.fs.storage.plugin.local;
 
 import cn.hutool.core.io.FileUtil;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
+import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
@@ -25,14 +26,14 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     private String basePath;
     private String baseUrl;
 
+    @SuppressWarnings("unused")
     public LocalStorageOperationService() {
         super();
     }
 
+    @SuppressWarnings("unused")
     public LocalStorageOperationService(StorageConfig config) {
         super(config);
-        log.info("{} LocalStorage 实例创建完成: basePath={}, baseUrl={}",
-                getLogPrefix(), this.basePath, this.baseUrl);
     }
 
     @Override
@@ -46,11 +47,11 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
         String baseUrl = config.getRequiredProperty("baseUrl", String.class);
 
         if (basePath == null || basePath.trim().isEmpty()) {
-            throw new StorageOperationException("Local 存储配置错误：basePath 不能为空");
+            throw new StorageConfigException("Local 存储配置错误：basePath 不能为空");
         }
 
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
-            throw new StorageOperationException("Local 存储配置错误：baseUrl 不能为空");
+            throw new StorageConfigException("Local 存储配置错误：baseUrl 不能为空");
         }
     }
 
@@ -97,10 +98,8 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String uploadFile(InputStream inputStream, String objectKey,
-                             String contentType, long size) {
+    public String uploadFile(InputStream inputStream, String objectKey) {
         ensureNotPrototype();
-
         try {
             String fullPath = resolveFullPath(objectKey);
             File targetFile = new File(fullPath);
@@ -141,20 +140,28 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public boolean deleteFile(String objectKey) {
+    public void deleteFile(String objectKey) {
         ensureNotPrototype();
 
-        String fullPath = resolveFullPath(objectKey);
-        File file = new File(fullPath);
+        try {
+            String fullPath = resolveFullPath(objectKey);
+            File file = new File(fullPath);
 
-        if (!file.exists()) {
-            return true;
+            if (!file.exists()) {
+                log.debug("{} 文件不存在，视为删除成功: objectKey={}", getLogPrefix(), objectKey);
+            }
+
+            boolean deleted = file.delete();
+            if (!deleted) {
+                log.error("{} 文件删除失败: objectKey={}", getLogPrefix(), objectKey);
+                throw new StorageOperationException("文件删除失败: " + objectKey);
+            }
+
+            log.debug("{} 文件删除成功: objectKey={}", getLogPrefix(), objectKey);
+        } catch (SecurityException e) {
+            log.error("{} 文件删除失败（权限不足）: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("文件删除失败（权限不足）: " + objectKey, e);
         }
-
-        boolean deleted = file.delete();
-        log.debug("{} 文件删除{}: objectKey={}",
-                getLogPrefix(), deleted ? "成功" : "失败", objectKey);
-        return deleted;
     }
 
     @Override

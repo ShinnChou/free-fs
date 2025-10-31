@@ -27,15 +27,8 @@ public class StoragePlatformContext {
      */
     private String configId;
 
-    /**
-     * 生成缓存键
-     *
-     * @return 缓存键
-     * @deprecated 使用 {@link StorageUtils#generateCacheKey(String)} 代替
-     */
-    @Deprecated
     public String getCacheKey() {
-        return StorageUtils.generateCacheKey(configId);
+        return StorageUtils.isLocalConfig(configId) ? "local:system" : null;
     }
 
     /**

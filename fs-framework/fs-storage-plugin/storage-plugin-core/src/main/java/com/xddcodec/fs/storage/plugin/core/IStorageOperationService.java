@@ -41,19 +41,14 @@ public interface IStorageOperationService extends Closeable {
         return "{}";
     }
 
-    // ========== 基础文件操作 ==========
-
     /**
      * 上传文件
      *
      * @param inputStream 文件流
      * @param objectKey   对象键（文件路径）
-     * @param contentType 文件类型
-     * @param size        文件大小
      * @return 文件访问URL
      */
-    String uploadFile(InputStream inputStream, String objectKey,
-                      String contentType, long size);
+    String uploadFile(InputStream inputStream, String objectKey);
 
     /**
      * 下载文件
@@ -69,7 +64,7 @@ public interface IStorageOperationService extends Closeable {
      * @param objectKey 对象键
      * @return 是否成功
      */
-    boolean deleteFile(String objectKey);
+    void deleteFile(String objectKey);
 
     /**
      * 获取文件访问URL

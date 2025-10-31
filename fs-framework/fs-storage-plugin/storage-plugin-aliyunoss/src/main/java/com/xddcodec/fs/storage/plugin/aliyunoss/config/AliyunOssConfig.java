@@ -1,4 +1,4 @@
-package com.xddcodec.fs.storage.plugin.aliyunoss;
+package com.xddcodec.fs.storage.plugin.aliyunoss.config;
 
 import lombok.Data;
 
@@ -12,4 +12,6 @@ public class AliyunOssConfig {
     private String secretKey;
 
     private String bucket;
+
+    private String region;
 }

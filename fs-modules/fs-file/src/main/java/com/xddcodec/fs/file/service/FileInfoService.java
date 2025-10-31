@@ -2,6 +2,7 @@ package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
+import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
@@ -97,6 +98,13 @@ public interface FileInfoService extends IService<FileInfo> {
     void renameFile(String fileId, RenameFileCmd cmd);
 
     /**
+     * 移动文件到指定目录
+     *
+     * @param cmd 移动文件请求参数
+     */
+    void moveFile(MoveFileCmd cmd);
+
+    /**
      * 获取目录层级
      *
      * @param dirId 目录ID
@@ -111,6 +119,14 @@ public interface FileInfoService extends IService<FileInfo> {
      * @return 分页结果
      */
     List<FileVO> getList(FileQry qry);
+
+    /**
+     * 根据父目录ID查询目录列表
+     *
+     * @param parentId
+     * @return
+     */
+    List<FileVO> getDirs(String parentId);
 
     /**
      * 根据文件ID列表查询文件信息

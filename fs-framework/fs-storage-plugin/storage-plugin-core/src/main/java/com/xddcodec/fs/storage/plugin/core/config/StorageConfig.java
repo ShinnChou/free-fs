@@ -144,12 +144,12 @@ public class StorageConfig {
 
     /**
      * 生成缓存键
-     * 委托给 {@link StorageUtils#generateCacheKey(String)}
+     * Local 存储返回 "local:system"，用户配置返回 "{platform}:{configId}" 格式
      *
      * @return 缓存键
      */
     public String getCacheKey() {
-        return StorageUtils.generateCacheKey(configId);
+        return StorageUtils.generateCacheKey(platformIdentifier, configId);
     }
 
     /**
@@ -227,5 +227,35 @@ public class StorageConfig {
         return properties != null
                 ? java.util.Collections.unmodifiableSet(properties.keySet())
                 : java.util.Collections.emptySet();
+    }
+
+    /**
+     * 使用 Jackson 将 properties 转换为指定对象
+     * 支持嵌套对象、集合等复杂类型
+     *
+     * @param targetClass 目标类型
+     * @param <T>         泛型类型
+     * @return 转换后的对象实例
+     * @throws StorageOperationException 如果转换失败
+     */
+    public <T> T toObject(Class<T> targetClass) {
+        if (properties == null || properties.isEmpty()) {
+            throw new StorageOperationException("Properties is empty, cannot convert to object");
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                    new com.fasterxml.jackson.databind.ObjectMapper();
+
+            mapper.configure(
+                    com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                    false
+            );
+
+            return mapper.convertValue(properties, targetClass);
+        } catch (Exception e) {
+            throw new StorageOperationException(
+                    String.format("Failed to convert properties to %s: %s",
+                            targetClass.getSimpleName(), e.getMessage()), e);
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
+import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -50,9 +51,16 @@ public class FileController {
     private FileUserFavoritesService fileUserFavoritesService;
 
     @GetMapping("/list")
-    @Operation(summary = "查询文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
+    @Operation(summary = "查询所有文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
     public Result<List<FileVO>> getList(FileQry qry) {
         List<FileVO> list = fileInfoService.getList(qry);
+        return Result.ok(list);
+    }
+
+    @GetMapping("/dirs")
+    @Operation(summary = "查询目录列表", description = "查询目录列表")
+    public Result<List<FileVO>> getDirs(String parentId) {
+        List<FileVO> list = fileInfoService.getDirs(parentId);
         return Result.ok(list);
     }
 
@@ -80,10 +88,20 @@ public class FileController {
 
             String encodedFileName = URLEncoder.encode(fileInfo.getOriginalName(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
 
-            return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName).contentType(MediaType.parseMediaType(fileInfo.getMimeType())).contentLength(fileInfo.getSize()).body(resource);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                    .contentType(MediaType.parseMediaType(fileInfo.getMimeType()))
+                    .contentLength(fileInfo.getSize())
+                    .body(resource);
         } catch (StorageOperationException e) {
             log.error("下载文件失败: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            // 根据异常消息返回适当的HTTP状态码
+            String message = e.getMessage().toLowerCase();
+            if (message.contains("文件不存在") || message.contains("nosuchkey")) {
+                return ResponseEntity.notFound().build();
+            }
+            // 其他错误返回500
+            return ResponseEntity.status(500).build();
         }
     }
 
@@ -114,6 +132,13 @@ public class FileController {
     @Operation(summary = "文件重命名", description = "文件重命名")
     public Result<?> createDirectory(@PathVariable String fileId, @RequestBody @Validated RenameFileCmd cmd) {
         fileInfoService.renameFile(fileId, cmd);
+        return Result.ok();
+    }
+
+    @PutMapping("/moves")
+    @Operation(summary = "文件移动", description = "文件移动")
+    public Result<?> createDirectory(@RequestBody @Validated MoveFileCmd cmd) {
+        fileInfoService.moveFile(cmd);
         return Result.ok();
     }
 
