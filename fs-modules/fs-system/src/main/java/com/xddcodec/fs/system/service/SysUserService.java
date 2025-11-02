@@ -82,12 +82,12 @@ public interface SysUserService extends IService<SysUser> {
     void addUser(UserAddCmd cmd);
 
     /**
-     * 编辑用户
+     * 编辑用户个人信息
      *
      * @param cmd
      * @return
      */
-    void editUser(UserEditCmd cmd);
+    void editUserInfo(UserEditInfoCmd cmd);
 
     /**
      * 修改密码

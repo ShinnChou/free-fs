@@ -9,6 +9,8 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.mybatisflex.core.update.UpdateChain;
+import com.mybatisflex.core.update.UpdateWrapper;
+import com.mybatisflex.core.util.UpdateEntity;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
@@ -322,9 +324,13 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (CollUtil.isEmpty(cmd.getFileIds())) {
             throw new BusinessException("文件ID列表不能为空");
         }
+
+        // 处理空字符串，统一转为null表示根目录
+        String targetDirId = StringUtils.isBlank(cmd.getDirId()) ? null : cmd.getDirId();
+
         // 如果dirId不为空，校验目标目录是否存在且为目录类型
-        if (StringUtils.isNotEmpty(cmd.getDirId())) {
-            FileInfo dirInfo = getById(cmd.getDirId());
+        if (targetDirId != null) {
+            FileInfo dirInfo = getById(targetDirId);
             if (dirInfo == null) {
                 throw new BusinessException("目标目录不存在");
             }
@@ -332,23 +338,25 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 throw new BusinessException("目标必须是目录");
             }
         }
+
         // 批量移动文件
         for (String fileId : cmd.getFileIds()) {
             FileInfo fileInfo = getById(fileId);
             if (fileInfo == null) {
                 continue;
             }
-
             // 防止将目录移动到自己或自己的子目录下
-            if (StringUtils.isNotEmpty(cmd.getDirId()) && fileInfo.getIsDir()) {
-                if (fileId.equals(cmd.getDirId()) || isSubDirectory(fileId, cmd.getDirId())) {
+            if (targetDirId != null && fileInfo.getIsDir()) {
+                if (fileId.equals(targetDirId) || isSubDirectory(fileId, targetDirId)) {
                     throw new BusinessException("不能将目录移动到自身或子目录下");
                 }
             }
-
             // 设置新的父目录ID（null表示根目录）
-            fileInfo.setParentId(StringUtils.isEmpty(cmd.getDirId()) ? null : cmd.getDirId());
-            updateById(fileInfo);
+            fileInfo.setParentId(targetDirId);
+
+            FileInfo updateEntity = UpdateEntity.of(FileInfo.class, fileInfo.getId());
+            updateEntity.setParentId(targetDirId);
+            updateById(updateEntity);
         }
 
     }

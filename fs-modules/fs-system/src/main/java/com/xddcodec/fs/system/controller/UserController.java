@@ -61,9 +61,9 @@ public class UserController {
     }
 
     @Operation(summary = "编辑用户")
-    @PutMapping()
-    public Result<?> edit(@Validated @RequestBody UserEditCmd cmd) {
-        userService.editUser(cmd);
+    @PutMapping("/info")
+    public Result<?> editUserInfo(@Validated @RequestBody UserEditInfoCmd cmd) {
+        userService.editUserInfo(cmd);
         return Result.ok();
     }
 
