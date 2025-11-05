@@ -143,7 +143,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         } catch (StorageOperationException e) {
             // 统一转换为友好的业务异常消息
             log.error("文件上传到存储平台失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("文件上传失败，请重试");
+            throw new StorageOperationException("文件上传失败，请检查当前存储平台配置后重试");
         }
 
         // 创建文件信息记录

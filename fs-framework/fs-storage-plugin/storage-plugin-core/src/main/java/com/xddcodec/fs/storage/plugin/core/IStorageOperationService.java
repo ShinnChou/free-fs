@@ -48,7 +48,7 @@ public interface IStorageOperationService extends Closeable {
      * @param objectKey   对象键（文件路径）
      * @return 文件访问URL
      */
-    String uploadFile(InputStream inputStream, String objectKey);
+    void uploadFile(InputStream inputStream, String objectKey);
 
     /**
      * 下载文件
@@ -82,8 +82,6 @@ public interface IStorageOperationService extends Closeable {
      * @return 是否存在
      */
     boolean isFileExist(String objectKey);
-
-    // ========== 分片上传 ==========
 
     /**
      * 初始化分片上传

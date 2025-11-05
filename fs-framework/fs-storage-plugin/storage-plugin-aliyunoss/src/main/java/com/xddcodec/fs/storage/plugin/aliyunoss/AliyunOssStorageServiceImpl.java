@@ -105,13 +105,12 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
-    public String uploadFile(InputStream inputStream, String objectKey) {
+    public void uploadFile(InputStream inputStream, String objectKey) {
         ensureNotPrototype();
         try {
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectKey, inputStream);
             ossClient.putObject(putObjectRequest);
             log.debug("{} 文件上传成功: objectKey={}", getLogPrefix(), objectKey);
-            return getFileUrl(objectKey, null);
         } catch (OSSException e) {
             log.error("{} 文件上传失败: objectKey={}, errorCode={}, errorMessage={}",
                     getLogPrefix(), objectKey, e.getErrorCode(), e.getErrorMessage(), e);

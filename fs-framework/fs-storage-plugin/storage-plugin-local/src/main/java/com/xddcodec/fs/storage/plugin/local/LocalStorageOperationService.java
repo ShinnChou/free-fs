@@ -98,7 +98,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String uploadFile(InputStream inputStream, String objectKey) {
+    public void uploadFile(InputStream inputStream, String objectKey) {
         ensureNotPrototype();
         try {
             String fullPath = resolveFullPath(objectKey);
@@ -114,8 +114,6 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
             }
 
             log.debug("{} 文件上传成功: objectKey={}", getLogPrefix(), objectKey);
-            return getFileUrl(objectKey, null);
-
         } catch (IOException e) {
             throw new StorageOperationException("文件上传失败: " + e.getMessage(), e);
         }

@@ -85,7 +85,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
     /**
      * MultipartFile上传的默认实现
      */
-    public String uploadFile(MultipartFile file, String objectKeyPrefix) {
+    public void uploadFile(MultipartFile file, String objectKeyPrefix) {
         ensureNotPrototype();
 
         if (file == null || file.isEmpty()) {
@@ -106,7 +106,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
                     .replaceAll("\\.\\\\", "");
             String objectKey = prefix + IdUtil.fastSimpleUUID() + "-" + safeFileName;
 
-            return uploadFile(file.getInputStream(), objectKey);
+            uploadFile(file.getInputStream(), objectKey);
         } catch (IOException e) {
             throw new StorageOperationException("Upload file failed: " + e.getMessage(), e);
         }
