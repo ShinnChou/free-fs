@@ -86,28 +86,24 @@ public interface IStorageOperationService extends Closeable {
     /**
      * 初始化分片上传
      *
-     * @param objectKey      对象键
-     * @param mimeType       文件类型
-     * @param fileIdentifier 文件标识符
-     * @return 上传ID
+     * @param objectKey 对象键
+     * @param mimeType  文件类型
+     * @return 全局唯一上传ID
      */
-    String initiateMultipartUpload(String objectKey, String mimeType,
-                                   String fileIdentifier);
+    String initiateMultipartUpload(String objectKey, String mimeType);
 
     /**
      * 上传分片
      *
-     * @param objectKey              对象键
-     * @param uploadId               上传ID
-     * @param partNumber             分片序号
-     * @param partSize               分片大小
-     * @param partInputStream        分片流
-     * @param partIdentifierForLocal 本地存储的分片标识
+     * @param objectKey       对象键
+     * @param uploadId        上传ID
+     * @param partNumber      分片序号
+     * @param partSize        分片大小
+     * @param partInputStream 分片流
      * @return ETag
      */
     String uploadPart(String objectKey, String uploadId, int partNumber,
-                      long partSize, InputStream partInputStream,
-                      String partIdentifierForLocal);
+                      long partSize, InputStream partInputStream);
 
     /**
      * 完成分片上传
@@ -127,15 +123,6 @@ public interface IStorageOperationService extends Closeable {
      * @param uploadId  上传ID
      */
     void abortMultipartUpload(String objectKey, String uploadId);
-
-    /**
-     * 列出已上传的分片
-     *
-     * @param objectKey 对象键
-     * @param uploadId  上传ID
-     * @return 分片信息列表
-     */
-    List<Map<String, Object>> listParts(String objectKey, String uploadId);
 
     /**
      * 关闭资源

@@ -6,9 +6,8 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.common.auth.DefaultCredentialProvider;
 import com.aliyun.oss.common.comm.SignVersion;
-import com.aliyun.oss.model.GeneratePresignedUrlRequest;
-import com.aliyun.oss.model.OSSObject;
-import com.aliyun.oss.model.PutObjectRequest;
+import com.aliyun.oss.internal.Mimetypes;
+import com.aliyun.oss.model.*;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
@@ -200,34 +199,116 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
-    public String initiateMultipartUpload(String objectKey, String mimeType, String fileIdentifier) {
+    public String initiateMultipartUpload(String objectKey, String mimeType) {
         ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
+        try {
+            // 初始化分片。
+            InitiateMultipartUploadRequest request = new InitiateMultipartUploadRequest(bucketName, objectKey);
+            // 创建ObjectMetadata并设置Content-Type。
+            ObjectMetadata metadata = new ObjectMetadata();
+            if (metadata.getContentType() == null) {
+                metadata.setContentType(mimeType);
+            }
+            InitiateMultipartUploadResult upResult = ossClient.initiateMultipartUpload(request);
+            return upResult.getUploadId();
+        } catch (Exception e) {
+            throw new StorageOperationException("阿里云OSS生成文件URL失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize,
-                             InputStream partInputStream, String partIdentifierForLocal) {
+    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize, InputStream partInputStream) {
         ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
+
+        try {
+            // 创建UploadPartRequest
+            UploadPartRequest uploadPartRequest = new UploadPartRequest();
+            uploadPartRequest.setBucketName(bucketName);
+            uploadPartRequest.setKey(objectKey);
+            uploadPartRequest.setUploadId(uploadId);
+            uploadPartRequest.setPartNumber(partNumber);
+            uploadPartRequest.setPartSize(partSize);
+            uploadPartRequest.setInputStream(partInputStream);
+
+            // 上传分片
+            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadPartRequest);
+            String etag = uploadPartResult.getETag();
+
+            log.debug("{} 分片上传成功: objectKey={}, partNumber={}, etag={}",
+                    getLogPrefix(), objectKey, partNumber, etag);
+
+            return etag;
+
+        } catch (OSSException e) {
+            log.error("{} 分片上传失败: objectKey={}, partNumber={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, partNumber, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS分片上传失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} 分片上传失败: objectKey={}, partNumber={}", getLogPrefix(), objectKey, partNumber, e);
+            throw new StorageOperationException("阿里云OSS分片上传失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public String completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
         ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
+
+        try {
+            // 转换partETags为PartETag列表
+            List<PartETag> parts = new java.util.ArrayList<>();
+            for (Map<String, Object> partInfo : partETags) {
+                int partNumber = (int) partInfo.get("partNumber");
+                String eTag = (String) partInfo.get("eTag");
+                parts.add(new PartETag(partNumber, eTag));
+            }
+
+            // 创建CompleteMultipartUploadRequest
+            CompleteMultipartUploadRequest completeRequest =
+                    new CompleteMultipartUploadRequest(bucketName, objectKey, uploadId, parts);
+
+            // 完成分片上传
+            CompleteMultipartUploadResult result = ossClient.completeMultipartUpload(completeRequest);
+
+            log.info("{} 分片合并成功: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId);
+
+            // 返回文件URL
+            return getFileUrl(objectKey, null);
+
+        } catch (OSSException e) {
+            log.error("{} 分片合并失败: objectKey={}, uploadId={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, uploadId, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS分片合并失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} 分片合并失败: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId, e);
+            throw new StorageOperationException("阿里云OSS分片合并失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public void abortMultipartUpload(String objectKey, String uploadId) {
         ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
-    }
 
-    @Override
-    public List<Map<String, Object>> listParts(String objectKey, String uploadId) {
-        ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
+        try {
+            // 创建AbortMultipartUploadRequest
+            AbortMultipartUploadRequest abortRequest =
+                    new AbortMultipartUploadRequest(bucketName, objectKey, uploadId);
+
+            // 取消分片上传
+            ossClient.abortMultipartUpload(abortRequest);
+
+            log.info("{} 分片上传已取消: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId);
+
+        } catch (OSSException e) {
+            log.error("{} 取消分片上传失败: objectKey={}, uploadId={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, uploadId, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS取消分片上传失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} 取消分片上传失败: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId, e);
+            throw new StorageOperationException("阿里云OSS取消分片上传失败: " + e.getMessage(), e);
+        }
     }
 
     @Override

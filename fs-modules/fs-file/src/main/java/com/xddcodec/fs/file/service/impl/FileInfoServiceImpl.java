@@ -70,122 +70,121 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Value("${spring.application.name:free-fs}")
     private String applicationName;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public FileInfo uploadFile(MultipartFile file, String parentId) {
-        if (file == null || file.isEmpty()) {
-            throw new StorageOperationException("上传文件不能为空");
-        }
-        String userId = StpUtil.getLoginIdAsString();
-        String configId = StoragePlatformContextHolder.getConfigId();
-        try {
-            return uploadFile(
-                    file.getInputStream(),
-                    file.getOriginalFilename(),
-                    file.getSize(),
-                    file.getContentType(),
-                    userId,
-                    parentId,
-                    configId
-            );
-        } catch (IOException e) {
-            log.error("读取上传文件流失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("读取上传文件流失败: " + e.getMessage(), e);
-        }
-    }
+//    @Override
+//    @Transactional(rollbackFor = Exception.class)
+//    public FileInfo uploadFile(MultipartFile file, String parentId) {
+//        if (file == null || file.isEmpty()) {
+//            throw new StorageOperationException("上传文件不能为空");
+//        }
+//        String userId = StpUtil.getLoginIdAsString();
+//        String configId = StoragePlatformContextHolder.getConfigId();
+//        try {
+//            return uploadFile(
+//                    file.getInputStream(),
+//                    file.getOriginalFilename(),
+//                    file.getSize(),
+//                    file.getContentType(),
+//                    userId,
+//                    parentId,
+//                    configId
+//            );
+//        } catch (IOException e) {
+//            log.error("读取上传文件流失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("读取上传文件流失败: " + e.getMessage(), e);
+//        }
+//    }
+//
+//    @Override
+//    @Transactional(rollbackFor = Exception.class)
+//    public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
+//                               String userId, String parentId, String storagePlatformSettingId) {
+//        if (inputStream == null) {
+//            throw new StorageOperationException("上传文件流不能为空");
+//        }
+//        if (StrUtil.isBlank(originalName)) {
+//            throw new StorageOperationException("原始文件名不能为空");
+//        }
+//
+//        byte[] fileBytes = null;
+//        String md5 = null;
+//        try {
+//            fileBytes = IoUtil.readBytes(inputStream);
+//
+//            // 计算文件 MD5
+//            md5 = DigestUtil.md5Hex(fileBytes);
+//        } catch (Exception e) {
+//            log.error("读取文件流失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("读取文件流失败: " + e.getMessage(), e);
+//        } finally {
+//            IoUtil.close(inputStream);
+//        }
+//
+//        // 秒传检查
+//        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
+//        if (existingFile != null) {
+//            log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
+//            return existingFile;
+//        }
+//
+//        // 获取存储服务（使用文件记录中的 storagePlatformSettingId）
+//        IStorageOperationService storageService = storageServiceFacade.getStorageService(storagePlatformSettingId);
+//
+//        // 生成文件ID和对象键
+//        String fileId = IdUtil.fastSimpleUUID();
+//        String suffix = FileUtil.extName(originalName);
+//
+//        //TODO 后续保存的文件名需要根据用户的配置是否生成新的
+//        String displayName = IdUtil.fastSimpleUUID() + "." + suffix;
+//        String objectKey = generateObjectKey(userId, displayName, suffix);
+//
+//        try {
+//            ByteArrayInputStream uploadStream = new ByteArrayInputStream(fileBytes);
+//            storageService.uploadFile(uploadStream, objectKey);
+//        } catch (StorageOperationException e) {
+//            // 统一转换为友好的业务异常消息
+//            log.error("文件上传到存储平台失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("文件上传失败，请检查当前存储平台配置后重试");
+//        }
+//
+//        // 创建文件信息记录
+//        FileInfo fileInfo = new FileInfo();
+//        fileInfo.setId(fileId);
+//        fileInfo.setObjectKey(objectKey);
+//        fileInfo.setOriginalName(originalName);
+//        // 默认显示名与原始名相同
+//        fileInfo.setDisplayName(displayName);
+//        fileInfo.setSuffix(suffix);
+//        fileInfo.setSize(size);
+//        fileInfo.setMimeType(mimeType);
+//        fileInfo.setIsDir(false);
+//        fileInfo.setParentId(parentId);
+//        fileInfo.setUserId(userId);
+//        fileInfo.setContentMd5(md5);
+//        fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
+//        fileInfo.setUploadTime(LocalDateTime.now());
+//        fileInfo.setUpdateTime(LocalDateTime.now());
+//        fileInfo.setIsDeleted(false);
+//
+//        // 保存文件信息到数据库
+//        save(fileInfo);
+//        return fileInfo;
+//    }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-                               String userId, String parentId, String storagePlatformSettingId) {
-        if (inputStream == null) {
-            throw new StorageOperationException("上传文件流不能为空");
-        }
-        if (StrUtil.isBlank(originalName)) {
-            throw new StorageOperationException("原始文件名不能为空");
-        }
-
-        byte[] fileBytes = null;
-        String md5 = null;
-        try {
-            fileBytes = IoUtil.readBytes(inputStream);
-
-            // 计算文件 MD5
-            md5 = DigestUtil.md5Hex(fileBytes);
-        } catch (Exception e) {
-            log.error("读取文件流失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("读取文件流失败: " + e.getMessage(), e);
-        } finally {
-            IoUtil.close(inputStream);
-        }
-
-        // 秒传检查
-        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
-        if (existingFile != null) {
-            log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
-            return existingFile;
-        }
-
-        // 获取存储服务（使用文件记录中的 storagePlatformSettingId）
-        IStorageOperationService storageService = storageServiceFacade.getStorageService(storagePlatformSettingId);
-
-        // 生成文件ID和对象键
-        String fileId = IdUtil.fastSimpleUUID();
-        String suffix = FileUtil.extName(originalName);
-
-        //TODO 后续保存的文件名需要根据用户的配置是否生成新的
-        String displayName = IdUtil.fastSimpleUUID() + "." + suffix;
-        String objectKey = generateObjectKey(userId, displayName, suffix);
-
-        try {
-            ByteArrayInputStream uploadStream = new ByteArrayInputStream(fileBytes);
-            storageService.uploadFile(uploadStream, objectKey);
-        } catch (StorageOperationException e) {
-            // 统一转换为友好的业务异常消息
-            log.error("文件上传到存储平台失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("文件上传失败，请检查当前存储平台配置后重试");
-        }
-
-        // 创建文件信息记录
-        FileInfo fileInfo = new FileInfo();
-        fileInfo.setId(fileId);
-        fileInfo.setObjectKey(objectKey);
-        fileInfo.setOriginalName(originalName);
-        // 默认显示名与原始名相同
-        fileInfo.setDisplayName(displayName);
-        fileInfo.setSuffix(suffix);
-        fileInfo.setSize(size);
-        fileInfo.setMimeType(mimeType);
-        fileInfo.setIsDir(false);
-        fileInfo.setParentId(parentId);
-        fileInfo.setUserId(userId);
-        fileInfo.setContentMd5(md5);
-        fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
-        fileInfo.setUploadTime(LocalDateTime.now());
-        fileInfo.setUpdateTime(LocalDateTime.now());
-        fileInfo.setIsDeleted(false);
-
-        // 保存文件信息到数据库
-        save(fileInfo);
-        return fileInfo;
-    }
-
-    @Override
-    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
-        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
-            return null;
-        }
-        FileInfo existingFile = getOne(
-                new QueryWrapper()
-                        .where(FILE_INFO.CONTENT_MD5.eq(md5)
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                                .and(FILE_INFO.USER_ID.eq(userId))
-                                .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
-                                .and(FILE_INFO.IS_DELETED.eq(false))
-                        )
-        );
-        return existingFile;
-    }
+//    @Override
+//    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
+//        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
+//            return null;
+//        }
+//        return getOne(
+//                new QueryWrapper()
+//                        .where(FILE_INFO.CONTENT_MD5.eq(md5)
+//                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+//                                .and(FILE_INFO.USER_ID.eq(userId))
+//                                .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
+//                                .and(FILE_INFO.IS_DELETED.eq(false))
+//                        )
+//        );
+//    }
 
     @Override
     public InputStream downloadFile(String fileId) {
@@ -612,43 +611,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     private void deletePhysicalFile(FileInfo file) {
         //TODO 后续通过用户配置，是否同步删除物理文件操作
 
-    }
-
-    /**
-     * 生成对象键
-     * <p>
-     * 格式: {projectName}/{userId}/{yyyyMMdd}/{fileId}.{suffix}
-     * 示例: free-fs/user001/20241226/abc123.pdf
-     *
-     * @param userId     用户ID
-     * @param objectName 文件名
-     * @param suffix     文件后缀
-     * @return 对象键
-     */
-    private String generateObjectKey(String userId, String objectName, String suffix) {
-        StringBuilder objectKey = new StringBuilder();
-
-        // 1. 项目名称（从 spring.application.name 读取）
-        objectKey.append(applicationName).append("/");
-
-        // 2. 用户ID
-        if (StrUtil.isNotBlank(userId)) {
-            objectKey.append(userId).append("/");
-        } else {
-            objectKey.append("anonymous/");  // 匿名用户
-        }
-
-        // 3. 日期目录 (yyyyMMdd 格式)
-        String dateDir = DateUtil.format(new java.util.Date(), "yyyyMMdd");
-        objectKey.append(dateDir).append("/");
-
-        // 4. 文件ID + 后缀
-        objectKey.append(objectName);
-        if (StrUtil.isNotBlank(suffix)) {
-            objectKey.append(".").append(suffix);
-        }
-
-        return objectKey.toString();
     }
 
     @Override

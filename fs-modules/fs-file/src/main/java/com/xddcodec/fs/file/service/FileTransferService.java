@@ -1,0 +1,53 @@
+package com.xddcodec.fs.file.service;
+
+import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
+import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
+import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
+import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Set;
+
+public interface FileTransferService {
+
+    /**
+     * 获取用户传输列表
+     *
+     * @return
+     */
+    List<FileUploadTaskVO> getTransferFiles(TransferFilesQry qry);
+
+    /**
+     * 初始化上传
+     *
+     * @param cmd 初始化上传命令
+     * @return 任务ID
+     */
+    String initUpload(InitUploadCmd cmd);
+
+    /**
+     * 异步上传分片
+     *
+     * @param fileBytes 分片文件字节数组
+     * @param cmd       上传分片命令
+     */
+    void uploadChunkAsync(byte[] fileBytes, UploadChunkCmd cmd);
+
+    /**
+     * 合并分片
+     *
+     * @param taskId 合并分片任务ID
+     * @return 文件信息
+     */
+    FileInfo mergeChunks(String taskId);
+
+    /**
+     * 获取该任务下已上传的分片
+     *
+     * @param taskId 上传任务ID
+     * @return 已上传的分片索引集合
+     */
+    Set<Integer> getUploadedChunks(String taskId);
+}

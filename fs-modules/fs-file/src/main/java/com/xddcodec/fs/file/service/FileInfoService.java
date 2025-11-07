@@ -28,7 +28,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param parentId 父目录ID，如果为null则上传到根目录
      * @return 文件信息
      */
-    FileInfo uploadFile(MultipartFile file, String parentId);
+//    FileInfo uploadFile(MultipartFile file, String parentId);
 
     /**
      * 上传文件
@@ -42,8 +42,8 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param storagePlatformIdentifier 存储平台标识符，如果为null则使用默认存储平台
      * @return 文件信息
      */
-    FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-                        String userId, String parentId, String storagePlatformIdentifier);
+//    FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
+//                        String userId, String parentId, String storagePlatformIdentifier);
 
     /**
      * 秒传检查
@@ -54,7 +54,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param originalName              原始文件名
      * @return
      */
-    FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName);
+//    FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName);
 
     /**
      * 下载文件

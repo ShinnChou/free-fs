@@ -1,6 +1,7 @@
 package com.xddcodec.fs.storage.plugin.local;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.IdUtil;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
@@ -180,35 +181,44 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String initiateMultipartUpload(String objectKey, String mimeType, String fileIdentifier) {
+    public String initiateMultipartUpload(String objectKey, String mimeType) {
         ensureNotPrototype();
-
-        // 本地存储的分片上传实现
-        // 生成临时目录用于存储分片
-        String tempDir = basePath + ".temp/" + fileIdentifier + "/";
-        File tempDirFile = new File(tempDir);
-        if (!tempDirFile.exists()) {
-            if (!tempDirFile.mkdirs()) {
-                throw new StorageOperationException("无法创建分片上传临时目录: " + tempDir);
+        try {
+            // 生成唯一uploadId
+            String uploadId = IdUtil.simpleUUID();
+            //创建临时目录
+            String tempDir = getTempDir(uploadId);
+            File tempDirFile = new File(tempDir);
+            if (!tempDirFile.exists()) {
+                if (!tempDirFile.mkdirs()) {
+                    throw new StorageOperationException("无法创建分片上传临时目录: " + tempDir);
+                }
             }
+            log.info("本地存储分片上传初始化成功: objectKey={}, uploadId={}, 存储目录={}", objectKey, uploadId, tempDir);
+            return uploadId;
+        } catch (Exception e) {
+            throw new StorageOperationException("分片初始化失败: " + e.getMessage(), e);
         }
 
-        // 返回临时目录路径作为uploadId
-        String uploadId = fileIdentifier;
-        log.info("本地存储分片上传初始化成功: objectKey={}, uploadId={}", objectKey, uploadId);
-        return uploadId;
     }
 
     @Override
-    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize,
-                             InputStream partInputStream, String partIdentifierForLocal) {
+    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize, InputStream partInputStream) {
         ensureNotPrototype();
 
         try {
             // 构建分片文件路径
-            String tempDir = basePath + ".temp/" + uploadId + "/";
+            String tempDir = getTempDir(uploadId);
             String partFileName = "part_" + partNumber;
             String partFilePath = tempDir + partFileName;
+
+            // 确保临时目录存在
+            File tempDirFile = new File(tempDir);
+            if (!tempDirFile.exists()) {
+                if (!tempDirFile.mkdirs()) {
+                    throw new IOException("无法创建临时目录: " + tempDir);
+                }
+            }
 
             // 写入分片文件
             try (FileOutputStream fos = new FileOutputStream(partFilePath)) {
@@ -221,7 +231,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
             // 生成分片标识（使用文件大小和修改时间）
             File partFile = new File(partFilePath);
-            String etag = String.valueOf(partFile.length()) + "_" + partFile.lastModified();
+            String etag = partFile.length() + "_" + partFile.lastModified();
 
             log.debug("本地存储分片上传成功: objectKey={}, partNumber={}, etag={}", objectKey, partNumber, etag);
             return etag;
@@ -238,7 +248,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
         try {
             // 构建最终文件路径
-            String fullPath = basePath + objectKey;
+            String fullPath = resolveFullPath(objectKey);
             File targetFile = new File(fullPath);
 
             // 确保父目录存在
@@ -250,7 +260,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
             }
 
             // 合并分片文件
-            String tempDir = basePath + ".temp/" + uploadId + "/";
+            String tempDir = getTempDir(uploadId);
             try (FileOutputStream fos = new FileOutputStream(targetFile)) {
                 // 按分片号排序
                 partETags.sort((a, b) -> {
@@ -297,7 +307,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
         try {
             // 清理临时目录
-            String tempDir = basePath + ".temp/" + uploadId + "/";
+            String tempDir = getTempDir(uploadId);
             FileUtil.del(tempDir);
             log.info("本地存储分片上传已中止: objectKey={}, uploadId={}", objectKey, uploadId);
 
@@ -307,39 +317,10 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
         }
     }
 
-    @Override
-    public List<Map<String, Object>> listParts(String objectKey, String uploadId) {
-        ensureNotPrototype();
-
-        try {
-            String tempDir = basePath + ".temp/" + uploadId + "/";
-            File tempDirFile = new File(tempDir);
-
-            if (!tempDirFile.exists()) {
-                return new ArrayList<>();
-            }
-
-            List<Map<String, Object>> partList = new ArrayList<>();
-            File[] partFiles = tempDirFile.listFiles((dir, name) -> name.startsWith("part_"));
-
-            if (partFiles != null) {
-                for (File partFile : partFiles) {
-                    String fileName = partFile.getName();
-                    int partNumber = Integer.parseInt(fileName.substring(5)); // 去掉"part_"前缀
-
-                    Map<String, Object> partInfo = new HashMap<>();
-                    partInfo.put("partNumber", partNumber);
-                    partInfo.put("eTag", String.valueOf(partFile.length()) + "_" + partFile.lastModified());
-                    partInfo.put("size", partFile.length());
-                    partList.add(partInfo);
-                }
-            }
-
-            return partList;
-
-        } catch (Exception e) {
-            log.error("查询本地存储已上传分片失败, objectKey={}: {}", objectKey, e.getMessage(), e);
-            throw new StorageOperationException("查询本地存储已上传分片失败: " + e.getMessage(), e);
-        }
+    /**
+     * 获取临时目录路径
+     */
+    private String getTempDir(String uploadId) {
+        return basePath + File.separator + "temp" + File.separator + uploadId + File.separator;
     }
 }

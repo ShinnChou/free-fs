@@ -24,7 +24,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.net.URLEncoder;
@@ -64,13 +63,13 @@ public class FileController {
         return Result.ok(list);
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "上传文件", description = "上传文件到指定目录")
-    @Parameters(value = {@Parameter(name = "parentId", description = "父目录ID，如果为空则上传到根目录")})
-    public Result<FileInfo> uploadFile(@RequestPart("file") MultipartFile file, @RequestParam(value = "parentId", required = false) String parentId) {
-        FileInfo fileInfo = fileInfoService.uploadFile(file, parentId);
-        return Result.ok(fileInfo);
-    }
+//    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    @Operation(summary = "上传文件", description = "上传文件到指定目录")
+//    @Parameters(value = {@Parameter(name = "parentId", description = "父目录ID，如果为空则上传到根目录")})
+//    public Result<FileInfo> uploadFile(@RequestPart("file") MultipartFile file, @RequestParam(value = "parentId", required = false) String parentId) {
+//        FileInfo fileInfo = fileInfoService.uploadFile(file, parentId);
+//        return Result.ok(fileInfo);
+//    }
 
     @GetMapping("/download/{fileId}")
     @Operation(summary = "下载文件", description = "根据文件ID下载文件")
