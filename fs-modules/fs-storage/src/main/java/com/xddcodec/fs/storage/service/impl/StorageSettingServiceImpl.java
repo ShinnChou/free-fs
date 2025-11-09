@@ -133,14 +133,6 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
         }
         storageSetting.setEnabled(newStatus);
         this.updateById(storageSetting);
-        // 禁用时移除缓存，启用时刷新缓存
-        if (newStatus.equals(CommonConstant.N)) {
-            storageServiceFacade.removeInstance(settingId);
-            log.info("存储配置已禁用并移除缓存: settingId={}, userId={}", settingId, userId);
-        } else {
-            storageServiceFacade.refreshInstance(settingId);
-            log.info("存储配置已启用并刷新缓存: settingId={}, userId={}", settingId, userId);
-        }
     }
 
     @Transactional(rollbackFor = Exception.class)

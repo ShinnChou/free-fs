@@ -26,7 +26,7 @@ public class FileShareItem implements Serializable {
      * 分享ID
      */
     @Id(keyType = KeyType.None)
-    private Long shareId;
+    private String shareId;
 
     /**
      * 文件/文件夹ID

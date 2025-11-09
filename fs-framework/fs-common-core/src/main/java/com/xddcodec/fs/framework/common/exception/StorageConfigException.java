@@ -8,7 +8,7 @@ import java.io.Serial;
  * @Author: xddcode
  * @Date: 2024/6/7 16:07
  */
-public class StorageConfigException extends IException {
+public class StorageConfigException extends RuntimeException {
 
     @Serial
     private static final long serialVersionUID = 7993671808524980055L;
@@ -19,5 +19,9 @@ public class StorageConfigException extends IException {
 
     public StorageConfigException(String message) {
         super(message);
+    }
+
+    public StorageConfigException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

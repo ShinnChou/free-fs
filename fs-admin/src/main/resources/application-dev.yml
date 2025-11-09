@@ -27,7 +27,7 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: 123456
+      password: insentek
       database: 0
       # 连接超时时间
       timeout: 10s
@@ -41,7 +41,16 @@ spring:
           max-idle: 10
           # 连接池中的最小空闲连接
           min-idle: 0
-
+# Redisson 配置
+redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://127.0.0.1:6379"
+      password: "insentek"
+      database: 0
+      timeout: 3000 
+      connectionPoolSize: 64
+      connectionMinimumIdleSize: 10
 
 mybatis-flex:
   # sql审计

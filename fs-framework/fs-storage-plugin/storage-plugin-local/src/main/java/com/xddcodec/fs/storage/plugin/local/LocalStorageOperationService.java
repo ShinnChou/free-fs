@@ -1,17 +1,17 @@
 package com.xddcodec.fs.storage.plugin.local;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.IdUtil;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
+import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.channels.FileChannel;
+import java.util.*;
 
 /**
  * 本地存储插件实现
@@ -25,14 +25,14 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     private String basePath;
     private String baseUrl;
 
+    @SuppressWarnings("unused")
     public LocalStorageOperationService() {
         super();
     }
 
+    @SuppressWarnings("unused")
     public LocalStorageOperationService(StorageConfig config) {
         super(config);
-        log.info("{} LocalStorage 实例创建完成: basePath={}, baseUrl={}",
-                getLogPrefix(), this.basePath, this.baseUrl);
     }
 
     @Override
@@ -46,11 +46,11 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
         String baseUrl = config.getRequiredProperty("baseUrl", String.class);
 
         if (basePath == null || basePath.trim().isEmpty()) {
-            throw new StorageOperationException("Local 存储配置错误：basePath 不能为空");
+            throw new StorageConfigException("Local 存储配置错误：basePath 不能为空");
         }
 
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
-            throw new StorageOperationException("Local 存储配置错误：baseUrl 不能为空");
+            throw new StorageConfigException("Local 存储配置错误：baseUrl 不能为空");
         }
     }
 
@@ -97,10 +97,8 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String uploadFile(InputStream inputStream, String objectKey,
-                             String contentType, long size) {
+    public void uploadFile(InputStream inputStream, String objectKey) {
         ensureNotPrototype();
-
         try {
             String fullPath = resolveFullPath(objectKey);
             File targetFile = new File(fullPath);
@@ -115,8 +113,6 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
             }
 
             log.debug("{} 文件上传成功: objectKey={}", getLogPrefix(), objectKey);
-            return getFileUrl(objectKey, null);
-
         } catch (IOException e) {
             throw new StorageOperationException("文件上传失败: " + e.getMessage(), e);
         }
@@ -141,20 +137,28 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public boolean deleteFile(String objectKey) {
+    public void deleteFile(String objectKey) {
         ensureNotPrototype();
 
-        String fullPath = resolveFullPath(objectKey);
-        File file = new File(fullPath);
+        try {
+            String fullPath = resolveFullPath(objectKey);
+            File file = new File(fullPath);
 
-        if (!file.exists()) {
-            return true;
+            if (!file.exists()) {
+                log.debug("{} 文件不存在，视为删除成功: objectKey={}", getLogPrefix(), objectKey);
+            }
+
+            boolean deleted = file.delete();
+            if (!deleted) {
+                log.error("{} 文件删除失败: objectKey={}", getLogPrefix(), objectKey);
+                throw new StorageOperationException("文件删除失败: " + objectKey);
+            }
+
+            log.debug("{} 文件删除成功: objectKey={}", getLogPrefix(), objectKey);
+        } catch (SecurityException e) {
+            log.error("{} 文件删除失败（权限不足）: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("文件删除失败（权限不足）: " + objectKey, e);
         }
-
-        boolean deleted = file.delete();
-        log.debug("{} 文件删除{}: objectKey={}",
-                getLogPrefix(), deleted ? "成功" : "失败", objectKey);
-        return deleted;
     }
 
     @Override
@@ -175,35 +179,43 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String initiateMultipartUpload(String objectKey, String mimeType, String fileIdentifier) {
+    public String initiateMultipartUpload(String objectKey, String mimeType) {
         ensureNotPrototype();
-
-        // 本地存储的分片上传实现
-        // 生成临时目录用于存储分片
-        String tempDir = basePath + ".temp/" + fileIdentifier + "/";
-        File tempDirFile = new File(tempDir);
-        if (!tempDirFile.exists()) {
-            if (!tempDirFile.mkdirs()) {
-                throw new StorageOperationException("无法创建分片上传临时目录: " + tempDir);
+        try {
+            // 生成唯一uploadId
+            String uploadId = IdUtil.simpleUUID();
+            //创建临时目录
+            String tempDir = getTempDir(uploadId);
+            File tempDirFile = new File(tempDir);
+            if (!tempDirFile.exists()) {
+                if (!tempDirFile.mkdirs()) {
+                    throw new StorageOperationException("无法创建分片上传临时目录: " + tempDir);
+                }
             }
+            log.info("本地存储分片上传初始化成功: objectKey={}, uploadId={}, 存储目录={}", objectKey, uploadId, tempDir);
+            return uploadId;
+        } catch (Exception e) {
+            throw new StorageOperationException("分片初始化失败: " + e.getMessage(), e);
         }
 
-        // 返回临时目录路径作为uploadId
-        String uploadId = fileIdentifier;
-        log.info("本地存储分片上传初始化成功: objectKey={}, uploadId={}", objectKey, uploadId);
-        return uploadId;
     }
 
     @Override
-    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize,
-                             InputStream partInputStream, String partIdentifierForLocal) {
+    public String uploadPart(String objectKey, String uploadId, int partNumber, long partSize, InputStream partInputStream) {
         ensureNotPrototype();
 
         try {
             // 构建分片文件路径
-            String tempDir = basePath + ".temp/" + uploadId + "/";
-            String partFileName = "part_" + partNumber;
-            String partFilePath = tempDir + partFileName;
+            String tempDir = getTempDir(uploadId);
+            String partFilePath = tempDir + partNumber;
+
+            // 确保临时目录存在
+            File tempDirFile = new File(tempDir);
+            if (!tempDirFile.exists()) {
+                if (!tempDirFile.mkdirs()) {
+                    throw new IOException("无法创建临时目录: " + tempDir);
+                }
+            }
 
             // 写入分片文件
             try (FileOutputStream fos = new FileOutputStream(partFilePath)) {
@@ -216,7 +228,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
             // 生成分片标识（使用文件大小和修改时间）
             File partFile = new File(partFilePath);
-            String etag = String.valueOf(partFile.length()) + "_" + partFile.lastModified();
+            String etag = partFile.length() + "_" + partFile.lastModified();
 
             log.debug("本地存储分片上传成功: objectKey={}, partNumber={}, etag={}", objectKey, partNumber, etag);
             return etag;
@@ -228,12 +240,41 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
+    public Set<Integer> listParts(String objectKey, String uploadId) {
+        ensureNotPrototype();
+
+        Set<Integer> uploadedParts = new HashSet<>();
+        String tempDir = getTempDir(uploadId);
+        File dir = new File(tempDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            log.debug("{} 临时目录不存在: uploadId={}, tempDir={}",
+                    getLogPrefix(), uploadId, tempDir);
+            return uploadedParts;
+        }
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                try {
+                    // 文件名即为分片号
+                    int partNumber = Integer.parseInt(file.getName());
+                    uploadedParts.add(partNumber);
+                } catch (NumberFormatException e) {
+                    log.warn("{} 无效的分片文件名: {}", getLogPrefix(), file.getName());
+                }
+            }
+        }
+        log.debug("{} 已上传分片列表: uploadId={}, parts={}",
+                getLogPrefix(), uploadId, uploadedParts);
+        return uploadedParts;
+    }
+
+    @Override
     public String completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
         ensureNotPrototype();
 
         try {
             // 构建最终文件路径
-            String fullPath = basePath + objectKey;
+            String fullPath = resolveFullPath(objectKey);
             File targetFile = new File(fullPath);
 
             // 确保父目录存在
@@ -245,31 +286,27 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
             }
 
             // 合并分片文件
-            String tempDir = basePath + ".temp/" + uploadId + "/";
-            try (FileOutputStream fos = new FileOutputStream(targetFile)) {
+            String tempDir = getTempDir(uploadId);
+            try (FileOutputStream fos = new FileOutputStream(targetFile);
+                 FileChannel outChannel = fos.getChannel()) {
+
                 // 按分片号排序
                 partETags.sort((a, b) -> {
                     int partNumA = (int) a.get("partNumber");
                     int partNumB = (int) b.get("partNumber");
                     return Integer.compare(partNumA, partNumB);
                 });
-
                 // 依次读取并合并分片
                 for (Map<String, Object> partInfo : partETags) {
                     int partNumber = (int) partInfo.get("partNumber");
-                    String partFilePath = tempDir + "part_" + partNumber;
+                    String partFilePath = tempDir + partNumber; // 使用分片号作为文件名
                     File partFile = new File(partFilePath);
-
                     if (!partFile.exists()) {
                         throw new StorageOperationException("分片文件不存在: " + partFilePath);
                     }
-
-                    try (FileInputStream fis = new FileInputStream(partFile)) {
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = fis.read(buffer)) != -1) {
-                            fos.write(buffer, 0, bytesRead);
-                        }
+                    try (FileInputStream fis = new FileInputStream(partFile);
+                         FileChannel inChannel = fis.getChannel()) {
+                        inChannel.transferTo(0, inChannel.size(), outChannel);
                     }
                 }
             }
@@ -292,7 +329,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
         try {
             // 清理临时目录
-            String tempDir = basePath + ".temp/" + uploadId + "/";
+            String tempDir = getTempDir(uploadId);
             FileUtil.del(tempDir);
             log.info("本地存储分片上传已中止: objectKey={}, uploadId={}", objectKey, uploadId);
 
@@ -302,39 +339,10 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
         }
     }
 
-    @Override
-    public List<Map<String, Object>> listParts(String objectKey, String uploadId) {
-        ensureNotPrototype();
-
-        try {
-            String tempDir = basePath + ".temp/" + uploadId + "/";
-            File tempDirFile = new File(tempDir);
-
-            if (!tempDirFile.exists()) {
-                return new ArrayList<>();
-            }
-
-            List<Map<String, Object>> partList = new ArrayList<>();
-            File[] partFiles = tempDirFile.listFiles((dir, name) -> name.startsWith("part_"));
-
-            if (partFiles != null) {
-                for (File partFile : partFiles) {
-                    String fileName = partFile.getName();
-                    int partNumber = Integer.parseInt(fileName.substring(5)); // 去掉"part_"前缀
-
-                    Map<String, Object> partInfo = new HashMap<>();
-                    partInfo.put("partNumber", partNumber);
-                    partInfo.put("eTag", String.valueOf(partFile.length()) + "_" + partFile.lastModified());
-                    partInfo.put("size", partFile.length());
-                    partList.add(partInfo);
-                }
-            }
-
-            return partList;
-
-        } catch (Exception e) {
-            log.error("查询本地存储已上传分片失败, objectKey={}: {}", objectKey, e.getMessage(), e);
-            throw new StorageOperationException("查询本地存储已上传分片失败: " + e.getMessage(), e);
-        }
+    /**
+     * 获取临时目录路径
+     */
+    private String getTempDir(String uploadId) {
+        return basePath + File.separator + "temp" + File.separator + uploadId + File.separator;
     }
 }

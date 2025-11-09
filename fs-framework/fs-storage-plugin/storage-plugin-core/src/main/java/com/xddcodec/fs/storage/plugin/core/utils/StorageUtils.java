@@ -1,7 +1,6 @@
 package com.xddcodec.fs.storage.plugin.core.utils;
 
 import cn.hutool.core.util.StrUtil;
-import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 
 /**
@@ -50,15 +49,13 @@ public class StorageUtils {
                 : trimmed;
     }
 
-    /**
-     * 生成缓存键
-     *
-     * @param configId 配置ID
-     * @return 缓存键
-     */
-    public static String generateCacheKey(String configId) {
-        return isLocalConfig(configId)
-                ? StoragePlatformIdentifierEnum.LOCAL.getIdentifier()
-                : configId;
+    public static String generateCacheKey(String platformIdentifier, String configId) {
+        if (isLocalConfig(configId)) {
+            return "local:system";
+        }
+        if (platformIdentifier == null || platformIdentifier.isBlank()) {
+            throw new IllegalArgumentException("平台标识符不能为空: configId=" + configId);
+        }
+        return platformIdentifier + ":" + configId;
     }
 }

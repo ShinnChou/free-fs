@@ -1,5 +1,8 @@
 package com.xddcodec.fs.framework.common.utils;
 
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,8 +19,8 @@ import java.net.URLEncoder;
  * @Author: xddcode
  * @Date: 2024/6/7 11:12
  */
-public class FileUtil {
-    private FileUtil() {
+public class FileUtils {
+    private FileUtils() {
         throw new IllegalStateException("Utility class");
     }
 
@@ -97,8 +100,8 @@ public class FileUtil {
             return "image/gif";
         }
         if (filenameExtension.equalsIgnoreCase(".jpeg") ||
-            filenameExtension.equalsIgnoreCase(".jpg") ||
-            filenameExtension.equalsIgnoreCase(".png")) {
+                filenameExtension.equalsIgnoreCase(".jpg") ||
+                filenameExtension.equalsIgnoreCase(".png")) {
             return "image/jpg";
         }
         if (filenameExtension.equalsIgnoreCase(".html")) {
@@ -111,7 +114,7 @@ public class FileUtil {
             return "application/vnd.visio";
         }
         if (filenameExtension.equalsIgnoreCase(".pptx") ||
-            filenameExtension.equalsIgnoreCase(".ppt")) {
+                filenameExtension.equalsIgnoreCase(".ppt")) {
             return "application/vnd.ms-powerpoint";
         }
         if (filenameExtension.equalsIgnoreCase(".docx")) {
@@ -123,23 +126,54 @@ public class FileUtil {
         return "image/jpg";
     }
 
-    /**
-     * 获取文件名
-     *
-     * @param fileName
-     * @return
-     */
-    public static String getFileName(String fileName) {
-        return fileName.substring(0, fileName.lastIndexOf(CommonConstant.SUFFIX_SPLIT));
-    }
 
     /**
      * 获取文件后缀名
      *
+     * @param fileName
      * @return
      */
-    public static String getFileSuffix(String fileName) {
-        return fileName.substring(fileName.lastIndexOf(CommonConstant.SUFFIX_SPLIT) + 1).toLowerCase();
+    public static String getSuffix(String fileName) {
+        return FileUtil.getSuffix(fileName);
+    }
+
+
+    /**
+     * 获取文件扩展名
+     *
+     * @param fileName 文件名
+     * @return
+     */
+    public static String extName(String fileName) {
+        return FileUtil.extName(fileName);
+    }
+
+    /**
+     * 生成对象键
+     * 格式: {projectName}/{userId}/{yyyyMMdd}/{fileId}.{suffix}
+     * 示例: free-fs/user001/20241226/abc123.pdf
+     *
+     * @param prefix     前缀
+     * @param userId     用户ID
+     * @param objectName 对象名称
+     * @return
+     */
+    public static String generateObjectKey(String prefix, String userId, String objectName) {
+        StringBuilder objectKey = new StringBuilder();
+
+        objectKey.append(prefix).append("/");
+
+        if (StrUtil.isNotBlank(userId)) {
+            objectKey.append(userId).append("/");
+        } else {
+            objectKey.append("anonymous/");  // 匿名用户
+        }
+
+        String dateDir = DateUtil.format(new java.util.Date(), "yyyyMMdd");
+        objectKey.append(dateDir).append("/");
+
+        objectKey.append(objectName);
+        return objectKey.toString();
     }
 
     public static void downLoad(String url, String path, HttpServletResponse response) {

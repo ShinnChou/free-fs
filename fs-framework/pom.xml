@@ -22,5 +22,6 @@
         <module>fs-security</module>
         <module>fs-swagger</module>
         <module>fs-storage-plugin</module>
+        <module>fs-websocket</module>
     </modules>
 </project>

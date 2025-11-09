@@ -26,12 +26,19 @@
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-swagger</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>fs-redis</artifactId>
+        </dependency>
         <!-- 存储插件依赖 -->
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-storage</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>fs-websocket</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

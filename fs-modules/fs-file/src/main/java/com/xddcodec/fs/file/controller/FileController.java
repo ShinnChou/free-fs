@@ -1,7 +1,8 @@
 package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
+import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -23,7 +24,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.net.URLEncoder;
@@ -50,19 +50,26 @@ public class FileController {
     private FileUserFavoritesService fileUserFavoritesService;
 
     @GetMapping("/list")
-    @Operation(summary = "查询文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
+    @Operation(summary = "查询所有文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
     public Result<List<FileVO>> getList(FileQry qry) {
         List<FileVO> list = fileInfoService.getList(qry);
         return Result.ok(list);
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "上传文件", description = "上传文件到指定目录")
-    @Parameters(value = {@Parameter(name = "parentId", description = "父目录ID，如果为空则上传到根目录")})
-    public Result<FileInfo> uploadFile(@RequestPart("file") MultipartFile file, @RequestParam(value = "parentId", required = false) String parentId) {
-        FileInfo fileInfo = fileInfoService.uploadFile(file, parentId);
-        return Result.ok(fileInfo);
+    @GetMapping("/dirs")
+    @Operation(summary = "查询目录列表", description = "查询目录列表")
+    public Result<List<FileVO>> getDirs(String parentId) {
+        List<FileVO> list = fileInfoService.getDirs(parentId);
+        return Result.ok(list);
     }
+
+//    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    @Operation(summary = "上传文件", description = "上传文件到指定目录")
+//    @Parameters(value = {@Parameter(name = "parentId", description = "父目录ID，如果为空则上传到根目录")})
+//    public Result<FileInfo> uploadFile(@RequestPart("file") MultipartFile file, @RequestParam(value = "parentId", required = false) String parentId) {
+//        FileInfo fileInfo = fileInfoService.uploadFile(file, parentId);
+//        return Result.ok(fileInfo);
+//    }
 
     @GetMapping("/download/{fileId}")
     @Operation(summary = "下载文件", description = "根据文件ID下载文件")
@@ -80,10 +87,20 @@ public class FileController {
 
             String encodedFileName = URLEncoder.encode(fileInfo.getOriginalName(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
 
-            return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName).contentType(MediaType.parseMediaType(fileInfo.getMimeType())).contentLength(fileInfo.getSize()).body(resource);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                    .contentType(MediaType.parseMediaType(fileInfo.getMimeType()))
+                    .contentLength(fileInfo.getSize())
+                    .body(resource);
         } catch (StorageOperationException e) {
             log.error("下载文件失败: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            // 根据异常消息返回适当的HTTP状态码
+            String message = e.getMessage().toLowerCase();
+            if (message.contains("文件不存在") || message.contains("nosuchkey")) {
+                return ResponseEntity.notFound().build();
+            }
+            // 其他错误返回500
+            return ResponseEntity.status(500).build();
         }
     }
 
@@ -105,8 +122,8 @@ public class FileController {
 
     @PostMapping("/directory")
     @Operation(summary = "创建目录", description = "在指定目录下创建新目录")
-    public Result<?> createDirectory(@RequestBody @Validated CreateDirectoryDTO dto) {
-        fileInfoService.createDirectory(dto);
+    public Result<?> createDirectory(@RequestBody @Validated CreateDirectoryCmd cmd) {
+        fileInfoService.createDirectory(cmd);
         return Result.ok();
     }
 
@@ -114,6 +131,13 @@ public class FileController {
     @Operation(summary = "文件重命名", description = "文件重命名")
     public Result<?> createDirectory(@PathVariable String fileId, @RequestBody @Validated RenameFileCmd cmd) {
         fileInfoService.renameFile(fileId, cmd);
+        return Result.ok();
+    }
+
+    @PutMapping("/moves")
+    @Operation(summary = "文件移动", description = "文件移动")
+    public Result<?> createDirectory(@RequestBody @Validated MoveFileCmd cmd) {
+        fileInfoService.moveFile(cmd);
         return Result.ok();
     }
 
@@ -127,8 +151,8 @@ public class FileController {
 
     @GetMapping("/recycles")
     @Operation(summary = "获取回收站列表", description = "获取回收站列表")
-    public Result<?> getRecycles() {
-        List<FileRecycleVO> list = fileInfoService.getRecycles();
+    public Result<?> getRecycles(String keyword) {
+        List<FileRecycleVO> list = fileInfoService.getRecycles(keyword);
         return Result.ok(list);
     }
 

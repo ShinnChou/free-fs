@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.domain;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
+import com.mybatisflex.core.keygen.KeyGenerators;
 import com.xddcodec.fs.framework.orm.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +21,7 @@ import java.time.LocalDateTime;
 @Table("file_shares")
 public class FileShare extends BaseEntity {
 
-    @Id(keyType = KeyType.None)
+    @Id(keyType = KeyType.Generator, value = KeyGenerators.ulid)
     private String id;
 
     /**
@@ -62,9 +63,4 @@ public class FileShare extends BaseEntity {
      * 最大下载次数（NULL表示无限制）
      */
     private Integer maxDownloadCount;
-
-    /**
-     * 是否已取消
-     */
-    private Boolean isCanceled;
 }

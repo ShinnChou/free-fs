@@ -7,11 +7,11 @@ import lombok.Data;
 /**
  * 创建目录DTO
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2025/5/13 8:41
  */
 @Data
-public class CreateDirectoryDTO {
+public class CreateDirectoryCmd {
 
     @Schema(title = "目录名称")
     @NotBlank(message = "目录名称不能为空")

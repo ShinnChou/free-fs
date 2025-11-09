@@ -158,19 +158,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void editUser(UserEditCmd cmd) {
-        SysUser existUser = this.getById(cmd.getId());
+    public void editUserInfo(UserEditInfoCmd cmd) {
+        String userId = StpUtil.getLoginIdAsString();
+        SysUser existUser = this.getById(userId);
         if (existUser == null) {
             throw new BusinessException("用户不存在");
         }
-        if (!existUser.getUsername().equals(cmd.getUsername())) {
-            SysUser user = this.getByUsername(cmd.getUsername());
-            if (user != null) {
-                throw new BusinessException("用户名已存在");
-            }
-        }
-        existUser.setUsername(cmd.getUsername());
-        existUser.setEmail(cmd.getEmail());
         existUser.setNickname(cmd.getNickname());
         this.updateById(existUser);
     }

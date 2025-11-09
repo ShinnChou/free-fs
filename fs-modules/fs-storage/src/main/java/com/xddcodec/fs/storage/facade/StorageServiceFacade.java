@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
-import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.storage.domain.StorageSetting;
 import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
 import com.xddcodec.fs.storage.plugin.boot.StoragePluginManager;
@@ -12,7 +12,6 @@ import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
-import com.xddcodec.fs.storage.service.StorageSettingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -50,9 +49,11 @@ public class StorageServiceFacade {
     }
 
     /**
-     * 根据配置ID获取存储服务
+     * 根据配置ID获取存储服务（推荐使用）
+     * <p>
+     * 此方法不依赖 ThreadLocal，适用于所有场景，包括异步任务和多线程环境。
      *
-     * @param configId 配置ID
+     * @param configId 配置ID（可从 FileInfo.storagePlatformSettingId 获取）
      * @return 存储服务实例
      */
     public IStorageOperationService getStorageService(String configId) {
@@ -68,11 +69,6 @@ public class StorageServiceFacade {
         );
     }
 
-    /**
-     * 刷新指定配置的实例（重新加载配置）
-     *
-     * @param configId 配置ID
-     */
     public void refreshInstance(String configId) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.warn("Local 存储实例不支持刷新");
@@ -80,14 +76,9 @@ public class StorageServiceFacade {
         }
 
         log.info("刷新存储实例: configId={}", configId);
-        pluginManager.invalidateConfig(configId);
+        pluginManager.invalidateConfig(configId, () -> loadConfigFromDatabase(configId));
     }
 
-    /**
-     * 移除指定配置的实例（删除配置时调用）
-     *
-     * @param configId 配置ID
-     */
     public void removeInstance(String configId) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.warn("Local 存储实例不支持移除");
@@ -95,7 +86,7 @@ public class StorageServiceFacade {
         }
 
         log.info("移除存储实例: configId={}", configId);
-        pluginManager.invalidateConfig(configId);
+        pluginManager.invalidateConfig(configId, () -> loadConfigFromDatabase(configId));
     }
 
     /**
@@ -131,15 +122,15 @@ public class StorageServiceFacade {
      *
      * @param setting 数据库配置记录
      * @return StorageConfig
-     * @throws BusinessException 配置解析失败时抛出
+     * @throws StorageConfigException 配置解析失败时抛出
      */
     private StorageConfig buildStorageConfig(StorageSetting setting) {
         Map<String, Object> properties;
 
         try {
             if (StrUtil.isBlank(setting.getConfigData())) {
-                throw new StorageOperationException(
-                        String.format("配置数据为空: configId=%s", setting.getId())
+                throw new StorageConfigException(
+                        String.format("存储平台配置错误：配置数据为空, configId=%s", setting.getId())
                 );
             }
 
@@ -149,11 +140,15 @@ public class StorageServiceFacade {
                     }
             );
 
+        } catch (StorageConfigException e) {
+            // 重新抛出配置异常
+            throw e;
         } catch (Exception e) {
             log.error("配置数据解析失败: configId={}, error={}",
                     setting.getId(), e.getMessage(), e);
-            throw new StorageOperationException(
-                    String.format("配置数据解析失败: %s", e.getMessage()),
+            throw new StorageConfigException(
+                    String.format("存储平台配置错误：配置数据解析失败, configId=%s, error=%s",
+                            setting.getId(), e.getMessage()),
                     e
             );
         }

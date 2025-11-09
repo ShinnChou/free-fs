@@ -9,8 +9,11 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.mybatisflex.core.update.UpdateChain;
+import com.mybatisflex.core.update.UpdateWrapper;
+import com.mybatisflex.core.util.UpdateEntity;
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
+import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
@@ -20,6 +23,7 @@ import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.utils.StringUtils;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -66,121 +70,121 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Value("${spring.application.name:free-fs}")
     private String applicationName;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public FileInfo uploadFile(MultipartFile file, String parentId) {
-        if (file == null || file.isEmpty()) {
-            throw new StorageOperationException("上传文件不能为空");
-        }
-        String userId = StpUtil.getLoginIdAsString();
-        String configId = StoragePlatformContextHolder.getConfigId();
-        try {
-            return uploadFile(
-                    file.getInputStream(),
-                    file.getOriginalFilename(),
-                    file.getSize(),
-                    file.getContentType(),
-                    userId,
-                    parentId,
-                    configId
-            );
-        } catch (IOException e) {
-            log.error("读取上传文件流失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("读取上传文件流失败: " + e.getMessage(), e);
-        }
-    }
+//    @Override
+//    @Transactional(rollbackFor = Exception.class)
+//    public FileInfo uploadFile(MultipartFile file, String parentId) {
+//        if (file == null || file.isEmpty()) {
+//            throw new StorageOperationException("上传文件不能为空");
+//        }
+//        String userId = StpUtil.getLoginIdAsString();
+//        String configId = StoragePlatformContextHolder.getConfigId();
+//        try {
+//            return uploadFile(
+//                    file.getInputStream(),
+//                    file.getOriginalFilename(),
+//                    file.getSize(),
+//                    file.getContentType(),
+//                    userId,
+//                    parentId,
+//                    configId
+//            );
+//        } catch (IOException e) {
+//            log.error("读取上传文件流失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("读取上传文件流失败: " + e.getMessage(), e);
+//        }
+//    }
+//
+//    @Override
+//    @Transactional(rollbackFor = Exception.class)
+//    public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
+//                               String userId, String parentId, String storagePlatformSettingId) {
+//        if (inputStream == null) {
+//            throw new StorageOperationException("上传文件流不能为空");
+//        }
+//        if (StrUtil.isBlank(originalName)) {
+//            throw new StorageOperationException("原始文件名不能为空");
+//        }
+//
+//        byte[] fileBytes = null;
+//        String md5 = null;
+//        try {
+//            fileBytes = IoUtil.readBytes(inputStream);
+//
+//            // 计算文件 MD5
+//            md5 = DigestUtil.md5Hex(fileBytes);
+//        } catch (Exception e) {
+//            log.error("读取文件流失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("读取文件流失败: " + e.getMessage(), e);
+//        } finally {
+//            IoUtil.close(inputStream);
+//        }
+//
+//        // 秒传检查
+//        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
+//        if (existingFile != null) {
+//            log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
+//            return existingFile;
+//        }
+//
+//        // 获取存储服务（使用文件记录中的 storagePlatformSettingId）
+//        IStorageOperationService storageService = storageServiceFacade.getStorageService(storagePlatformSettingId);
+//
+//        // 生成文件ID和对象键
+//        String fileId = IdUtil.fastSimpleUUID();
+//        String suffix = FileUtil.extName(originalName);
+//
+//        //TODO 后续保存的文件名需要根据用户的配置是否生成新的
+//        String displayName = IdUtil.fastSimpleUUID() + "." + suffix;
+//        String objectKey = generateObjectKey(userId, displayName, suffix);
+//
+//        try {
+//            ByteArrayInputStream uploadStream = new ByteArrayInputStream(fileBytes);
+//            storageService.uploadFile(uploadStream, objectKey);
+//        } catch (StorageOperationException e) {
+//            // 统一转换为友好的业务异常消息
+//            log.error("文件上传到存储平台失败: {}", e.getMessage(), e);
+//            throw new StorageOperationException("文件上传失败，请检查当前存储平台配置后重试");
+//        }
+//
+//        // 创建文件信息记录
+//        FileInfo fileInfo = new FileInfo();
+//        fileInfo.setId(fileId);
+//        fileInfo.setObjectKey(objectKey);
+//        fileInfo.setOriginalName(originalName);
+//        // 默认显示名与原始名相同
+//        fileInfo.setDisplayName(displayName);
+//        fileInfo.setSuffix(suffix);
+//        fileInfo.setSize(size);
+//        fileInfo.setMimeType(mimeType);
+//        fileInfo.setIsDir(false);
+//        fileInfo.setParentId(parentId);
+//        fileInfo.setUserId(userId);
+//        fileInfo.setContentMd5(md5);
+//        fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
+//        fileInfo.setUploadTime(LocalDateTime.now());
+//        fileInfo.setUpdateTime(LocalDateTime.now());
+//        fileInfo.setIsDeleted(false);
+//
+//        // 保存文件信息到数据库
+//        save(fileInfo);
+//        return fileInfo;
+//    }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-                               String userId, String parentId, String storagePlatformSettingId) {
-        if (inputStream == null) {
-            throw new StorageOperationException("上传文件流不能为空");
-        }
-        if (StrUtil.isBlank(originalName)) {
-            throw new StorageOperationException("原始文件名不能为空");
-        }
-
-        byte[] fileBytes = null;
-        String md5 = null;
-        try {
-            fileBytes = IoUtil.readBytes(inputStream);
-
-            // 计算文件 MD5
-            md5 = DigestUtil.md5Hex(fileBytes);
-        } catch (Exception e) {
-            log.error("读取文件流失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("读取文件流失败: " + e.getMessage(), e);
-        } finally {
-            IoUtil.close(inputStream);
-        }
-
-        // 秒传检查
-        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
-        if (existingFile != null) {
-            log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
-            return existingFile;
-        }
-
-        // 获取存储服务
-        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
-
-        // 生成文件ID和对象键
-        String fileId = IdUtil.fastSimpleUUID();
-        String suffix = FileUtil.extName(originalName);
-
-        //TODO 后续保存的文件名需要根据用户的配置是否生成新的
-        String displayName = IdUtil.fastSimpleUUID() + "." + suffix;
-        String objectKey = generateObjectKey(userId, displayName, suffix);
-        try {
-            // 从字节数组创建新的输入流上传到存储平台
-            ByteArrayInputStream uploadStream = new ByteArrayInputStream(fileBytes);
-            storageService.uploadFile(uploadStream, objectKey, mimeType, size);
-
-            // 创建文件信息记录
-            FileInfo fileInfo = new FileInfo();
-            fileInfo.setId(fileId);
-            fileInfo.setObjectKey(objectKey);
-            fileInfo.setOriginalName(originalName);
-            // 默认显示名与原始名相同
-            fileInfo.setDisplayName(displayName);
-            fileInfo.setSuffix(suffix);
-            fileInfo.setSize(size);
-            fileInfo.setMimeType(mimeType);
-            fileInfo.setIsDir(false);
-            fileInfo.setParentId(parentId);
-            fileInfo.setUserId(userId);
-            fileInfo.setContentMd5(md5);
-            fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
-            fileInfo.setUploadTime(LocalDateTime.now());
-            fileInfo.setUpdateTime(LocalDateTime.now());
-            fileInfo.setIsDeleted(false);
-
-            // 保存文件信息到数据库
-            save(fileInfo);
-            return fileInfo;
-        } catch (Exception e) {
-            log.error("上传文件失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("上传文件失败: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
-        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
-            return null;
-        }
-        FileInfo existingFile = getOne(
-                new QueryWrapper()
-                        .where(FILE_INFO.CONTENT_MD5.eq(md5)
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                                .and(FILE_INFO.USER_ID.eq(userId))
-                                .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
-                                .and(FILE_INFO.IS_DELETED.eq(false))
-                        )
-        );
-        return existingFile;
-    }
+//    @Override
+//    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
+//        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
+//            return null;
+//        }
+//        return getOne(
+//                new QueryWrapper()
+//                        .where(FILE_INFO.CONTENT_MD5.eq(md5)
+//                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+//                                .and(FILE_INFO.USER_ID.eq(userId))
+//                                .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
+//                                .and(FILE_INFO.IS_DELETED.eq(false))
+//                        )
+//        );
+//    }
 
     @Override
     public InputStream downloadFile(String fileId) {
@@ -195,9 +199,19 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             throw new StorageOperationException("文件已被删除: " + fileId);
         }
 
-        // 根据文件记录中的平台标识获取对应的存储服务
-        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
-        return storageService.downloadFile(fileInfo.getObjectKey());
+        // 根据文件记录中的 storagePlatformSettingId 获取对应的存储服务
+        try {
+            IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+            return storageService.downloadFile(fileInfo.getObjectKey());
+        } catch (StorageOperationException e) {
+            // 统一转换为友好的业务异常消息
+            log.error("从存储平台下载文件失败: {}", e.getMessage(), e);
+            String friendlyMessage = e.getMessage().toLowerCase().contains("文件不存在") ||
+                    e.getMessage().toLowerCase().contains("nosuchkey")
+                    ? "文件不存在或已被删除"
+                    : "文件下载失败，请重试";
+            throw new StorageOperationException(friendlyMessage);
+        }
     }
 
     @Override
@@ -213,9 +227,15 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             throw new StorageOperationException("文件已被删除: " + fileId);
         }
 
-        // 根据文件记录中的平台标识获取对应的存储服务
-        IStorageOperationService storageService = storageServiceFacade.getCurrentStorageService();
-        return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
+        // 根据文件记录中的 storagePlatformSettingId 获取对应的存储服务
+        try {
+            IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+            return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
+        } catch (StorageOperationException e) {
+            // 统一转换为友好的业务异常消息
+            log.error("获取文件URL失败: {}", e.getMessage(), e);
+            throw new StorageOperationException("获取文件访问地址失败，请重试");
+        }
     }
 
     @Override
@@ -246,15 +266,15 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createDirectory(CreateDirectoryDTO dto) {
+    public void createDirectory(CreateDirectoryCmd cmd) {
         // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
         String platformConfigId = StoragePlatformContextHolder.getConfigId();
-        String baseName = dto.getFolderName().trim();
+        String baseName = cmd.getFolderName().trim();
         String finalName = generateUniqueName(
                 userId,
-                dto.getParentId(),
+                cmd.getParentId(),
                 baseName,
                 true,
                 null
@@ -265,7 +285,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setOriginalName(finalName);
         dirInfo.setDisplayName(finalName);
         dirInfo.setIsDir(true);
-        dirInfo.setParentId(dto.getParentId());
+        dirInfo.setParentId(cmd.getParentId());
         dirInfo.setUserId(userId);
         dirInfo.setStoragePlatformSettingId(platformConfigId);
         dirInfo.setUploadTime(LocalDateTime.now());
@@ -296,6 +316,60 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         fileInfo.setDisplayName(finalName);
         fileInfo.setUpdateTime(LocalDateTime.now());
         updateById(fileInfo);
+    }
+
+    @Override
+    public void moveFile(MoveFileCmd cmd) {
+        if (CollUtil.isEmpty(cmd.getFileIds())) {
+            throw new BusinessException("文件ID列表不能为空");
+        }
+
+        // 处理空字符串，统一转为null表示根目录
+        String targetDirId = StringUtils.isBlank(cmd.getDirId()) ? null : cmd.getDirId();
+
+        // 如果dirId不为空，校验目标目录是否存在且为目录类型
+        if (targetDirId != null) {
+            FileInfo dirInfo = getById(targetDirId);
+            if (dirInfo == null) {
+                throw new BusinessException("目标目录不存在");
+            }
+            if (!dirInfo.getIsDir()) {
+                throw new BusinessException("目标必须是目录");
+            }
+        }
+
+        // 批量移动文件
+        for (String fileId : cmd.getFileIds()) {
+            FileInfo fileInfo = getById(fileId);
+            if (fileInfo == null) {
+                continue;
+            }
+            // 防止将目录移动到自己或自己的子目录下
+            if (targetDirId != null && fileInfo.getIsDir()) {
+                if (fileId.equals(targetDirId) || isSubDirectory(fileId, targetDirId)) {
+                    throw new BusinessException("不能将目录移动到自身或子目录下");
+                }
+            }
+            // 设置新的父目录ID（null表示根目录）
+            fileInfo.setParentId(targetDirId);
+
+            FileInfo updateEntity = UpdateEntity.of(FileInfo.class, fileInfo.getId());
+            updateEntity.setParentId(targetDirId);
+            updateById(updateEntity);
+        }
+
+    }
+
+    // 检查targetId是否是sourceId的子目录
+    private boolean isSubDirectory(String sourceId, String targetId) {
+        FileInfo current = getById(targetId);
+        while (current != null && current.getParentId() != null) {
+            if (current.getParentId().equals(sourceId)) {
+                return true;
+            }
+            current = getById(current.getParentId());
+        }
+        return false;
     }
 
     /**
@@ -539,43 +613,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     }
 
-    /**
-     * 生成对象键
-     * <p>
-     * 格式: {projectName}/{userId}/{yyyyMMdd}/{fileId}.{suffix}
-     * 示例: free-fs/user001/20241226/abc123.pdf
-     *
-     * @param userId     用户ID
-     * @param objectName 文件名
-     * @param suffix     文件后缀
-     * @return 对象键
-     */
-    private String generateObjectKey(String userId, String objectName, String suffix) {
-        StringBuilder objectKey = new StringBuilder();
-
-        // 1. 项目名称（从 spring.application.name 读取）
-        objectKey.append(applicationName).append("/");
-
-        // 2. 用户ID
-        if (StrUtil.isNotBlank(userId)) {
-            objectKey.append(userId).append("/");
-        } else {
-            objectKey.append("anonymous/");  // 匿名用户
-        }
-
-        // 3. 日期目录 (yyyyMMdd 格式)
-        String dateDir = DateUtil.format(new java.util.Date(), "yyyyMMdd");
-        objectKey.append(dateDir).append("/");
-
-        // 4. 文件ID + 后缀
-        objectKey.append(objectName);
-        if (StrUtil.isNotBlank(suffix)) {
-            objectKey.append(".").append(suffix);
-        }
-
-        return objectKey.toString();
-    }
-
     @Override
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
@@ -584,7 +621,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         // 构建查询条件
         QueryWrapper wrapper = new QueryWrapper();
 
-        // 【修改】添加 LEFT JOIN 查询收藏状态
         wrapper.select(
                         "fi.*",
                         "CASE WHEN fuf.file_id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite"
@@ -622,8 +658,27 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         String orderBy = StrUtil.toUnderlineCase(qry.getOrderBy());
         boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
         wrapper.orderBy(FILE_INFO.IS_DIR.desc())
+                .orderBy(FILE_INFO.UPDATE_TIME.desc())
                 .orderBy(orderBy, isAsc);
 
+        return this.listAs(wrapper, FileVO.class);
+    }
+
+    @Override
+    public List<FileVO> getDirs(String parentId) {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        QueryWrapper wrapper = new QueryWrapper();
+        wrapper.where(FILE_INFO.USER_ID.eq(userId)
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+                .and(FILE_INFO.IS_DELETED.eq(false))
+                .and(FILE_INFO.IS_DIR.eq(true))
+        );
+
+        if (StrUtil.isNotBlank(parentId)) {
+            wrapper.and(FILE_INFO.PARENT_ID.eq(parentId));
+        }
+        wrapper.orderBy(FILE_INFO.UPDATE_TIME.desc());
         return this.listAs(wrapper, FileVO.class);
     }
 
@@ -669,15 +724,21 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public List<FileRecycleVO> getRecycles() {
+    public List<FileRecycleVO> getRecycles(String keyword) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        List<FileInfo> fileInfos = this.list(
-                new QueryWrapper()
-                        .where(FILE_INFO.USER_ID.eq(userId)
-                                .and(FILE_INFO.IS_DELETED.eq(true))
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                        ));
+        QueryWrapper wrapper = new QueryWrapper();
+        wrapper.where(FILE_INFO.USER_ID.eq(userId));
+        wrapper.and(FILE_INFO.IS_DELETED.eq(true));
+        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        if (StrUtil.isNotBlank(keyword)) {
+            keyword = "%" + keyword.trim() + "%";
+            wrapper.and(
+                    FILE_INFO.ORIGINAL_NAME.like(keyword)
+                            .or(FILE_INFO.DISPLAY_NAME.like(keyword))
+            );
+        }
+        List<FileInfo> fileInfos = this.list(wrapper);
         return converter.convert(fileInfos, FileRecycleVO.class);
     }
 

@@ -1,7 +1,8 @@
 package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.dto.CreateDirectoryDTO;
+import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
+import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
@@ -27,7 +28,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param parentId 父目录ID，如果为null则上传到根目录
      * @return 文件信息
      */
-    FileInfo uploadFile(MultipartFile file, String parentId);
+//    FileInfo uploadFile(MultipartFile file, String parentId);
 
     /**
      * 上传文件
@@ -41,8 +42,8 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param storagePlatformIdentifier 存储平台标识符，如果为null则使用默认存储平台
      * @return 文件信息
      */
-    FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-                        String userId, String parentId, String storagePlatformIdentifier);
+//    FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
+//                        String userId, String parentId, String storagePlatformIdentifier);
 
     /**
      * 秒传检查
@@ -53,7 +54,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param originalName              原始文件名
      * @return
      */
-    FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName);
+//    FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName);
 
     /**
      * 下载文件
@@ -83,10 +84,10 @@ public interface FileInfoService extends IService<FileInfo> {
     /**
      * 创建目录
      *
-     * @param dto 创建目录请求参数
+     * @param cmd 创建目录请求参数
      * @return
      */
-    void createDirectory(CreateDirectoryDTO dto);
+    void createDirectory(CreateDirectoryCmd cmd);
 
     /**
      * 重命名文件
@@ -95,6 +96,13 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param cmd    重命名请求参数
      */
     void renameFile(String fileId, RenameFileCmd cmd);
+
+    /**
+     * 移动文件到指定目录
+     *
+     * @param cmd 移动文件请求参数
+     */
+    void moveFile(MoveFileCmd cmd);
 
     /**
      * 获取目录层级
@@ -113,6 +121,14 @@ public interface FileInfoService extends IService<FileInfo> {
     List<FileVO> getList(FileQry qry);
 
     /**
+     * 根据父目录ID查询目录列表
+     *
+     * @param parentId
+     * @return
+     */
+    List<FileVO> getDirs(String parentId);
+
+    /**
      * 根据文件ID列表查询文件信息
      *
      * @param fileIds
@@ -125,7 +141,7 @@ public interface FileInfoService extends IService<FileInfo> {
      *
      * @return
      */
-    List<FileRecycleVO> getRecycles();
+    List<FileRecycleVO> getRecycles(String keyword);
 
     /**
      * 恢复已删除的文件

@@ -9,19 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
-/**
- * 存储插件管理器（门面）
- * 职责：
- * 1. 组合各个管理组件
- * 2. 提供统一的对外接口
- * 3. 协调 Local 和用户配置的处理逻辑
- *
- * @Author: xddcode
- * @Date: 2024/10/26
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -32,151 +23,85 @@ public class StoragePluginManager implements DisposableBean {
     private final StorageInstanceCache instanceCache;
     private final LocalStorageManager localStorageManager;
 
-    /**
-     * 获取当前上下文的存储实例（仅从缓存获取）
-     *
-     * @param configId 配置ID
-     * @return 存储服务实例
-     * @throws StorageOperationException 如果实例未初始化
-     */
-    public IStorageOperationService getCurrentInstance(String configId) {
-        // Local 存储
+    public IStorageOperationService getCurrentInstance(String configId, Supplier<StorageConfig> configLoader) {
         if (StorageUtils.isLocalConfig(configId)) {
             return localStorageManager.getLocalInstance();
         }
 
-        // 用户配置存储（仅从缓存获取）
-        IStorageOperationService instance = instanceCache.get(configId);
-
+        StorageConfig config = configLoader.get();
+        String cacheKey = config.getCacheKey();
+        IStorageOperationService instance = instanceCache.get(cacheKey);
+        
         if (instance == null) {
-            throw new StorageOperationException(
-                    String.format("存储实例未初始化，请检查配置: %s", configId)
-            );
+            throw new StorageOperationException("存储实例未初始化，请检查配置: " + configId);
         }
-
         return instance;
     }
 
-    /**
-     * 获取或创建存储实例（支持延迟加载配置）
-     *
-     * @param configId     配置ID
-     * @param configLoader 配置加载器（缓存未命中时调用）
-     * @return 存储服务实例
-     */
-    public IStorageOperationService getOrCreateInstance(
-            String configId,
-            Supplier<StorageConfig> configLoader) {
-
-        // Local 存储
+    public IStorageOperationService getOrCreateInstance(String configId, Supplier<StorageConfig> configLoader) {
         if (StorageUtils.isLocalConfig(configId)) {
             return localStorageManager.getLocalInstance();
         }
 
-        // 用户配置存储（带缓存）
-        return instanceCache.getOrCreate(configId, () -> {
-            // 加载配置
-            log.debug("缓存未命中，开始加载配置: configId={}", configId);
-            StorageConfig config = configLoader.get();
+        StorageConfig config = configLoader.get();
+        String cacheKey = config.getCacheKey();
 
-            // 创建实例
+        return instanceCache.getOrCreate(cacheKey, () -> {
+            log.debug("开始创建存储实例: configId={}, cacheKey={}", configId, cacheKey);
             return instanceFactory.createInstance(config);
         });
     }
 
-    /**
-     * 获取 Local 实例
-     *
-     * @return Local 存储实例
-     */
     public IStorageOperationService getLocalInstance() {
         return localStorageManager.getLocalInstance();
     }
 
-    /**
-     * 使配置失效（从缓存中移除并关闭实例）
-     *
-     * @param configId 配置ID
-     */
-    public void invalidateConfig(String configId) {
+    public void invalidateConfig(String configId, Supplier<StorageConfig> configLoader) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.debug("Local 平台为全局单例，不支持失效操作");
             return;
         }
 
-        instanceCache.invalidate(configId);
+        StorageConfig config = configLoader.get();
+        String cacheKey = config.getCacheKey();
+        instanceCache.invalidate(cacheKey);
     }
 
-    /**
-     * 批量失效配置
-     *
-     * @param configIds 配置ID列表
-     */
-    public void invalidateConfigs(List<String> configIds) {
+    public void invalidateConfigs(List<String> configIds, Supplier<List<StorageConfig>> configLoader) {
         if (configIds == null || configIds.isEmpty()) {
-            log.debug("批量失效配置列表为空，跳过");
             return;
         }
 
-        // 过滤掉 Local 配置
-        List<String> filteredConfigIds = configIds.stream()
-                .filter(configId -> !StorageUtils.isLocalConfig(configId))
+        List<StorageConfig> configs = configLoader.get();
+        List<String> cacheKeys = configs.stream()
+                .map(StorageConfig::getCacheKey)
                 .toList();
-
-        instanceCache.invalidateBatch(filteredConfigIds);
+        instanceCache.invalidateBatch(cacheKeys);
     }
 
-    /**
-     * 清除用户的所有实例
-     *
-     * @param configIds 用户的配置ID列表
-     */
-    public void clearUserInstances(List<String> configIds) {
-        log.info("清除用户的所有存储实例，共 {} 个配置",
-                configIds == null ? 0 : configIds.size());
-        invalidateConfigs(configIds);
+    public void clearUserInstances(List<String> configIds, Supplier<List<StorageConfig>> configLoader) {
+        log.info("清除用户的所有存储实例，共 {} 个配置", configIds == null ? 0 : configIds.size());
+        invalidateConfigs(configIds, configLoader);
     }
 
-    /**
-     * 获取插件原型实例
-     *
-     * @param platformIdentifier 平台标识符
-     * @return 原型实例
-     */
     public IStorageOperationService getPrototype(String platformIdentifier) {
         return pluginRegistry.getPrototype(platformIdentifier);
     }
 
-    /**
-     * 获取所有可用平台
-     *
-     * @return 平台标识符集合
-     */
     public Set<String> getAvailablePlatforms() {
         return pluginRegistry.getAvailablePlatforms();
     }
 
-    /**
-     * 清空所有缓存（危险操作，仅用于测试或维护）
-     */
     public void clearAllCache() {
         log.warn("清空所有存储实例缓存");
         instanceCache.clear();
     }
 
-    /**
-     * 销毁：关闭所有实例
-     */
     @Override
     public void destroy() {
         log.info("开始关闭所有存储实例...");
-
-        // 关闭 Local 实例
         localStorageManager.destroy();
-
-        // 关闭所有缓存实例
         instanceCache.clear();
-
         log.info("所有存储实例已关闭");
     }
 }

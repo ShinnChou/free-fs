@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 存储平台操作接口
@@ -41,19 +42,14 @@ public interface IStorageOperationService extends Closeable {
         return "{}";
     }
 
-    // ========== 基础文件操作 ==========
-
     /**
      * 上传文件
      *
      * @param inputStream 文件流
      * @param objectKey   对象键（文件路径）
-     * @param contentType 文件类型
-     * @param size        文件大小
      * @return 文件访问URL
      */
-    String uploadFile(InputStream inputStream, String objectKey,
-                      String contentType, long size);
+    void uploadFile(InputStream inputStream, String objectKey);
 
     /**
      * 下载文件
@@ -69,7 +65,7 @@ public interface IStorageOperationService extends Closeable {
      * @param objectKey 对象键
      * @return 是否成功
      */
-    boolean deleteFile(String objectKey);
+    void deleteFile(String objectKey);
 
     /**
      * 获取文件访问URL
@@ -88,33 +84,36 @@ public interface IStorageOperationService extends Closeable {
      */
     boolean isFileExist(String objectKey);
 
-    // ========== 分片上传 ==========
-
     /**
      * 初始化分片上传
      *
-     * @param objectKey      对象键
-     * @param mimeType       文件类型
-     * @param fileIdentifier 文件标识符
-     * @return 上传ID
+     * @param objectKey 对象键
+     * @param mimeType  文件类型
+     * @return 全局唯一上传ID
      */
-    String initiateMultipartUpload(String objectKey, String mimeType,
-                                   String fileIdentifier);
+    String initiateMultipartUpload(String objectKey, String mimeType);
 
     /**
      * 上传分片
      *
-     * @param objectKey              对象键
-     * @param uploadId               上传ID
-     * @param partNumber             分片序号
-     * @param partSize               分片大小
-     * @param partInputStream        分片流
-     * @param partIdentifierForLocal 本地存储的分片标识
+     * @param objectKey       对象键
+     * @param uploadId        上传ID
+     * @param partNumber      分片序号
+     * @param partSize        分片大小
+     * @param partInputStream 分片流
      * @return ETag
      */
     String uploadPart(String objectKey, String uploadId, int partNumber,
-                      long partSize, InputStream partInputStream,
-                      String partIdentifierForLocal);
+                      long partSize, InputStream partInputStream);
+
+    /**
+     * 列举已上传的所有分片
+     *
+     * @param objectKey 对象键
+     * @param uploadId  上传ID
+     * @return
+     */
+    Set<Integer> listParts(String objectKey, String uploadId);
 
     /**
      * 完成分片上传
@@ -134,15 +133,6 @@ public interface IStorageOperationService extends Closeable {
      * @param uploadId  上传ID
      */
     void abortMultipartUpload(String objectKey, String uploadId);
-
-    /**
-     * 列出已上传的分片
-     *
-     * @param objectKey 对象键
-     * @param uploadId  上传ID
-     * @return 分片信息列表
-     */
-    List<Map<String, Object>> listParts(String objectKey, String uploadId);
 
     /**
      * 关闭资源
