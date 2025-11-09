@@ -10,10 +10,8 @@ import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.channels.FileChannel;
+import java.util.*;
 
 /**
  * 本地存储插件实现
@@ -209,8 +207,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
         try {
             // 构建分片文件路径
             String tempDir = getTempDir(uploadId);
-            String partFileName = "part_" + partNumber;
-            String partFilePath = tempDir + partFileName;
+            String partFilePath = tempDir + partNumber;
 
             // 确保临时目录存在
             File tempDirFile = new File(tempDir);
@@ -243,6 +240,35 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
+    public Set<Integer> listParts(String objectKey, String uploadId) {
+        ensureNotPrototype();
+
+        Set<Integer> uploadedParts = new HashSet<>();
+        String tempDir = getTempDir(uploadId);
+        File dir = new File(tempDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            log.debug("{} 临时目录不存在: uploadId={}, tempDir={}",
+                    getLogPrefix(), uploadId, tempDir);
+            return uploadedParts;
+        }
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                try {
+                    // 文件名即为分片号
+                    int partNumber = Integer.parseInt(file.getName());
+                    uploadedParts.add(partNumber);
+                } catch (NumberFormatException e) {
+                    log.warn("{} 无效的分片文件名: {}", getLogPrefix(), file.getName());
+                }
+            }
+        }
+        log.debug("{} 已上传分片列表: uploadId={}, parts={}",
+                getLogPrefix(), uploadId, uploadedParts);
+        return uploadedParts;
+    }
+
+    @Override
     public String completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
         ensureNotPrototype();
 
@@ -261,30 +287,26 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
 
             // 合并分片文件
             String tempDir = getTempDir(uploadId);
-            try (FileOutputStream fos = new FileOutputStream(targetFile)) {
+            try (FileOutputStream fos = new FileOutputStream(targetFile);
+                 FileChannel outChannel = fos.getChannel()) {
+
                 // 按分片号排序
                 partETags.sort((a, b) -> {
                     int partNumA = (int) a.get("partNumber");
                     int partNumB = (int) b.get("partNumber");
                     return Integer.compare(partNumA, partNumB);
                 });
-
                 // 依次读取并合并分片
                 for (Map<String, Object> partInfo : partETags) {
                     int partNumber = (int) partInfo.get("partNumber");
-                    String partFilePath = tempDir + "part_" + partNumber;
+                    String partFilePath = tempDir + partNumber; // 使用分片号作为文件名
                     File partFile = new File(partFilePath);
-
                     if (!partFile.exists()) {
                         throw new StorageOperationException("分片文件不存在: " + partFilePath);
                     }
-
-                    try (FileInputStream fis = new FileInputStream(partFile)) {
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = fis.read(buffer)) != -1) {
-                            fos.write(buffer, 0, bytesRead);
-                        }
+                    try (FileInputStream fis = new FileInputStream(partFile);
+                         FileChannel inChannel = fis.getChannel()) {
+                        inChannel.transferTo(0, inChannel.size(), outChannel);
                     }
                 }
             }

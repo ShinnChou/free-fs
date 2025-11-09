@@ -19,18 +19,42 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class AsyncConfig {
 
     /**
-     * 文件上传任务线程池
-     * 支持批量上传：5个文件 × 3个分片/文件 = 15个并发
+     * 分片上传线程池
+     * 核心线程数 = CPU核心数 * 2
+     * 最大线程数 = CPU核心数 * 4
      */
-    @Bean("uploadTaskExecutor")
-    public ThreadPoolTaskExecutor uploadTaskExecutor() {
+    @Bean("chunkUploadExecutor")
+    public ThreadPoolTaskExecutor chunkUploadExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(15);          // 核心线程数（支持15个并发分片）
-        executor.setMaxPoolSize(20);           // 最大线程数
-        executor.setQueueCapacity(100);        // 队列容量
-        executor.setThreadNamePrefix("upload-");
+        int processors = Runtime.getRuntime().availableProcessors();
+
+        executor.setCorePoolSize(processors * 2);
+        executor.setMaxPoolSize(processors * 4);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("chunk-upload-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
         executor.initialize();
+
+        return executor;
+    }
+
+    /**
+     * 文件合并线程池
+     */
+    @Bean("fileMergeExecutor")
+    public ThreadPoolTaskExecutor fileMergeExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("file-merge-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(120);
+        executor.initialize();
+
         return executor;
     }
 }

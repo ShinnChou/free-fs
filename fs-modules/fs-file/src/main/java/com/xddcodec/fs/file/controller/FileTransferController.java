@@ -55,11 +55,10 @@ public class FileTransferController {
         cmd.setChunkIndex(chunkIndex);
         cmd.setChunkMd5(chunkMd5);
         
-        // 在HTTP请求上下文中立即读取文件内容（防止异步时临时文件被清理）
         byte[] fileBytes = file.getBytes();
         
         // 传递字节数组给异步方法
-        fileTransferService.uploadChunkAsync(fileBytes, cmd);
+        fileTransferService.uploadChunk(fileBytes, cmd);
         return Result.ok(null, "分片接收成功，正在处理");
     }
 

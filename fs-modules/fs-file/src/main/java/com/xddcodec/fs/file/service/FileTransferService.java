@@ -33,7 +33,7 @@ public interface FileTransferService {
      * @param fileBytes 分片文件字节数组
      * @param cmd       上传分片命令
      */
-    void uploadChunkAsync(byte[] fileBytes, UploadChunkCmd cmd);
+    void uploadChunk(byte[] fileBytes, UploadChunkCmd cmd);
 
     /**
      * 合并分片

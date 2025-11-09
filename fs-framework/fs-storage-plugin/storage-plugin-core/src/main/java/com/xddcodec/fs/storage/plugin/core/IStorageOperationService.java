@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 存储平台操作接口
@@ -104,6 +105,15 @@ public interface IStorageOperationService extends Closeable {
      */
     String uploadPart(String objectKey, String uploadId, int partNumber,
                       long partSize, InputStream partInputStream);
+
+    /**
+     * 列举已上传的所有分片
+     *
+     * @param objectKey 对象键
+     * @param uploadId  上传ID
+     * @return
+     */
+    Set<Integer> listParts(String objectKey, String uploadId);
 
     /**
      * 完成分片上传

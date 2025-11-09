@@ -17,8 +17,7 @@ import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 阿里云 OSS 存储插件实现
@@ -247,6 +246,52 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
         } catch (Exception e) {
             log.error("{} 分片上传失败: objectKey={}, partNumber={}", getLogPrefix(), objectKey, partNumber, e);
             throw new StorageOperationException("阿里云OSS分片上传失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Set<Integer> listParts(String objectKey, String uploadId) {
+        ensureNotPrototype();
+
+        try {
+            Set<Integer> uploadedParts = new HashSet<>();
+
+            // 创建ListPartsRequest
+            ListPartsRequest listPartsRequest = new ListPartsRequest(bucketName, objectKey, uploadId);
+
+            PartListing partListing;
+            do {
+                // 列举分片
+                partListing = ossClient.listParts(listPartsRequest);
+
+                // 收集分片号
+                for (PartSummary part : partListing.getParts()) {
+                    uploadedParts.add(part.getPartNumber());
+                }
+
+                // 设置下一页标记
+                listPartsRequest.setPartNumberMarker(partListing.getNextPartNumberMarker());
+
+            } while (partListing.isTruncated()); // 如果还有更多分片，继续循环
+            log.debug("{} 已上传分片列表: objectKey={}, uploadId={}, parts={}",
+                    getLogPrefix(), objectKey, uploadId, uploadedParts);
+            return uploadedParts;
+        } catch (OSSException e) {
+            // 如果uploadId不存在，返回空集合
+            if ("NoSuchUpload".equals(e.getErrorCode())) {
+                log.warn("{} 上传任务不存在: objectKey={}, uploadId={}",
+                        getLogPrefix(), objectKey, uploadId);
+                return Collections.emptySet();
+            }
+
+            log.error("{} 列举分片失败: objectKey={}, uploadId={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, uploadId, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS列举分片失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} 列举分片失败: objectKey={}, uploadId={}",
+                    getLogPrefix(), objectKey, uploadId, e);
+            throw new StorageOperationException("阿里云OSS列举分片失败: " + e.getMessage(), e);
         }
     }
 
