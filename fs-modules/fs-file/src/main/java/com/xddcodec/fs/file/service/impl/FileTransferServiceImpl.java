@@ -169,6 +169,7 @@ public class FileTransferServiceImpl implements FileTransferService {
             );
             if (existFile != null) {
 
+
             }
             // 不是秒传，需要正常上传
             // 调用存储插件初始化分片上传
