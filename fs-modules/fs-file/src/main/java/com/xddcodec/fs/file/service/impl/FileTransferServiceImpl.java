@@ -420,6 +420,8 @@ public class FileTransferServiceImpl implements FileTransferService {
 
             // 更新任务状态为已完成
             task.setStatus(UploadTaskStatus.completed);
+            // 最终同步一次分片数量
+            task.setUploadedChunks(uploadedCount);
             task.setCompleteTime(completeTime);
             fileUploadTaskMapper.update(task);
 
