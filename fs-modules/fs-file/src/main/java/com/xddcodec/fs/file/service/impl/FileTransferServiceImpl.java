@@ -233,7 +233,6 @@ public class FileTransferServiceImpl implements FileTransferService {
                     fileBytes.length,
                     bis);
         }
-        fileUploadTaskMapper.incrementUploadedChunks(taskId);
         cacheManager.addUploadedChunk(taskId, chunkIndex);
         cacheManager.recordUploadedBytes(taskId, fileBytes.length);
 

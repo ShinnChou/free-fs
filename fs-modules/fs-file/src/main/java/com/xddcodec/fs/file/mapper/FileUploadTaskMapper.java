@@ -15,16 +15,6 @@ import org.apache.ibatis.annotations.Update;
 public interface FileUploadTaskMapper extends BaseMapper<FileUploadTask> {
 
     /**
-     * 原子递增已上传分片数
-     * 避免并发更新时的计数丢失问题
-     *
-     * @param taskId 任务ID
-     * @return 受影响的行数
-     */
-    @Update("UPDATE file_upload_task SET uploaded_chunks = uploaded_chunks + 1, updated_at = NOW() WHERE task_id = #{taskId}")
-    int incrementUploadedChunks(@Param("taskId") String taskId);
-
-    /**
      * 原子更新状态（仅当当前状态为指定状态时才更新）
      * 用于防止重复合并
      */

@@ -70,23 +70,6 @@ public class UploadTaskCacheManager {
     }
 
     /**
-     * 原子递增已上传分片数
-     */
-//    public void incrementUploadedChunks(String taskId) {
-//        FileUploadTask task = getTaskFromCache(taskId);
-//
-//        if (task != null) {
-//            task.setUploadedChunks(task.getUploadedChunks() + 1);
-//            task.setUpdatedAt(LocalDateTime.now());
-//            cacheTask(task);
-//            log.debug("递增已上传分片数: taskId={}, uploadedChunks={}",
-//                    taskId, task.getUploadedChunks());
-//        } else {
-//            log.warn("任务不存在，无法递增分片数: taskId={}", taskId);
-//        }
-//    }
-
-    /**
      * 获取已上传分片数
      */
     public Integer getUploadedChunks(String taskId) {
