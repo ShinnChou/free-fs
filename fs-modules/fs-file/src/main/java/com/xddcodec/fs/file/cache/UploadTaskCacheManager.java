@@ -23,16 +23,12 @@ public class UploadTaskCacheManager {
 
     private final RedisRepository redisRepository;
     private final RedissonClient redissonClient;
-
-    // Redis Key 前缀
     private static final String TASK_PREFIX = "upload:task:";
     private static final String CHUNKS_PREFIX = "upload:chunks:";
     private static final String BYTES_PREFIX = "upload:bytes:";
     private static final String START_TIME_PREFIX = "upload:startTime:";
     private static final String MERGE_LOCK_PREFIX = "upload:lock:merge:";
-
-    // 过期时间
-    private static final long TASK_EXPIRE_DAYS = 7 * 24 * 60 * 60; // 7天（秒）
+    private static final long TASK_EXPIRE_DAYS = 7 * 24 * 60 * 60;
 
     /**
      * 缓存任务 - 直接存储对象
@@ -42,10 +38,14 @@ public class UploadTaskCacheManager {
             log.warn("缓存任务参数无效");
             return;
         }
-
+        // 从 Redis Set 获取真实分片数
+        Integer realCount = getUploadedChunks(task.getTaskId());
+        task.setUploadedChunks(realCount);
+        task.setUpdatedAt(LocalDateTime.now());
         String key = TASK_PREFIX + task.getTaskId();
         redisRepository.setExpire(key, task, TASK_EXPIRE_DAYS);
-        log.debug("缓存任务: taskId={}", task.getTaskId());
+
+        log.debug("缓存任务: taskId={}, uploadedChunks={}", task.getTaskId(), realCount);
     }
 
     /**
@@ -72,26 +72,30 @@ public class UploadTaskCacheManager {
     /**
      * 原子递增已上传分片数
      */
-    public void incrementUploadedChunks(String taskId) {
-        FileUploadTask task = getTaskFromCache(taskId);
-
-        if (task != null) {
-            task.setUploadedChunks(task.getUploadedChunks() + 1);
-            task.setUpdatedAt(LocalDateTime.now());
-            cacheTask(task);
-            log.debug("递增已上传分片数: taskId={}, uploadedChunks={}",
-                    taskId, task.getUploadedChunks());
-        } else {
-            log.warn("任务不存在，无法递增分片数: taskId={}", taskId);
-        }
-    }
+//    public void incrementUploadedChunks(String taskId) {
+//        FileUploadTask task = getTaskFromCache(taskId);
+//
+//        if (task != null) {
+//            task.setUploadedChunks(task.getUploadedChunks() + 1);
+//            task.setUpdatedAt(LocalDateTime.now());
+//            cacheTask(task);
+//            log.debug("递增已上传分片数: taskId={}, uploadedChunks={}",
+//                    taskId, task.getUploadedChunks());
+//        } else {
+//            log.warn("任务不存在，无法递增分片数: taskId={}", taskId);
+//        }
+//    }
 
     /**
      * 获取已上传分片数
      */
     public Integer getUploadedChunks(String taskId) {
-        FileUploadTask task = getTaskFromCache(taskId);
-        return task != null ? task.getUploadedChunks() : 0;
+        String key = CHUNKS_PREFIX + taskId;
+        Set<Object> chunks = redisRepository.sGet(key);
+        int count = chunks != null ? chunks.size() : 0;
+
+        log.debug("获取已上传分片数: taskId={}, count={}", taskId, count);
+        return count;
     }
 
     /**
@@ -109,11 +113,9 @@ public class UploadTaskCacheManager {
     public Set<Integer> getUploadedChunkList(String taskId) {
         String key = CHUNKS_PREFIX + taskId;
         Set<Object> chunks = redisRepository.sGet(key);
-
         if (chunks == null || chunks.isEmpty()) {
             return Set.of();
         }
-
         return chunks.stream()
                 .map(obj -> Integer.parseInt(obj.toString()))
                 .collect(Collectors.toSet());
@@ -125,6 +127,19 @@ public class UploadTaskCacheManager {
     public boolean isChunkUploaded(String taskId, Integer chunkIndex) {
         String key = CHUNKS_PREFIX + taskId;
         return redisRepository.sHasKey(key, chunkIndex);
+    }
+
+    /**
+     * 检查是否所有分片都已上传
+     */
+    public boolean isAllChunksUploaded(String taskId, Integer totalChunks) {
+        Integer uploadedCount = getUploadedChunks(taskId);
+        boolean isComplete = uploadedCount.equals(totalChunks);
+
+        log.debug("检查分片完整性: taskId={}, uploaded={}, total={}, complete={}",
+                taskId, uploadedCount, totalChunks, isComplete);
+
+        return isComplete;
     }
 
     /**
@@ -170,8 +185,14 @@ public class UploadTaskCacheManager {
         if (task != null) {
             task.setStatus(status);
             task.setUpdatedAt(LocalDateTime.now());
+
+            // 同步真实分片数
+            Integer realCount = getUploadedChunks(taskId);
+            task.setUploadedChunks(realCount);
+
             cacheTask(task);
-            log.debug("更新任务状态: taskId={}, status={}", taskId, status);
+            log.debug("更新任务状态: taskId={}, status={}, uploadedChunks={}",
+                    taskId, status, realCount);
         }
     }
 
@@ -184,8 +205,13 @@ public class UploadTaskCacheManager {
             task.setCompleteTime(completeTime);
             task.setStatus(UploadTaskStatus.completed);
             task.setUpdatedAt(LocalDateTime.now());
+
+            // ⭐ 最终同步
+            Integer realCount = getUploadedChunks(taskId);
+            task.setUploadedChunks(realCount);
+
             cacheTask(task);
-            log.debug("更新任务完成时间: taskId={}", taskId);
+            log.info("任务完成: taskId={}, uploadedChunks={}", taskId, realCount);
         }
     }
 

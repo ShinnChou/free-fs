@@ -234,15 +234,17 @@ public class FileTransferServiceImpl implements FileTransferService {
                     bis);
         }
         fileUploadTaskMapper.incrementUploadedChunks(taskId);
+        cacheManager.addUploadedChunk(taskId, chunkIndex);
+        cacheManager.recordUploadedBytes(taskId, fileBytes.length);
 
-        cacheManager.incrementUploadedChunks(taskId);           // 递增已上传分片数
-        cacheManager.addUploadedChunk(taskId, chunkIndex);       // 记录已上传分片
-        cacheManager.recordUploadedBytes(taskId, fileBytes.length); // 记录上传字节数
-        task = cacheManager.getTaskFromCache(taskId);
+//        cacheManager.incrementUploadedChunks(taskId);           // 递增已上传分片数
+//        cacheManager.addUploadedChunk(taskId, chunkIndex);       // 记录已上传分片
+//        cacheManager.recordUploadedBytes(taskId, fileBytes.length); // 记录上传字节数
+//        task = cacheManager.getTaskFromCache(taskId);
 
-        // 推送进度（WebSocket）
-        UploadProgressDTO progress = buildProgressDTO(task);
-        wsHandler.pushProgress(taskId, progress);
+        // 推送进度
+        UploadProgressDTO progressDTO = buildProgressDTO(task);
+        wsHandler.pushProgress(taskId, progressDTO);
 
         log.info("分片上传成功: taskId={}, chunkIndex={}, progress={}/{}",
                 taskId, chunkIndex, task.getUploadedChunks(), task.getTotalChunks());
@@ -255,10 +257,12 @@ public class FileTransferServiceImpl implements FileTransferService {
      */
     private void checkAndTriggerMerge(FileUploadTask task) {
         String taskId = task.getTaskId();
-        // 检查是否所有分片都已上传完成
-        if (!task.getUploadedChunks().equals(task.getTotalChunks())) {
-            log.debug("分片未全部上传: taskId={}, progress={}/{}",
-                    taskId, task.getUploadedChunks(), task.getTotalChunks());
+        Integer totalChunks = task.getTotalChunks();
+
+        if (!cacheManager.isAllChunksUploaded(taskId, totalChunks)) {
+            Integer uploadedCount = cacheManager.getUploadedChunks(taskId);
+            log.debug("📊 分片未全部上传: taskId={}, progress={}/{}",
+                    taskId, uploadedCount, totalChunks);
             return;
         }
         RLock lock = cacheManager.getMergeLock(taskId);
@@ -367,6 +371,14 @@ public class FileTransferServiceImpl implements FileTransferService {
             if (task == null) {
                 throw new StorageOperationException("上传任务不存在: " + taskId);
             }
+            Integer uploadedCount = cacheManager.getUploadedChunks(taskId);
+            if (!uploadedCount.equals(task.getTotalChunks())) {
+                log.error("分片未全部上传，拒绝合并: taskId={}, uploaded={}, total={}",
+                        taskId, uploadedCount, task.getTotalChunks());
+                throw new StorageOperationException(
+                        String.format("分片不完整：已上传 %d/%d", uploadedCount, task.getTotalChunks())
+                );
+            }
             IStorageOperationService storageService = storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
 
             // 获取存储服务并完成分片合并
@@ -433,19 +445,26 @@ public class FileTransferServiceImpl implements FileTransferService {
      */
     private UploadProgressDTO buildProgressDTO(FileUploadTask task) {
         String taskId = task.getTaskId();
+
+        // 从 Redis Set 获取真实已上传数量
+        Integer uploadedCount = cacheManager.getUploadedChunks(taskId);
+        long uploadedBytes = cacheManager.getUploadedBytes(taskId);
+
         // 计算进度百分比
         double progress = task.getTotalChunks() > 0
-                ? (task.getUploadedChunks() * 100.0 / task.getTotalChunks())
+                ? (uploadedCount * 100.0 / task.getTotalChunks())
                 : 0;
-        // 从 Redis 获取开始时间和已上传字节数
+
+        // 计算上传速度
         Long startTime = cacheManager.getStartTime(taskId);
-        long uploadedBytes = cacheManager.getUploadedBytes(taskId);
         long speed = 0;
         int remainTime = 0;
+
         if (startTime != null) {
             long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
             if (elapsedSeconds > 0) {
                 speed = uploadedBytes / elapsedSeconds;
+
                 // 计算剩余时间
                 long remainingBytes = task.getFileSize() - uploadedBytes;
                 if (speed > 0) {
@@ -453,9 +472,10 @@ public class FileTransferServiceImpl implements FileTransferService {
                 }
             }
         }
+
         return UploadProgressDTO.builder()
                 .taskId(taskId)
-                .uploadedChunks(task.getUploadedChunks())
+                .uploadedChunks(uploadedCount)  // ⭐ 真实数量
                 .totalChunks(task.getTotalChunks())
                 .uploadedSize(uploadedBytes)
                 .totalSize(task.getFileSize())
