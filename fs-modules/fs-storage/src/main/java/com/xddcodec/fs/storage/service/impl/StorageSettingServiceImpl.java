@@ -151,7 +151,7 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
         storageSetting.setPlatformIdentifier(cmd.getPlatformIdentifier());
         storageSetting.setUserId(userId);
         storageSetting.setConfigData(cmd.getConfigData());
-        storageSetting.setEnabled(CommonConstant.Y);
+        storageSetting.setEnabled(CommonConstant.N);
         storageSetting.setRemark(cmd.getRemark());
         this.save(storageSetting);
         log.info("新增存储配置成功: settingId={}, platform={}, userId={}",

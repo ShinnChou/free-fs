@@ -13,6 +13,7 @@ import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
+import com.xddcodec.fs.file.handler.UploadTaskExceptionHandler;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.mapper.FileUploadTaskMapper;
 import com.xddcodec.fs.file.service.FileTransferService;
@@ -55,6 +56,7 @@ public class FileTransferServiceImpl implements FileTransferService {
     private final FileInfoMapper fileInfoMapper;
     private final UploadWebSocketHandler wsHandler;
     private final UploadTaskCacheManager cacheManager;
+    private final UploadTaskExceptionHandler exceptionHandler;
     @Qualifier("chunkUploadExecutor")
     private final ThreadPoolTaskExecutor chunkUploadExecutor;
     @Qualifier("fileMergeExecutor")
@@ -126,37 +128,20 @@ public class FileTransferServiceImpl implements FileTransferService {
         }
     }
 
-    private FileUploadTask getTaskFromCacheOrDB(String taskId) {
-        FileUploadTask task = cacheManager.getTaskFromCache(taskId);
-        if (task == null) {
-            task = fileUploadTaskMapper.selectOneByQuery(
-                    QueryWrapper.create().where(FileUploadTask::getTaskId).eq(taskId)
-            );
-            if (task == null) {
-                throw new BusinessException("任务不存在: " + taskId);
-            }
-            // 缓存到 Redis
-            cacheManager.cacheTask(task);
-        }
-        return task;
-    }
-
     @Override
     public CheckUploadResultVO checkUpload(CheckUploadCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         String taskId = cmd.getTaskId();
-
+        // 获取任务
+        FileUploadTask task = null;
         try {
-            // 获取任务
-            FileUploadTask task = getTaskFromCacheOrDB(taskId);
+            task = getTaskFromCacheOrDB(taskId);
             if (!UploadTaskStatus.initialized.equals(task.getStatus())) {
                 throw new BusinessException("任务状态不正确，当前状态: " + task.getStatus());
             }
-            task.setStatus(UploadTaskStatus.checking);
-            task.setUpdatedAt(LocalDateTime.now());
-            fileUploadTaskMapper.update(task);
-            cacheManager.updateTaskStatus(taskId, UploadTaskStatus.checking);
+            updateTaskStatus(task, UploadTaskStatus.checking);
+
             wsHandler.pushChecking(taskId);
 
             // 检查是否存在相同MD5的文件（秒传）
@@ -169,7 +154,7 @@ public class FileTransferServiceImpl implements FileTransferService {
             );
             if (existFile != null) {
 
-
+                //TODO 应该复制文件记录
             }
             // 不是秒传，需要正常上传
             // 调用存储插件初始化分片上传
@@ -178,13 +163,9 @@ public class FileTransferServiceImpl implements FileTransferService {
             // 更新任务信息
             task.setFileMd5(cmd.getFileMd5());
             task.setUploadId(uploadId);
-            task.setStatus(UploadTaskStatus.uploading);
-            task.setUpdatedAt(LocalDateTime.now());
-            fileUploadTaskMapper.update(task);
 
-            // 更新缓存
-            cacheManager.cacheTask(task);
-            cacheManager.updateTaskStatus(uploadId, UploadTaskStatus.uploading);
+            updateTaskStatus(task, UploadTaskStatus.uploading);
+
             // 推送可以开始上传消息
             wsHandler.pushReadyToUpload(taskId, uploadId);
             return CheckUploadResultVO.builder()
@@ -195,8 +176,7 @@ public class FileTransferServiceImpl implements FileTransferService {
                     .build();
         } catch (Exception e) {
             log.error("文件校验失败: taskId={}", taskId, e);
-            cacheManager.updateTaskStatus(taskId, UploadTaskStatus.failed);
-            wsHandler.pushError(taskId, "文件校验失败: " + e.getMessage());
+            exceptionHandler.handleTaskFailed(taskId, "文件校验失败: " + e.getMessage(), e);
             throw new StorageOperationException("文件校验失败: " + e.getMessage(), e);
         }
     }
@@ -210,13 +190,14 @@ public class FileTransferServiceImpl implements FileTransferService {
     @Override
     public void uploadChunk(byte[] fileBytes, UploadChunkCmd cmd) {
         String taskId = cmd.getTaskId();
+        Integer chunkIndex = cmd.getChunkIndex();
         // 异步上传分片
         CompletableFuture.runAsync(() -> {
             try {
                 doUploadChunk(fileBytes, cmd);
             } catch (Exception e) {
                 log.error("分片上传失败: taskId={}, chunkIndex={}", taskId, cmd.getChunkIndex(), e);
-                wsHandler.pushError(taskId, "分片上传失败: " + e.getMessage());
+                exceptionHandler.handleChunkUploadFailed(taskId, chunkIndex, e.getMessage(), e);
             }
         }, chunkUploadExecutor);
     }
@@ -312,8 +293,7 @@ public class FileTransferServiceImpl implements FileTransferService {
                             doMergeChunks(latestTask.getTaskId());
                         } catch (Exception e) {
                             log.error("文件合并失败: taskId={}", taskId, e);
-                            wsHandler.pushError(taskId, "文件合并失败: " + e.getMessage());
-                            handleMergeFailed(taskId, e.getMessage());
+                            exceptionHandler.handleTaskFailed(taskId, "文件合并失败: " + e.getMessage(), e);
                         }
                     }, fileMergeExecutor);
                 } finally {
@@ -486,22 +466,6 @@ public class FileTransferServiceImpl implements FileTransferService {
     }
 
     /**
-     * 处理合并失败
-     */
-    private void handleMergeFailed(String taskId, String errorMsg) {
-        FileUploadTask task = fileUploadTaskMapper.selectOneByQuery(
-                QueryWrapper.create().where(FileUploadTask::getTaskId).eq(taskId)
-        );
-        if (task != null) {
-            task.setStatus(UploadTaskStatus.failed);
-            task.setErrorMsg(errorMsg);
-            fileUploadTaskMapper.update(task);
-            cacheManager.updateTaskStatus(taskId, UploadTaskStatus.failed);
-            cacheManager.extendTaskExpire(taskId, 1);
-        }
-    }
-
-    /**
      * 根据任务ID获取任务信息
      *
      * @param taskId
@@ -513,4 +477,31 @@ public class FileTransferServiceImpl implements FileTransferService {
                 )
         );
     }
+
+    private FileUploadTask getTaskFromCacheOrDB(String taskId) {
+        FileUploadTask task = cacheManager.getTaskFromCache(taskId);
+        if (task == null) {
+            task = fileUploadTaskMapper.selectOneByQuery(
+                    QueryWrapper.create().where(FileUploadTask::getTaskId).eq(taskId)
+            );
+            if (task == null) {
+                throw new BusinessException("任务不存在: " + taskId);
+            }
+            // 缓存到 Redis
+            cacheManager.cacheTask(task);
+        }
+        return task;
+    }
+
+    /**
+     * 更新任务状态（数据库 + 缓存）
+     */
+    private void updateTaskStatus(FileUploadTask task, UploadTaskStatus newStatus) {
+        task.setStatus(newStatus);
+        task.setUpdatedAt(LocalDateTime.now());
+        fileUploadTaskMapper.update(task);
+        cacheManager.cacheTask(task);
+        cacheManager.updateTaskStatus(task.getTaskId(), newStatus);
+    }
+
 }

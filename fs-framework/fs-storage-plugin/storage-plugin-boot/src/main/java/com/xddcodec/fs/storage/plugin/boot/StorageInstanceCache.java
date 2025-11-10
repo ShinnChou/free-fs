@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -15,7 +16,18 @@ import java.util.function.Supplier;
 @Component
 public class StorageInstanceCache {
 
+    /**
+     * 主缓存：cacheKey -> 实例
+     * cacheKey 格式：configId:platformIdentifier:userId
+     */
     private final Map<String, IStorageOperationService> cache = new ConcurrentHashMap<>();
+
+    /**
+     * 反向索引：configId -> cacheKey
+     * 用于快速通过 configId 定位缓存
+     */
+    private final Map<String, String> configIdToCacheKey = new ConcurrentHashMap<>();
+
     private final Striped<Lock> locks = Striped.lock(128);
 
     public IStorageOperationService get(String cacheKey) {
@@ -28,6 +40,14 @@ public class StorageInstanceCache {
 
     public void put(String cacheKey, IStorageOperationService instance) {
         cache.put(cacheKey, instance);
+
+        // 维护反向索引
+        String configId = extractConfigId(cacheKey);
+        if (configId != null) {
+            configIdToCacheKey.put(configId, cacheKey);
+            log.debug("建立索引映射: configId={} -> cacheKey={}", configId, cacheKey);
+        }
+
         log.debug("放入缓存: cacheKey={}, 当前缓存数: {}", cacheKey, cache.size());
     }
 
@@ -49,7 +69,9 @@ public class StorageInstanceCache {
 
             log.debug("缓存未命中，开始创建实例: cacheKey={}", cacheKey);
             instance = creator.get();
-            cache.put(cacheKey, instance);
+
+            // 使用 put 方法，自动维护索引
+            put(cacheKey, instance);
 
             log.info("实例创建并缓存成功: cacheKey={}, 当前缓存数: {}", cacheKey, cache.size());
             return instance;
@@ -59,8 +81,19 @@ public class StorageInstanceCache {
         }
     }
 
+    /**
+     * 根据 cacheKey 失效缓存
+     */
     public void invalidate(String cacheKey) {
         IStorageOperationService instance = cache.remove(cacheKey);
+
+        // 同步移除反向索引
+        String configId = extractConfigId(cacheKey);
+        if (configId != null) {
+            configIdToCacheKey.remove(configId);
+            log.debug("移除索引映射: configId={}", configId);
+        }
+
         if (instance != null) {
             closeInstanceSafely(instance, cacheKey);
             log.info("缓存失效: cacheKey={}, 剩余缓存数: {}", cacheKey, cache.size());
@@ -69,10 +102,36 @@ public class StorageInstanceCache {
         }
     }
 
+    /**
+     * 根据 configId 失效缓存（新增方法）
+     *
+     * @param configId 配置ID
+     */
+    public void invalidateByConfigId(String configId) {
+        String cacheKey = configIdToCacheKey.get(configId);
+
+        if (cacheKey != null) {
+            log.info("通过 configId 定位到缓存: configId={}, cacheKey={}", configId, cacheKey);
+            invalidate(cacheKey);
+        } else {
+            log.debug("configId 无对应缓存实例: configId={}", configId);
+        }
+    }
+
+    /**
+     * 批量失效（根据 cacheKey）
+     */
     public void invalidateBatch(Iterable<String> cacheKeys) {
         int count = 0;
         for (String cacheKey : cacheKeys) {
             IStorageOperationService instance = cache.remove(cacheKey);
+
+            // 同步移除反向索引
+            String configId = extractConfigId(cacheKey);
+            if (configId != null) {
+                configIdToCacheKey.remove(configId);
+            }
+
             if (instance != null) {
                 closeInstanceSafely(instance, cacheKey);
                 count++;
@@ -83,10 +142,38 @@ public class StorageInstanceCache {
         }
     }
 
+    /**
+     * 批量失效（根据 configId）（新增方法）
+     */
+    public void invalidateBatchByConfigIds(List<String> configIds) {
+        if (configIds == null || configIds.isEmpty()) {
+            return;
+        }
+
+        int count = 0;
+        for (String configId : configIds) {
+            String cacheKey = configIdToCacheKey.get(configId);
+            if (cacheKey != null) {
+                IStorageOperationService instance = cache.remove(cacheKey);
+                configIdToCacheKey.remove(configId);
+
+                if (instance != null) {
+                    closeInstanceSafely(instance, cacheKey);
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0) {
+            log.info("批量失效完成（按 configId），共失效 {} 个实例，剩余缓存数: {}", count, cache.size());
+        }
+    }
+
     public void clear() {
         log.warn("清空所有缓存，当前缓存数: {}", cache.size());
         cache.forEach((cacheKey, instance) -> closeInstanceSafely(instance, cacheKey));
         cache.clear();
+        configIdToCacheKey.clear();
         log.info("所有缓存已清空");
     }
 
@@ -96,6 +183,34 @@ public class StorageInstanceCache {
 
     public boolean contains(String cacheKey) {
         return cache.containsKey(cacheKey);
+    }
+
+    /**
+     * 检查 configId 是否有缓存实例（新增方法）
+     */
+    public boolean containsConfigId(String configId) {
+        return configIdToCacheKey.containsKey(configId);
+    }
+
+    /**
+     * 从 cacheKey 提取 configId
+     * cacheKey 格式：configId:platformIdentifier:userId
+     *
+     * @param cacheKey 缓存键
+     * @return configId，如果格式不正确返回 null
+     */
+    private String extractConfigId(String cacheKey) {
+        if (cacheKey == null || cacheKey.isEmpty()) {
+            return null;
+        }
+
+        int firstColon = cacheKey.indexOf(':');
+        if (firstColon <= 0) {
+            log.warn("cacheKey 格式异常，无法提取 configId: {}", cacheKey);
+            return null;
+        }
+
+        return cacheKey.substring(0, firstColon);
     }
 
     private void closeInstanceSafely(IStorageOperationService instance, String cacheKey) {
