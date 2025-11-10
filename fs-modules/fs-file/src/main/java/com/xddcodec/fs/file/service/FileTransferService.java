@@ -1,9 +1,11 @@
 package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
+import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,12 +30,33 @@ public interface FileTransferService {
     String initUpload(InitUploadCmd cmd);
 
     /**
+     * 资源校验
+     *
+     * @param cmd
+     */
+    CheckUploadResultVO checkUpload(CheckUploadCmd cmd);
+
+    /**
      * 异步上传分片
      *
      * @param fileBytes 分片文件字节数组
      * @param cmd       上传分片命令
      */
     void uploadChunk(byte[] fileBytes, UploadChunkCmd cmd);
+
+    /**
+     * 暂停上传
+     *
+     * @param taskId 上传任务ID
+     */
+    void pauseUpload(String taskId);
+
+    /**
+     * 继续上传
+     *
+     * @param taskId 上传任务ID
+     */
+    void resumeUpload(String taskId);
 
     /**
      * 合并分片
@@ -50,4 +73,11 @@ public interface FileTransferService {
      * @return 已上传的分片索引集合
      */
     Set<Integer> getUploadedChunks(String taskId);
+
+    /**
+     * 取消上传
+     *
+     * @param taskId 上传任务ID
+     */
+    void cancelUpload(String taskId);
 }

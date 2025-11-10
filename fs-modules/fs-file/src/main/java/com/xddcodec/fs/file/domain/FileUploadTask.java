@@ -31,6 +31,10 @@ public class FileUploadTask extends BaseEntity {
      */
     private String taskId;
     /**
+     * 唯一上传ID
+     */
+    private String uploadId;
+    /**
      * 用户ID
      */
     private String userId;

@@ -10,8 +10,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,108 +23,75 @@ public class UploadTaskCacheManager {
 
     private final RedisRepository redisRepository;
     private final RedissonClient redissonClient;
+
     // Redis Key 前缀
     private static final String TASK_PREFIX = "upload:task:";
     private static final String CHUNKS_PREFIX = "upload:chunks:";
     private static final String BYTES_PREFIX = "upload:bytes:";
     private static final String START_TIME_PREFIX = "upload:startTime:";
-    private static final String USER_COUNT_PREFIX = "upload:userCount:";
     private static final String MERGE_LOCK_PREFIX = "upload:lock:merge:";
+
     // 过期时间
     private static final long TASK_EXPIRE_DAYS = 7 * 24 * 60 * 60; // 7天（秒）
-    private static final long USER_COUNT_EXPIRE_HOURS = 60 * 60; // 1小时（秒）
 
     /**
-     * 缓存任务
+     * 缓存任务 - 直接存储对象
      */
     public void cacheTask(FileUploadTask task) {
+        if (task == null || task.getTaskId() == null) {
+            log.warn("缓存任务参数无效");
+            return;
+        }
+
         String key = TASK_PREFIX + task.getTaskId();
-
-        Map<String, Object> taskMap = new HashMap<>();
-        taskMap.put("taskId", task.getTaskId());
-        taskMap.put("userId", task.getUserId());
-        taskMap.put("parentId", task.getParentId());
-        taskMap.put("objectKey", task.getObjectKey());
-        taskMap.put("fileName", task.getFileName());
-        taskMap.put("fileSize", task.getFileSize());
-        taskMap.put("fileMd5", task.getFileMd5());
-        taskMap.put("suffix", task.getSuffix());
-        taskMap.put("mimeType", task.getMimeType());
-        taskMap.put("totalChunks", task.getTotalChunks());
-        taskMap.put("uploadedChunks", task.getUploadedChunks());
-        taskMap.put("chunkSize", task.getChunkSize());
-        taskMap.put("storagePlatformSettingId", task.getStoragePlatformSettingId());
-        taskMap.put("status", task.getStatus().name());
-        taskMap.put("createdAt", task.getCreatedAt().toString());
-        taskMap.put("updatedAt", task.getUpdatedAt().toString());
-
-        if (task.getStartTime() != null) {
-            taskMap.put("startTime", task.getStartTime().toString());
-        }
-        if (task.getCompleteTime() != null) {
-            taskMap.put("completeTime", task.getCompleteTime().toString());
-        }
-        redisRepository.hmset(key, taskMap, TASK_EXPIRE_DAYS);
-
+        redisRepository.setExpire(key, task, TASK_EXPIRE_DAYS);
         log.debug("缓存任务: taskId={}", task.getTaskId());
     }
 
     /**
-     * 从缓存获取任务
+     * 从缓存获取任务 - 直接获取对象
      */
     public FileUploadTask getTaskFromCache(String taskId) {
         String key = TASK_PREFIX + taskId;
+        Object obj = redisRepository.get(key);
 
-        Map<Object, Object> taskMap = redisRepository.hmget(key);
-        if (taskMap.isEmpty()) {
+        if (obj == null) {
+            log.debug("缓存中不存在任务: taskId={}", taskId);
             return null;
         }
-        FileUploadTask task = new FileUploadTask();
-        task.setTaskId((String) taskMap.get("taskId"));
-        task.setUserId((String) taskMap.get("userId"));
-        task.setParentId((String) taskMap.get("parentId"));
-        task.setObjectKey((String) taskMap.get("objectKey"));
-        task.setFileName((String) taskMap.get("fileName"));
-        task.setFileSize(Long.parseLong(taskMap.get("fileSize").toString()));
-        task.setFileMd5((String) taskMap.get("fileMd5"));
-        task.setSuffix((String) taskMap.get("suffix"));
-        task.setMimeType((String) taskMap.get("mimeType"));
-        task.setTotalChunks(Integer.parseInt(taskMap.get("totalChunks").toString()));
-        task.setUploadedChunks(Integer.parseInt(taskMap.get("uploadedChunks").toString()));
-        task.setChunkSize(Long.parseLong(taskMap.get("chunkSize").toString()));
-        task.setStoragePlatformSettingId((String) taskMap.get("storagePlatformSettingId"));
-        task.setStatus(UploadTaskStatus.valueOf((String) taskMap.get("status")));
-        task.setCreatedAt(LocalDateTime.parse((String) taskMap.get("createdAt")));
-        task.setUpdatedAt(LocalDateTime.parse((String) taskMap.get("updatedAt")));
 
-        if (taskMap.containsKey("startTime")) {
-            task.setStartTime(LocalDateTime.parse((String) taskMap.get("startTime")));
+        if (obj instanceof FileUploadTask) {
+            log.debug("从缓存获取任务: taskId={}", taskId);
+            return (FileUploadTask) obj;
         }
-        if (taskMap.containsKey("completeTime")) {
-            task.setCompleteTime(LocalDateTime.parse((String) taskMap.get("completeTime")));
-        }
-        log.debug("从缓存获取任务: taskId={}", taskId);
-        return task;
+
+        log.warn("缓存数据类型错误: taskId={}, type={}", taskId, obj.getClass().getName());
+        return null;
     }
 
     /**
      * 原子递增已上传分片数
      */
     public void incrementUploadedChunks(String taskId) {
-        String key = TASK_PREFIX + taskId;
-        redisRepository.hincr(key, "uploadedChunks", 1);
-        redisRepository.hset(key, "updatedAt", LocalDateTime.now().toString());
+        FileUploadTask task = getTaskFromCache(taskId);
 
-        log.debug("递增已上传分片数: taskId={}", taskId);
+        if (task != null) {
+            task.setUploadedChunks(task.getUploadedChunks() + 1);
+            task.setUpdatedAt(LocalDateTime.now());
+            cacheTask(task);
+            log.debug("递增已上传分片数: taskId={}, uploadedChunks={}",
+                    taskId, task.getUploadedChunks());
+        } else {
+            log.warn("任务不存在，无法递增分片数: taskId={}", taskId);
+        }
     }
 
     /**
      * 获取已上传分片数
      */
     public Integer getUploadedChunks(String taskId) {
-        String key = TASK_PREFIX + taskId;
-        Object value = redisRepository.hget(key, "uploadedChunks");
-        return value != null ? Integer.parseInt(value.toString()) : 0;
+        FileUploadTask task = getTaskFromCache(taskId);
+        return task != null ? task.getUploadedChunks() : 0;
     }
 
     /**
@@ -135,7 +100,6 @@ public class UploadTaskCacheManager {
     public void addUploadedChunk(String taskId, Integer chunkIndex) {
         String key = CHUNKS_PREFIX + taskId;
         redisRepository.sSetAndTime(key, TASK_EXPIRE_DAYS, chunkIndex);
-
         log.debug("记录已上传分片: taskId={}, chunkIndex={}", taskId, chunkIndex);
     }
 
@@ -199,61 +163,30 @@ public class UploadTaskCacheManager {
     }
 
     /**
-     * 递增用户上传文件数
-     */
-    public void incrementUserUploadCount(String userId) {
-        String key = USER_COUNT_PREFIX + userId;
-        redisRepository.incr(key, 1);
-        redisRepository.expire(key, USER_COUNT_EXPIRE_HOURS);
-    }
-
-    /**
-     * 递减用户上传文件数
-     */
-    public void decrementUserUploadCount(String userId) {
-        String key = USER_COUNT_PREFIX + userId;
-        Long count = redisRepository.decr(key, 1);
-
-        // 如果计数降到 0 或以下，删除 key
-        if (count != null && count <= 0) {
-            redisRepository.del(key);
-        }
-    }
-
-    /**
-     * 获取用户上传文件数
-     */
-    public int getUserUploadCount(String userId) {
-        String key = USER_COUNT_PREFIX + userId;
-        Object value = redisRepository.get(key);
-        return value != null ? Integer.parseInt(value.toString()) : 0;
-    }
-
-    /**
-     * 检查用户是否可以开始上传（限制最多5个并发上传）
-     */
-    public boolean canUserStartUpload(String userId, int maxConcurrent) {
-        int currentCount = getUserUploadCount(userId);
-        return currentCount < maxConcurrent;
-    }
-
-    /**
      * 更新任务状态
      */
     public void updateTaskStatus(String taskId, UploadTaskStatus status) {
-        String key = TASK_PREFIX + taskId;
-        redisRepository.hset(key, "status", status.name());
-        redisRepository.hset(key, "updatedAt", LocalDateTime.now().toString());
+        FileUploadTask task = getTaskFromCache(taskId);
+        if (task != null) {
+            task.setStatus(status);
+            task.setUpdatedAt(LocalDateTime.now());
+            cacheTask(task);
+            log.debug("更新任务状态: taskId={}, status={}", taskId, status);
+        }
     }
 
     /**
      * 更新任务完成时间
      */
     public void updateTaskCompleteTime(String taskId, LocalDateTime completeTime) {
-        String key = TASK_PREFIX + taskId;
-        redisRepository.hset(key, "completeTime", completeTime.toString());
-        redisRepository.hset(key, "status", UploadTaskStatus.completed.name());
-        redisRepository.hset(key, "updatedAt", LocalDateTime.now().toString());
+        FileUploadTask task = getTaskFromCache(taskId);
+        if (task != null) {
+            task.setCompleteTime(completeTime);
+            task.setStatus(UploadTaskStatus.completed);
+            task.setUpdatedAt(LocalDateTime.now());
+            cacheTask(task);
+            log.debug("更新任务完成时间: taskId={}", taskId);
+        }
     }
 
     /**
@@ -274,12 +207,11 @@ public class UploadTaskCacheManager {
                 BYTES_PREFIX + taskId,
                 START_TIME_PREFIX + taskId
         );
-
         log.info("清理任务缓存: taskId={}", taskId);
     }
 
     /**
-     * 延长任务缓存过期时间（任务完成后调用）
+     * 延长任务缓存过期时间
      */
     public void extendTaskExpire(String taskId, long days) {
         long seconds = days * 24 * 60 * 60;
