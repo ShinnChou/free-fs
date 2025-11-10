@@ -7,7 +7,6 @@ import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;

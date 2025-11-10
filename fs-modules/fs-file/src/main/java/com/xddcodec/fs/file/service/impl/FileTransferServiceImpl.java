@@ -70,10 +70,10 @@ public class FileTransferServiceImpl implements FileTransferService {
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.where(FILE_UPLOAD_TASK.USER_ID.eq(userId)
                 .and(FILE_UPLOAD_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId)));
-        if (qry.getStatusType() != null) {
-
-        }
-        queryWrapper.orderBy(FILE_UPLOAD_TASK.UPDATED_AT.desc());
+//        if (qry.getStatusType() != null) {
+//
+//        }
+        queryWrapper.orderBy(FILE_UPLOAD_TASK.CREATED_AT.asc());
         List<FileUploadTask> tasks = fileUploadTaskMapper.selectListByQuery(queryWrapper);
         return converter.convert(tasks, FileUploadTaskVO.class);
     }
