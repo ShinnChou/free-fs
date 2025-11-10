@@ -163,8 +163,12 @@ mvn spring-boot:run
 ---
 
 ## 🎨 界面预览
+<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
+<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/>
+<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
+<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
+<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
 
-> 📸 截图待补充
 
 ---
 
