@@ -11,32 +11,11 @@
  Target Server Version : 80300 (8.3.0)
  File Encoding         : 65001
 
- Date: 29/10/2025 17:02:02
+ Date: 10/11/2025 14:03:56
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
-
--- ----------------------------
--- Table structure for file_chunk_info
--- ----------------------------
-DROP TABLE IF EXISTS `file_chunk_info`;
-CREATE TABLE `file_chunk_info`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `chunk_number` int NULL DEFAULT NULL COMMENT '文件块编号',
-  `chunk_size` bigint NULL DEFAULT NULL COMMENT '分块大小',
-  `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `current_chunk_size` bigint NULL DEFAULT NULL,
-  `file_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `identifier` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `total_chunks` int NULL DEFAULT NULL,
-  `total_size` bigint NULL DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of file_chunk_info
--- ----------------------------
 
 -- ----------------------------
 -- Table structure for file_info
@@ -63,6 +42,10 @@ CREATE TABLE `file_info`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '文件资源表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
+-- Records of file_info
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for file_share_access_record
 -- ----------------------------
 DROP TABLE IF EXISTS `file_share_access_record`;
@@ -86,7 +69,7 @@ CREATE TABLE `file_share_access_record`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `file_share_items`;
 CREATE TABLE `file_share_items`  (
-  `share_id` int NOT NULL COMMENT '分享ID',
+  `share_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '分享ID',
   `file_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '文件/文件夹ID',
   `created_at` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`share_id`, `file_id` DESC) USING BTREE
@@ -105,12 +88,11 @@ CREATE TABLE `file_shares`  (
   `user_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '分享人ID',
   `share_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '分享名称',
   `share_code` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '提取码（可为空）',
-  `expire_time` datetime NULL DEFAULT NULL COMMENT '过期时间（NULL表示永久有效）',
-  `view_count` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '0' COMMENT '查看次数统计',
-  `max_view_count` int NULL DEFAULT 0 COMMENT '最大查看次数（NULL表示无限查看）',
-  `download_count` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '0' COMMENT '下载次数统计（NULL表示无限下载）',
-  `max_download_count` int NOT NULL DEFAULT 0 COMMENT '最大下载次数（NULL表示无限制）',
-  `is_canceled` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已取消：0-否 1-是',
+  `expire_time` datetime NULL DEFAULT NULL COMMENT '过期时间（null表示永久有效）',
+  `view_count` int NULL DEFAULT 0 COMMENT '查看次数统计',
+  `max_view_count` int NULL DEFAULT NULL COMMENT '最大查看次数（NULL表示无限制）',
+  `download_count` int NULL DEFAULT 0 COMMENT '下载次数统计',
+  `max_download_count` int NULL DEFAULT NULL COMMENT '最大下载次数（NULL表示无限制）',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
@@ -118,6 +100,45 @@ CREATE TABLE `file_shares`  (
 
 -- ----------------------------
 -- Records of file_shares
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for file_upload_task
+-- ----------------------------
+DROP TABLE IF EXISTS `file_upload_task`;
+CREATE TABLE `file_upload_task`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `task_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '任务ID(UUID)',
+  `upload_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '上传唯一ID',
+  `parent_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '父ID',
+  `user_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '用户ID',
+  `storage_platform_setting_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '存储平台配置ID',
+  `object_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '对象key',
+  `file_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件名',
+  `file_size` bigint NOT NULL COMMENT '文件大小(字节)',
+  `file_md5` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文件MD5值',
+  `suffix` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件类型(扩展名)',
+  `mime_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '存储标准MIME类型',
+  `total_chunks` int NOT NULL COMMENT '总分片数',
+  `uploaded_chunks` int NULL DEFAULT 0 COMMENT '已上传分片数',
+  `chunk_size` bigint NULL DEFAULT 5242880 COMMENT '分片大小(默认5MB)',
+  `uploaded_size` bigint NULL DEFAULT 0 COMMENT '已上传大小(字节)',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'uploading' COMMENT '状态: uploading-上传中, paused-已暂停, completed-已完成, failed-失败, canceled-已取消',
+  `error_msg` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '错误信息',
+  `start_time` datetime NOT NULL COMMENT '开始时间',
+  `complete_time` datetime NULL DEFAULT NULL COMMENT '完成时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_task_id`(`task_id` ASC) USING BTREE,
+  INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
+  INDEX `idx_file_md5`(`file_md5` ASC) USING BTREE,
+  INDEX `idx_status`(`status` ASC) USING BTREE,
+  INDEX `idx_create_time`(`created_at` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 131 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '上传任务表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of file_upload_task
 -- ----------------------------
 
 -- ----------------------------
@@ -132,6 +153,9 @@ CREATE TABLE `file_user_favorites`  (
   INDEX `idx_file_time`(`file_id` ASC, `favorite_time` DESC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '文件收藏表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
+-- Records of file_user_favorites
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for storage_platform
@@ -152,7 +176,7 @@ CREATE TABLE `storage_platform`  (
 -- ----------------------------
 -- Records of storage_platform
 -- ----------------------------
-INSERT INTO `storage_platform` VALUES (1, '阿里云OSS', 'AliyunOSS', '[{\"label\": \"Access-Key\", \"dataType\": \"string\", \"identifier\": \"accessKey\", \"validation\": {\"required\": true}}, {\"label\": \"Secret-key\", \"dataType\": \"string\", \"identifier\": \"secretKey\", \"validation\": {\"required\": true}}, {\"label\": \"服务器端点\", \"dataType\": \"string\", \"identifier\": \"endpoint\", \"validation\": {\"required\": true}}, {\"label\": \"存储桶名\", \"dataType\": \"string\", \"identifier\": \"bucket\", \"validation\": {\"required\": true}}]', 'icon-aliyun1', 'https://www.aliyun.com/product/oss?utm_content=se_1020894540', 0, '阿里云对象存储 OSS（Object Storage Service）是一款海量、安全、低成本、高可靠的云存储服务');
+INSERT INTO `storage_platform` VALUES (1, '阿里云OSS', 'AliyunOSS', '[{\"label\": \"Access-Key\", \"dataType\": \"string\", \"identifier\": \"accessKey\", \"validation\": {\"required\": true}}, {\"label\": \"Secret-key\", \"dataType\": \"string\", \"identifier\": \"secretKey\", \"validation\": {\"required\": true}}, {\"label\": \"服务器端点\", \"dataType\": \"string\", \"identifier\": \"endpoint\", \"validation\": {\"required\": true}}, {\"label\": \"存储桶名\", \"dataType\": \"string\", \"identifier\": \"bucket\", \"validation\": {\"required\": true}}, {\"label\": \"区域\", \"dataType\": \"string\", \"identifier\": \"region\", \"validation\": {\"required\": true}}]', 'icon-aliyun1', 'https://www.aliyun.com/product/oss?utm_content=se_1020894540', 0, '阿里云对象存储 OSS（Object Storage Service）是一款海量、安全、低成本、高可靠的云存储服务');
 INSERT INTO `storage_platform` VALUES (2, 'Minio', 'Minio', '[{\"label\": \"Access-Key\", \"dataType\": \"string\", \"identifier\": \"accessKey\", \"validation\": {\"required\": true}}, {\"label\": \"Secret-key\", \"dataType\": \"string\", \"identifier\": \"secretKey\", \"validation\": {\"required\": true}}, {\"label\": \"服务器端点\", \"dataType\": \"string\", \"identifier\": \"endpoint\", \"validation\": {\"required\": true}}, {\"label\": \"存储桶名\", \"dataType\": \"string\", \"identifier\": \"bucket\", \"validation\": {\"required\": true}}]', 'icon-Minio1', 'https://www.minio.org.cn/?bd_vid=10111900197314796808', 0, 'MinIO 是一种高性能、S3 兼容的对象存储。');
 INSERT INTO `storage_platform` VALUES (3, '七牛云', 'Kodo', '[{\"label\": \"Access-Key\", \"dataType\": \"string\", \"identifier\": \"accessKey\", \"validation\": {\"required\": true}}, {\"label\": \"Secret-key\", \"dataType\": \"string\", \"identifier\": \"secretKey\", \"validation\": {\"required\": true}}, {\"label\": \"服务器端点\", \"dataType\": \"string\", \"identifier\": \"endpoint\", \"validation\": {\"required\": true}}, {\"label\": \"存储桶名\", \"dataType\": \"string\", \"identifier\": \"bucket\", \"validation\": {\"required\": true}}]', 'icon-normal-logo-blue', 'https://www.qiniu.com/products/kodo', 0, '七牛云海量存储系统（Kodo）是自主研发的非结构化数据存储管理平台，支持中心和边缘存储。');
 INSERT INTO `storage_platform` VALUES (4, 'RustFS', 'Rustfs', '[]', NULL, 'https://docs.rustfs.com/', 1, 'RustFS 用热门安全的 Rust 语言开发，兼容 S3 协议。适用于 AI/ML 及海量数据存储、大数据、互联网、工业和保密存储等全部场景。');
@@ -173,6 +197,10 @@ CREATE TABLE `storage_settings`  (
   `deleted` tinyint(1) NULL DEFAULT 0 COMMENT '逻辑删除 0未删除 1已删除',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '存储平台配置' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of storage_settings
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for subscription_plan
@@ -198,6 +226,12 @@ CREATE TABLE `subscription_plan`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '套餐表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Records of subscription_plan
+-- ----------------------------
+INSERT INTO `subscription_plan` VALUES (1, 'Free', '免费套餐', '', 20, 50, 1024, 1, 0.00, 1, 1, 1, '2025-09-23 14:54:29', '2025-09-23 14:54:32', 0);
+INSERT INTO `subscription_plan` VALUES (2, 'Basic', '基础套餐', NULL, 100, 50, 1, 1, 2999.00, 1, 0, 2, '2025-09-23 14:57:32', '2025-09-23 14:57:34', 0);
+
+-- ----------------------------
 -- Table structure for sys_login_log
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_login_log`;
@@ -213,8 +247,11 @@ CREATE TABLE `sys_login_log`  (
   `msg` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '提示消息',
   `login_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3675 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '系统访问记录' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 3769 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '系统访问记录' ROW_FORMAT = DYNAMIC;
 
+-- ----------------------------
+-- Records of sys_login_log
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -237,7 +274,10 @@ CREATE TABLE `sys_user`  (
 -- ----------------------------
 -- Records of sys_user
 -- ----------------------------
-INSERT INTO `sys_user` VALUES ('01jrvgs943q0f43h0aa5mjde0y', 'admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'xxxxxxx@qq.com', '超级管理员', 'https://csdn-665-inscode.s3.cn-north-1.jdcloud-oss.com/inscode/202303/628c9f991a7e4862742d8a2f/1680072908255-49035150-ttVQUH7YUEaCdHRZenaoQrUQPxtaBUay/large', 0, '2025-04-15 09:25:22', '2025-10-29 16:50:54', '2025-10-29 16:50:54');
+INSERT INTO `sys_user` VALUES ('01jrvgs943q0f43h0aa5mjde0y', 'admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', '459102951@qq.com', '超级管理员', 'https://csdn-665-inscode.s3.cn-north-1.jdcloud-oss.com/inscode/202303/628c9f991a7e4862742d8a2f/1680072908255-49035150-ttVQUH7YUEaCdHRZenaoQrUQPxtaBUay/large', 0, '2025-04-15 09:25:22', '2025-11-10 13:40:10', '2025-11-10 13:40:10');
+INSERT INTO `sys_user` VALUES ('01k5xawhp9mas36qywkgqdk8nj', 'test2', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 'test2@qq.com', '测试用户2', NULL, 0, '2025-09-24 15:44:26', '2025-10-20 10:51:15', '2025-10-20 10:51:15');
+INSERT INTO `sys_user` VALUES ('01k5zrbyzgqxvdtxehe6k99fvp', 'test3', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 'xx@qq.com', '测试3', NULL, 0, '2025-09-25 14:18:31', '2025-09-28 10:25:44', NULL);
+INSERT INTO `sys_user` VALUES ('01k8031gfr5adevd5tc3n3pamv', 'xddcodec', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '459102951@qq.com', '小叮咚', 'https://api.dicebear.com/7.x/avataaars/svg?seed=xddcodec', 0, '2025-10-20 13:56:27', '2025-10-20 14:39:33', '2025-10-20 14:39:33');
 
 -- ----------------------------
 -- Table structure for user_quota_usage
