@@ -36,24 +36,24 @@
 ### 🗂️ 功能特性
 
 - **文件管理**
-  - 📤 文件上传（分片上传、断点续传、秒传）
-  - 📥 文件下载
-  - 📁 文件夹创建与管理
-  - 🔄 文件/文件夹重命名、移动
-  - 🔗 文件分享
-  - 🗑️ 文件删除
+    - 📤 文件上传（分片上传、断点续传、秒传）
+    - 📥 文件下载
+    - 📁 文件夹创建与管理
+    - 🔄 文件/文件夹重命名、移动
+    - 🔗 文件分享
+    - 🗑️ 文件删除
 
 - **回收站**
-  - ♻️ 文件还原（支持批量操作）
-  - 🗑️ 彻底删除（支持批量操作）
-  - 🧹 一键清空回收站
-  - ⏰ 自动清理机制
+    - ♻️ 文件还原（支持批量操作）
+    - 🗑️ 彻底删除（支持批量操作）
+    - 🧹 一键清空回收站
+    - ⏰ 自动清理机制
 
 - **存储平台**
-  - 📦 支持多存储平台（本地、MinIO、阿里云 OSS、七牛云 Kodo、S3 体系等）
-  - 🔄 动态切换存储平台
-  - 🔐 平台配置管理
-  - 📊 存储空间统计
+    - 📦 支持多存储平台（本地、MinIO、阿里云 OSS、七牛云 Kodo、S3 体系等）
+    - 🔄 动态切换存储平台
+    - 🔐 平台配置管理
+    - 📊 存储空间统计
 
 ### 🎯 技术亮点
 
@@ -163,12 +163,15 @@ mvn spring-boot:run
 ---
 
 ## 🎨 界面预览
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/>
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
-
+<img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
+<img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/>
+<img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/>
+<img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>
+<img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/>
+<img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/>
+<img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/transmission.png"/>
+<img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/storage.png"/>
+<img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/profile.png"/>
 
 ---
 
