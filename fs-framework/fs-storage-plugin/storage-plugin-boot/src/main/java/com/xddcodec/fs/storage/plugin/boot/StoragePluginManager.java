@@ -31,7 +31,7 @@ public class StoragePluginManager implements DisposableBean {
         StorageConfig config = configLoader.get();
         String cacheKey = config.getCacheKey();
         IStorageOperationService instance = instanceCache.get(cacheKey);
-        
+
         if (instance == null) {
             throw new StorageOperationException("存储实例未初始化，请检查配置: " + configId);
         }
@@ -56,32 +56,53 @@ public class StoragePluginManager implements DisposableBean {
         return localStorageManager.getLocalInstance();
     }
 
-    public void invalidateConfig(String configId, Supplier<StorageConfig> configLoader) {
+    /**
+     * 使配置失效（通过 configId 直接失效，不需要加载配置）
+     *
+     * @param configId 配置ID
+     */
+    public void invalidateConfig(String configId) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.debug("Local 平台为全局单例，不支持失效操作");
             return;
         }
 
-        StorageConfig config = configLoader.get();
-        String cacheKey = config.getCacheKey();
-        instanceCache.invalidate(cacheKey);
+        log.info("使配置失效: configId={}", configId);
+        instanceCache.invalidateByConfigId(configId);
     }
 
-    public void invalidateConfigs(List<String> configIds, Supplier<List<StorageConfig>> configLoader) {
+    /**
+     * 批量使配置失效（通过 configId 列表）
+     *
+     * @param configIds 配置ID列表
+     */
+    public void invalidateConfigs(List<String> configIds) {
         if (configIds == null || configIds.isEmpty()) {
             return;
         }
 
-        List<StorageConfig> configs = configLoader.get();
-        List<String> cacheKeys = configs.stream()
-                .map(StorageConfig::getCacheKey)
+        // 过滤掉 Local 配置
+        List<String> validConfigIds = configIds.stream()
+                .filter(id -> !StorageUtils.isLocalConfig(id))
                 .toList();
-        instanceCache.invalidateBatch(cacheKeys);
+
+        if (validConfigIds.isEmpty()) {
+            log.debug("没有需要失效的配置");
+            return;
+        }
+
+        log.info("批量使配置失效，共 {} 个配置", validConfigIds.size());
+        instanceCache.invalidateBatchByConfigIds(validConfigIds);
     }
 
-    public void clearUserInstances(List<String> configIds, Supplier<List<StorageConfig>> configLoader) {
+    /**
+     * 清除用户的所有存储实例
+     *
+     * @param configIds 用户的配置ID列表
+     */
+    public void clearUserInstances(List<String> configIds) {
         log.info("清除用户的所有存储实例，共 {} 个配置", configIds == null ? 0 : configIds.size());
-        invalidateConfigs(configIds, configLoader);
+        invalidateConfigs(configIds);
     }
 
     public IStorageOperationService getPrototype(String platformIdentifier) {
@@ -95,6 +116,19 @@ public class StoragePluginManager implements DisposableBean {
     public void clearAllCache() {
         log.warn("清空所有存储实例缓存");
         instanceCache.clear();
+    }
+
+    /**
+     * 检查配置是否有缓存实例
+     *
+     * @param configId 配置ID
+     * @return true-存在缓存
+     */
+    public boolean hasInstance(String configId) {
+        if (StorageUtils.isLocalConfig(configId)) {
+            return localStorageManager.isLocalInstanceCreated();
+        }
+        return instanceCache.containsConfigId(configId);
     }
 
     @Override

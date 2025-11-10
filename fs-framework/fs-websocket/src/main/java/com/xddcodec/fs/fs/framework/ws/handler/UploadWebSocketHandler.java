@@ -3,7 +3,6 @@ package com.xddcodec.fs.fs.framework.ws.handler;
 import com.xddcodec.fs.framework.common.utils.JsonUtils;
 import com.xddcodec.fs.fs.framework.ws.core.UploadCommand;
 import com.xddcodec.fs.fs.framework.ws.core.UploadMessage;
-import com.xddcodec.fs.fs.framework.ws.core.UploadMessageType;
 import com.xddcodec.fs.fs.framework.ws.core.UploadProgressDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -17,6 +16,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.ClosedChannelException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -64,6 +64,7 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
         String userId = getUserId(session);
         String payload = message.getPayload();
         log.debug("收到消息: userId={}, message={}", userId, payload);
+
         UploadCommand command = JsonUtils.parseObject(payload, UploadCommand.class);
         if (command != null && command.getAction() != null) {
             switch (command.getAction()) {
@@ -85,7 +86,6 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
             sendMessageSafely(session, UploadMessage.error("命令格式错误"));
         }
     }
-
 
     /**
      * 连接关闭
@@ -127,6 +127,8 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // ========== 私有方法 ==========
+
     /**
      * 订阅任务
      */
@@ -144,128 +146,9 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
-     * 推送上传进度
-     */
-    public void pushProgress(String taskId, UploadProgressDTO progress) {
-        String userId = taskUserMap.get(taskId);
-        if (userId == null) {
-            log.debug("任务未订阅，跳过推送: taskId={}", taskId);
-            return;
-        }
-        WebSocketSession session = sessions.get(userId);
-        if (session == null) {
-            log.debug("用户会话不存在，跳过推送: userId={}, taskId={}", userId, taskId);
-            // 清理无效订阅
-            taskUserMap.remove(taskId, userId);
-            return;
-        }
-        UploadMessage message = UploadMessage.progress(taskId, progress);
-        boolean success = sendMessageSafely(session, message);
-
-        // ✅ 发送失败，清理会话
-        if (!success) {
-            log.warn("推送进度失败，清理会话: userId={}, taskId={}", userId, taskId);
-            sessions.remove(userId, session);
-            taskUserMap.remove(taskId, userId);
-        }
-    }
-
-    /**
-     * 推送任务完成
-     */
-    public void pushComplete(String taskId, String fileId) {
-        String userId = taskUserMap.get(taskId);
-        if (userId == null) {
-            log.debug("任务未订阅，跳过推送完成消息: taskId={}", taskId);
-            return;
-        }
-        WebSocketSession session = sessions.get(userId);
-        if (session == null) {
-            log.debug("用户会话不存在，跳过推送完成消息: userId={}, taskId={}", userId, taskId);
-            taskUserMap.remove(taskId, userId);
-            return;
-        }
-        UploadMessage message = UploadMessage.complete(taskId, fileId);
-        boolean success = sendMessageSafely(session, message);
-
-        // 任务完成后清理订阅
-        taskUserMap.remove(taskId, userId);
-
-        if (!success) {
-            log.warn("推送完成消息失败: userId={}, taskId={}", userId, taskId);
-            sessions.remove(userId, session);
-        }
-    }
-
-    /**
-     * 推送错误消息
-     */
-    public void pushError(String taskId, String error) {
-        String userId = taskUserMap.get(taskId);
-        if (userId == null) {
-            log.debug("任务未订阅，跳过推送错误消息: taskId={}", taskId);
-            return;
-        }
-        WebSocketSession session = sessions.get(userId);
-        if (session == null) {
-            log.debug("用户会话不存在，跳过推送错误消息: userId={}, taskId={}", userId, taskId);
-            taskUserMap.remove(taskId, userId);
-            return;
-        }
-        UploadMessage message = UploadMessage.error(taskId, error);
-        boolean success = sendMessageSafely(session, message);
-
-        // 错误发生后清理订阅
-        taskUserMap.remove(taskId, userId);
-
-        if (!success) {
-            log.warn("推送错误消息失败: userId={}, taskId={}", userId, taskId);
-            sessions.remove(userId, session);
-        }
-    }
-
-    /**
-     * 安全发送消息（捕获所有异常）
-     */
-    private boolean sendMessageSafely(WebSocketSession session, UploadMessage message) {
-        // 双重检查锁
-        if (session == null || !session.isOpen()) {
-            log.debug("会话未打开，跳过发送: sessionId={}", session != null ? session.getId() : "null");
-            return false;
-        }
-        try {
-            // synchronized 确保同一 session 的消息发送是串行的
-            synchronized (session) {
-                // 再次检查（防止并发关闭）
-                if (!session.isOpen()) {
-                    log.debug("会话已关闭，跳过发送: sessionId={}", session.getId());
-                    return false;
-                }
-
-                String json = JsonUtils.toJsonString(message);
-                session.sendMessage(new TextMessage(Objects.requireNonNull(json)));
-                return true;
-            }
-        } catch (ClosedChannelException e) {
-            //  通道关闭异常（客户端断开）
-            log.debug("WebSocket 通道已关闭: sessionId={}", session.getId());
-            return false;
-        } catch (IOException e) {
-            //  IO 异常
-            log.warn("发送 WebSocket 消息失败: sessionId={}, error={}", session.getId(), e.getMessage());
-            return false;
-        } catch (Exception e) {
-            //  其他异常
-            log.error("发送 WebSocket 消息异常: sessionId={}", session.getId(), e);
-            return false;
-        }
-    }
-
-    /**
      * 获取用户ID
      */
     private String getUserId(WebSocketSession session) {
-        // 从查询参数获取
         URI uri = session.getUri();
         if (uri == null) {
             return null;
@@ -281,5 +164,159 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
             }
         }
         return null;
+    }
+
+    /**
+     * 安全发送消息（捕获所有异常）
+     */
+    private boolean sendMessageSafely(WebSocketSession session, UploadMessage message) {
+        if (session == null || !session.isOpen()) {
+            log.debug("会话未打开，跳过发送: sessionId={}", session != null ? session.getId() : "null");
+            return false;
+        }
+
+        try {
+            synchronized (session) {
+                if (!session.isOpen()) {
+                    log.debug("会话已关闭，跳过发送: sessionId={}", session.getId());
+                    return false;
+                }
+
+                String json = JsonUtils.toJsonString(message);
+                session.sendMessage(new TextMessage(Objects.requireNonNull(json)));
+                return true;
+            }
+        } catch (ClosedChannelException e) {
+            log.debug("WebSocket 通道已关闭: sessionId={}", session.getId());
+            return false;
+        } catch (IOException e) {
+            log.warn("发送 WebSocket 消息失败: sessionId={}, error={}", session.getId(), e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("发送 WebSocket 消息异常: sessionId={}", session.getId(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 通用推送方法
+     */
+    private void pushMessage(String taskId, UploadMessage message) {
+        String userId = taskUserMap.get(taskId);
+        if (userId == null) {
+            log.debug("任务未订阅，跳过推送: taskId={}, type={}", taskId, message.getType());
+            return;
+        }
+
+        WebSocketSession session = sessions.get(userId);
+        if (session == null) {
+            log.debug("用户会话不存在，跳过推送: userId={}, taskId={}", userId, taskId);
+            taskUserMap.remove(taskId, userId);
+            return;
+        }
+
+        boolean success = sendMessageSafely(session, message);
+        if (!success) {
+            log.warn("推送消息失败: userId={}, taskId={}, type={}", userId, taskId, message.getType());
+            sessions.remove(userId, session);
+            taskUserMap.remove(taskId, userId);
+        }
+    }
+
+    // ========== 公共推送方法 ==========
+
+    /**
+     * 推送初始化成功消息
+     */
+    public void pushInitialized(String taskId) {
+        pushMessage(taskId, UploadMessage.initialized(taskId));
+        log.debug("推送初始化消息: taskId={}", taskId);
+    }
+
+    /**
+     * 推送检查中消息
+     */
+    public void pushChecking(String taskId) {
+        pushMessage(taskId, UploadMessage.checking(taskId));
+        log.debug("推送检查中消息: taskId={}", taskId);
+    }
+
+    /**
+     * 推送秒传成功消息
+     */
+    public void pushQuickUpload(String taskId, String fileId) {
+        pushMessage(taskId, UploadMessage.quickUpload(taskId, fileId));
+        // 秒传成功后清理订阅
+        taskUserMap.remove(taskId);
+        log.info("推送秒传成功消息: taskId={}, fileId={}", taskId, fileId);
+    }
+
+    /**
+     * 推送准备上传消息
+     */
+    public void pushReadyToUpload(String taskId, String uploadId) {
+        pushMessage(taskId, UploadMessage.readyToUpload(taskId, uploadId));
+        log.debug("推送准备上传消息: taskId={}, uploadId={}", taskId, uploadId);
+    }
+
+    /**
+     * 推送上传进度
+     */
+    public void pushProgress(String taskId, UploadProgressDTO progress) {
+        pushMessage(taskId, UploadMessage.progress(taskId, progress));
+    }
+
+    /**
+     * 推送暂停消息
+     */
+    public void pushPaused(String taskId) {
+        pushMessage(taskId, UploadMessage.paused(taskId));
+        log.info("推送暂停消息: taskId={}", taskId);
+    }
+
+    /**
+     * 推送继续消息
+     */
+    public void pushResumed(String taskId, Set<Integer> uploadedChunks) {
+        pushMessage(taskId, UploadMessage.resumed(taskId, uploadedChunks));
+        log.info("推送继续消息: taskId={}, uploadedChunks={}", taskId, uploadedChunks.size());
+    }
+
+    /**
+     * 推送合并中消息
+     */
+    public void pushMerging(String taskId) {
+        pushMessage(taskId, UploadMessage.merging(taskId));
+        log.info("推送合并中消息: taskId={}", taskId);
+    }
+
+    /**
+     * 推送完成消息
+     */
+    public void pushComplete(String taskId, String fileId) {
+        pushMessage(taskId, UploadMessage.complete(taskId, fileId));
+        // 任务完成后清理订阅
+        taskUserMap.remove(taskId);
+        log.info("推送完成消息: taskId={}, fileId={}", taskId, fileId);
+    }
+
+    /**
+     * 推送取消消息
+     */
+    public void pushCancelled(String taskId) {
+        pushMessage(taskId, UploadMessage.cancelled(taskId));
+        // 任务取消后清理订阅
+        taskUserMap.remove(taskId);
+        log.info("推送取消消息: taskId={}", taskId);
+    }
+
+    /**
+     * 推送错误消息
+     */
+    public void pushError(String taskId, String error) {
+        pushMessage(taskId, UploadMessage.error(taskId, error));
+        // 错误发生后清理订阅
+        taskUserMap.remove(taskId);
+        log.error("推送错误消息: taskId={}, error={}", taskId, error);
     }
 }

@@ -1,9 +1,10 @@
 package com.xddcodec.fs.file.controller;
 
-import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
+import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
 import com.xddcodec.fs.file.service.FileTransferService;
 import com.xddcodec.fs.framework.common.domain.Result;
@@ -42,6 +43,13 @@ public class FileTransferController {
         return Result.ok(taskId, "初始化成功");
     }
 
+    @PostMapping("/check")
+    @Operation(summary = "校验文件", description = "前端计算完MD5后调用，判断是否秒传")
+    public Result<CheckUploadResultVO> checkUpload(@RequestBody @Validated CheckUploadCmd cmd) {
+        CheckUploadResultVO result = fileTransferService.checkUpload(cmd);
+        return Result.ok(result);
+    }
+
     @PostMapping("/chunk")
     @Operation(summary = "上传分片", description = "异步上传分片，立即返回，通过WebSocket推送进度")
     public Result<?> uploadChunk(
@@ -54,19 +62,30 @@ public class FileTransferController {
         cmd.setTaskId(taskId);
         cmd.setChunkIndex(chunkIndex);
         cmd.setChunkMd5(chunkMd5);
-        
         byte[] fileBytes = file.getBytes();
-        
-        // 传递字节数组给异步方法
         fileTransferService.uploadChunk(fileBytes, cmd);
         return Result.ok(null, "分片接收成功，正在处理");
     }
 
-    @PostMapping("/merge/{taskId}")
-    @Operation(summary = "合并分片", description = "合并分片，创建文件记录")
-    public Result<FileInfo> mergeChunks(@PathVariable String taskId) {
-        FileInfo fileInfo = fileTransferService.mergeChunks(taskId);
-        return Result.ok(fileInfo);
+    @PostMapping("/pause/{taskId}")
+    @Operation(summary = "暂停上传")
+    public Result<Void> pauseUpload(@PathVariable String taskId) {
+        fileTransferService.pauseUpload(taskId);
+        return Result.ok();
+    }
+
+    @PostMapping("/resume/{taskId}")
+    @Operation(summary = "继续上传")
+    public Result<Void> resumeUpload(@PathVariable String taskId) {
+        fileTransferService.resumeUpload(taskId);
+        return Result.ok();
+    }
+
+    @PostMapping("/cancel/{taskId}")
+    @Operation(summary = "取消上传")
+    public Result<Void> cancelUpload(@PathVariable String taskId) {
+        fileTransferService.cancelUpload(taskId);
+        return Result.ok();
     }
 
     @GetMapping("/chunks/{taskId}")

@@ -69,6 +69,12 @@ public class StorageServiceFacade {
         );
     }
 
+    /**
+     * 刷新存储实例
+     * 先失效缓存，下次使用时自动重新加载
+     *
+     * @param configId 配置ID
+     */
     public void refreshInstance(String configId) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.warn("Local 存储实例不支持刷新");
@@ -76,9 +82,17 @@ public class StorageServiceFacade {
         }
 
         log.info("刷新存储实例: configId={}", configId);
-        pluginManager.invalidateConfig(configId, () -> loadConfigFromDatabase(configId));
+
+        // 直接失效缓存，下次使用时自动重新加载
+        pluginManager.invalidateConfig(configId);
     }
 
+    /**
+     * 移除存储实例
+     * 用于删除配置或禁用配置时清理缓存
+     *
+     * @param configId 配置ID
+     */
     public void removeInstance(String configId) {
         if (StorageUtils.isLocalConfig(configId)) {
             log.warn("Local 存储实例不支持移除");
@@ -86,7 +100,9 @@ public class StorageServiceFacade {
         }
 
         log.info("移除存储实例: configId={}", configId);
-        pluginManager.invalidateConfig(configId, () -> loadConfigFromDatabase(configId));
+
+        // 直接失效缓存，不需要加载配置
+        pluginManager.invalidateConfig(configId);
     }
 
     /**

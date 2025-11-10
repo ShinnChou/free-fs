@@ -5,9 +5,13 @@ package com.xddcodec.fs.framework.common.enums;
  */
 public enum UploadTaskStatus {
     /**
-     * 等待上传
+     * 初始化
      */
-    waiting,
+    initialized,
+    /**
+     * 校验中 - 正在计算MD5
+     */
+    checking,
     /**
      * 上传中
      */
@@ -16,10 +20,6 @@ public enum UploadTaskStatus {
      * 合并中
      */
     merging,
-    /**
-     * 上传成功
-     */
-    success,
     /**
      * 失败
      */
