@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img alt="Free FS Logo" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/logo.png" width="180"/>
+
 一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，支持多存储平台、分片上传、断点续传和完整的文件操作。
 
 [![GitHub stars](https://img.shields.io/github/stars/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/stargazers)
