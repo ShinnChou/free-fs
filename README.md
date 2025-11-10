@@ -2,7 +2,7 @@
 
 <div align="center">
 
-一个基于 Spring Boot 3.x 的现代化文件管理网盘系统后端，支持多存储平台、分片上传、断点续传和完整的文件操作。
+一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，支持多存储平台、分片上传、断点续传和完整的文件操作。
 
 [![GitHub stars](https://img.shields.io/github/stars/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/network)
@@ -15,6 +15,11 @@
 </div>
 
 ---
+## 源码链接：
+
+Gitee：https://gitee.com/xddcode/free-fs
+
+GitHub：https://github.com/xddcode/free-fs
 
 ## 🔗 相关项目
 
@@ -26,10 +31,10 @@
 
 ### 🚀 核心亮点
 
-- ⚡ **分片上传 + 断点续传** - 支持大文件上传，网络中断后可继续上传
-- 📊 **实时上传进度** - WebSocket 实时推送上传进度，用户体验更佳
-- ⚡ **秒传功能** - 基于 MD5 校验，相同文件秒级完成上传
-- 🔌 **插件化存储** - SPI 机制，轻松扩展支持更多存储平台
+- ⚡ **分片上传 + 断点续传** - 支持 TB 级大文件上传，网络中断后可继续上传
+- 📊 **实时上传进度** - 实时推送上传进度，精确到分片级别
+- ⚡ **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
+- 🔌 **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
 - 🏗️ **模块化架构** - 清晰的分层设计，易于维护和扩展
 - 🔐 **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
