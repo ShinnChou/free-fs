@@ -94,6 +94,11 @@ public class FileInfo implements Serializable {
     private LocalDateTime updateTime;
 
     /**
+     * 最后访问时间
+     */
+    private LocalDateTime lastAccessTime;
+
+    /**
      * 软删除标记，回收站标识0：未删除 1：已删除
      */
     private Boolean isDeleted;

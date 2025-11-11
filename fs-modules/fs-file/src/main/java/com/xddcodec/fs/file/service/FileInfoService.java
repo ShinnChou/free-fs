@@ -6,9 +6,9 @@ import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
+import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.util.List;
@@ -21,40 +21,6 @@ import java.util.List;
  */
 public interface FileInfoService extends IService<FileInfo> {
 
-    /**
-     * 上传文件
-     *
-     * @param file     文件
-     * @param parentId 父目录ID，如果为null则上传到根目录
-     * @return 文件信息
-     */
-//    FileInfo uploadFile(MultipartFile file, String parentId);
-
-    /**
-     * 上传文件
-     *
-     * @param inputStream               文件输入流
-     * @param originalName              原始文件名
-     * @param size                      文件大小
-     * @param mimeType                  文件类型
-     * @param userId                    用户ID
-     * @param parentId                  父目录ID，如果为null则上传到根目录
-     * @param storagePlatformIdentifier 存储平台标识符，如果为null则使用默认存储平台
-     * @return 文件信息
-     */
-//    FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-//                        String userId, String parentId, String storagePlatformIdentifier);
-
-    /**
-     * 秒传检查
-     *
-     * @param md5                       文件MD5值
-     * @param storagePlatformIdentifier 存储平台标识符
-     * @param userId                    用户ID
-     * @param originalName              原始文件名
-     * @return
-     */
-//    FileInfo checkSecondUpload(String md5, String storagePlatformIdentifier, String userId, String originalName);
 
     /**
      * 下载文件
@@ -119,6 +85,14 @@ public interface FileInfoService extends IService<FileInfo> {
      * @return 分页结果
      */
     List<FileVO> getList(FileQry qry);
+
+    /**
+     * 查询文件详情
+     *
+     * @param fileId 文件ID
+     * @return
+     */
+    FileDetailVO getFileDetails(String fileId);
 
     /**
      * 根据父目录ID查询目录列表

@@ -16,6 +16,7 @@ import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
+import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.enums.FileTypeEnum;
@@ -32,13 +33,9 @@ import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import io.github.linpeilie.Converter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -66,125 +63,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Autowired
     private StorageServiceFacade storageServiceFacade;
-
-    @Value("${spring.application.name:free-fs}")
-    private String applicationName;
-
-//    @Override
-//    @Transactional(rollbackFor = Exception.class)
-//    public FileInfo uploadFile(MultipartFile file, String parentId) {
-//        if (file == null || file.isEmpty()) {
-//            throw new StorageOperationException("上传文件不能为空");
-//        }
-//        String userId = StpUtil.getLoginIdAsString();
-//        String configId = StoragePlatformContextHolder.getConfigId();
-//        try {
-//            return uploadFile(
-//                    file.getInputStream(),
-//                    file.getOriginalFilename(),
-//                    file.getSize(),
-//                    file.getContentType(),
-//                    userId,
-//                    parentId,
-//                    configId
-//            );
-//        } catch (IOException e) {
-//            log.error("读取上传文件流失败: {}", e.getMessage(), e);
-//            throw new StorageOperationException("读取上传文件流失败: " + e.getMessage(), e);
-//        }
-//    }
-//
-//    @Override
-//    @Transactional(rollbackFor = Exception.class)
-//    public FileInfo uploadFile(InputStream inputStream, String originalName, long size, String mimeType,
-//                               String userId, String parentId, String storagePlatformSettingId) {
-//        if (inputStream == null) {
-//            throw new StorageOperationException("上传文件流不能为空");
-//        }
-//        if (StrUtil.isBlank(originalName)) {
-//            throw new StorageOperationException("原始文件名不能为空");
-//        }
-//
-//        byte[] fileBytes = null;
-//        String md5 = null;
-//        try {
-//            fileBytes = IoUtil.readBytes(inputStream);
-//
-//            // 计算文件 MD5
-//            md5 = DigestUtil.md5Hex(fileBytes);
-//        } catch (Exception e) {
-//            log.error("读取文件流失败: {}", e.getMessage(), e);
-//            throw new StorageOperationException("读取文件流失败: " + e.getMessage(), e);
-//        } finally {
-//            IoUtil.close(inputStream);
-//        }
-//
-//        // 秒传检查
-//        FileInfo existingFile = checkSecondUpload(md5, storagePlatformSettingId, userId, originalName);
-//        if (existingFile != null) {
-//            log.info("秒传成功，文件ID: {}, MD5: {}", existingFile.getId(), md5);
-//            return existingFile;
-//        }
-//
-//        // 获取存储服务（使用文件记录中的 storagePlatformSettingId）
-//        IStorageOperationService storageService = storageServiceFacade.getStorageService(storagePlatformSettingId);
-//
-//        // 生成文件ID和对象键
-//        String fileId = IdUtil.fastSimpleUUID();
-//        String suffix = FileUtil.extName(originalName);
-//
-//        //TODO 后续保存的文件名需要根据用户的配置是否生成新的
-//        String displayName = IdUtil.fastSimpleUUID() + "." + suffix;
-//        String objectKey = generateObjectKey(userId, displayName, suffix);
-//
-//        try {
-//            ByteArrayInputStream uploadStream = new ByteArrayInputStream(fileBytes);
-//            storageService.uploadFile(uploadStream, objectKey);
-//        } catch (StorageOperationException e) {
-//            // 统一转换为友好的业务异常消息
-//            log.error("文件上传到存储平台失败: {}", e.getMessage(), e);
-//            throw new StorageOperationException("文件上传失败，请检查当前存储平台配置后重试");
-//        }
-//
-//        // 创建文件信息记录
-//        FileInfo fileInfo = new FileInfo();
-//        fileInfo.setId(fileId);
-//        fileInfo.setObjectKey(objectKey);
-//        fileInfo.setOriginalName(originalName);
-//        // 默认显示名与原始名相同
-//        fileInfo.setDisplayName(displayName);
-//        fileInfo.setSuffix(suffix);
-//        fileInfo.setSize(size);
-//        fileInfo.setMimeType(mimeType);
-//        fileInfo.setIsDir(false);
-//        fileInfo.setParentId(parentId);
-//        fileInfo.setUserId(userId);
-//        fileInfo.setContentMd5(md5);
-//        fileInfo.setStoragePlatformSettingId(storagePlatformSettingId);
-//        fileInfo.setUploadTime(LocalDateTime.now());
-//        fileInfo.setUpdateTime(LocalDateTime.now());
-//        fileInfo.setIsDeleted(false);
-//
-//        // 保存文件信息到数据库
-//        save(fileInfo);
-//        return fileInfo;
-//    }
-
-//    @Override
-//    public FileInfo checkSecondUpload(String md5, String storagePlatformSettingId, String userId, String originalName) {
-//        if (StrUtil.isBlank(md5) || StrUtil.isBlank(storagePlatformSettingId)) {
-//            return null;
-//        }
-//        return getOne(
-//                new QueryWrapper()
-//                        .where(FILE_INFO.CONTENT_MD5.eq(md5)
-//                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-//                                .and(FILE_INFO.USER_ID.eq(userId))
-//                                .and(FILE_INFO.ORIGINAL_NAME.eq(originalName))
-//                                .and(FILE_INFO.IS_DELETED.eq(false))
-//                        )
-//        );
-//    }
 
     @Override
     public InputStream downloadFile(String fileId) {
@@ -288,8 +166,9 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setParentId(cmd.getParentId());
         dirInfo.setUserId(userId);
         dirInfo.setStoragePlatformSettingId(platformConfigId);
-        dirInfo.setUploadTime(LocalDateTime.now());
-        dirInfo.setUpdateTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        dirInfo.setUploadTime(now);
+        dirInfo.setUpdateTime(now);
         dirInfo.setIsDeleted(false);
         save(dirInfo);
     }
@@ -314,7 +193,9 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 fileId
         );
         fileInfo.setDisplayName(finalName);
-        fileInfo.setUpdateTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        fileInfo.setUpdateTime(now);
+        fileInfo.setLastAccessTime(now);
         updateById(fileInfo);
     }
 
@@ -419,7 +300,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     /**
-     * 构建查询同级目录下同类型文件的条件 ✨
+     * 构建查询同级目录下同类型文件的条件
      */
     private QueryWrapper buildSameLevelQuery(String userId, String parentId,
                                              String baseName, Boolean isDir,
@@ -436,13 +317,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (StrUtil.isNotBlank(excludeFileId)) {
             query.and(FILE_INFO.ID.ne(excludeFileId));
         }
-
         return query;
     }
 
     /**
      * 提取已使用的后缀数字
-     * <p>
      * 示例：
      * - photo.jpg       -> 0
      * - photo(1).jpg    -> 1
@@ -662,6 +541,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .orderBy(orderBy, isAsc);
 
         return this.listAs(wrapper, FileVO.class);
+    }
+
+    @Override
+    public FileDetailVO getFileDetails(String fileId) {
+        return null;
     }
 
     @Override

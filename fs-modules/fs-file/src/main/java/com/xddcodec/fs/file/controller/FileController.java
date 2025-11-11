@@ -5,6 +5,7 @@ import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
+import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileInfoService;
@@ -56,20 +57,19 @@ public class FileController {
         return Result.ok(list);
     }
 
+    @GetMapping("/{fileId}")
+    @Operation(summary = "查询文件详情", description = "查询文件详情")
+    public Result<FileDetailVO> getFileDetails(@PathVariable String fileId) {
+        FileDetailVO details = fileInfoService.getFileDetails(fileId);
+        return Result.ok(details);
+    }
+
     @GetMapping("/dirs")
     @Operation(summary = "查询目录列表", description = "查询目录列表")
     public Result<List<FileVO>> getDirs(String parentId) {
         List<FileVO> list = fileInfoService.getDirs(parentId);
         return Result.ok(list);
     }
-
-//    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    @Operation(summary = "上传文件", description = "上传文件到指定目录")
-//    @Parameters(value = {@Parameter(name = "parentId", description = "父目录ID，如果为空则上传到根目录")})
-//    public Result<FileInfo> uploadFile(@RequestPart("file") MultipartFile file, @RequestParam(value = "parentId", required = false) String parentId) {
-//        FileInfo fileInfo = fileInfoService.uploadFile(file, parentId);
-//        return Result.ok(fileInfo);
-//    }
 
     @GetMapping("/download/{fileId}")
     @Operation(summary = "下载文件", description = "根据文件ID下载文件")
