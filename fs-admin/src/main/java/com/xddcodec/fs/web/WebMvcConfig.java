@@ -2,12 +2,15 @@ package com.xddcodec.fs.web;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
+import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.framework.security.properties.SecurityProperties;
 import com.xddcodec.fs.interceptor.StoragePlatformInterceptor;
+import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -25,14 +28,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private StoragePlatformInterceptor storagePlatformInterceptor;
 
-//    @Autowired
-//    private FsServerProperties serverProperties;
-//
-//    @Override
-//    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-//        registry.addResourceHandler(CommonConstant.LOCAL_DIRECTORY_MAPPING + "**")
-//                .addResourceLocations("file:" + serverProperties.getLocal().getDirectory() + "/");
-//    }
+    @Autowired
+    private LocalStorageProperties storageProperties;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String baseUrl = storageProperties.getBaseUrl();
+        // 提取最后一个 / 之后的内容
+        String prefix = baseUrl.substring(baseUrl.lastIndexOf("/") + 1);
+
+        registry.addResourceHandler("/" + prefix + "/**")
+                .addResourceLocations("file:" + storageProperties.getBasePath() + "/");
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
