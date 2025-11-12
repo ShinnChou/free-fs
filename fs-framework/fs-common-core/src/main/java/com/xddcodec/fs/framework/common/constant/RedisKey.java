@@ -11,9 +11,6 @@ public class RedisKey {
     // 验证码
     private static final String VERIFY_CODE = "code";
 
-    // 用户token
-    private static final String USER_TOKEN = "token";
-
     /**
      * 缓存过期时间（24小时）
      */

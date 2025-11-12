@@ -23,11 +23,15 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.storage.domain.table.StorageSettingTableDef.STORAGE_SETTING;
 
@@ -49,6 +53,7 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     private final StorageServiceFacade storageServiceFacade;
 
     @Override
+    @Cacheable(value = "storageSettings", keyGenerator = "storageSettingKeyGenerator", unless = "#result == null || #result.isEmpty()")
     public List<StorageSettingUserVO> getStorageSettingsByUser() {
         String userId = StpUtil.getLoginIdAsString();
         List<StorageSetting> storageSettings = this.list(
@@ -58,16 +63,20 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
                         .orderBy(STORAGE_SETTING.ENABLED.desc()
                         )
         );
+        if (CollUtil.isEmpty(storageSettings)) {
+            return new ArrayList<>();
+        }
         return storageSettings.stream().map(storageSetting -> {
             StorageSettingUserVO vo = converter.convert(storageSetting, StorageSettingUserVO.class);
             StoragePlatform storagePlatform = storagePlatformService.getStoragePlatformByIdentifier(storageSetting.getPlatformIdentifier());
             StoragePlatformVO storagePlatformVO = converter.convert(storagePlatform, StoragePlatformVO.class);
             vo.setStoragePlatform(storagePlatformVO);
             return vo;
-        }).toList();
+        }).collect(Collectors.toList());
     }
 
     @Override
+    @Cacheable(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator", unless = "#result == null || #result.isEmpty()")
     public List<StorageActivePlatformsVO> getActiveStoragePlatforms() {
         String userId = StpUtil.getLoginIdAsString();
 
@@ -106,6 +115,11 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    @Caching(evict = {
+            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
+    })
     public void enableOrDisableStoragePlatform(String settingId, Integer action) {
         String userId = StpUtil.getLoginIdAsString();
         StorageSetting storageSetting = this.getById(settingId);
@@ -137,6 +151,10 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
 
     @Transactional(rollbackFor = Exception.class)
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
+    })
     public void addStorageSetting(StorageSettingAddCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         boolean exists = this.checkDuplicateConfig(
@@ -183,6 +201,10 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
 
     @Transactional(rollbackFor = Exception.class)
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
+    })
     public void editStorageSetting(StorageSettingEditCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         StorageSetting storageSetting = this.getById(cmd.getSettingId());
@@ -230,7 +252,12 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
                 });
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
+    })
     public void deleteStorageSettingById(String id) {
         String userId = StpUtil.getLoginIdAsString();
         StorageSetting storageSetting = this.getById(id);
