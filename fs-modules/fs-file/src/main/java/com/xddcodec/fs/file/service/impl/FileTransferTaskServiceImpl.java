@@ -4,20 +4,22 @@ import cn.dev33.satoken.stp.StpUtil;
 
 import cn.hutool.core.util.IdUtil;
 import com.mybatisflex.core.query.QueryWrapper;
-import com.xddcodec.fs.file.cache.UploadTaskCacheManager;
+import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xddcodec.fs.file.cache.TransferTaskCacheManager;
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.FileUploadTask;
+import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
-import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
+import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
+import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.file.handler.UploadTaskExceptionHandler;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
-import com.xddcodec.fs.file.mapper.FileUploadTaskMapper;
-import com.xddcodec.fs.file.service.FileTransferService;
-import com.xddcodec.fs.framework.common.enums.UploadTaskStatus;
+import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
+import com.xddcodec.fs.file.service.FileTransferTaskService;
+import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.FileUtils;
@@ -26,6 +28,7 @@ import com.xddcodec.fs.fs.framework.ws.handler.UploadWebSocketHandler;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.system.service.SysUserTransferSettingService;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,42 +45,43 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
-import static com.xddcodec.fs.file.domain.table.FileUploadTaskTableDef.FILE_UPLOAD_TASK;
+import static com.xddcodec.fs.file.domain.table.FileTransferTaskTableDef.FILE_TRANSFER_TASK;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class FileTransferServiceImpl implements FileTransferService {
+public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMapper, FileTransferTask> implements FileTransferTaskService {
 
     private final Converter converter;
-    private final FileUploadTaskMapper fileUploadTaskMapper;
     private final FileInfoMapper fileInfoMapper;
     private final UploadWebSocketHandler wsHandler;
-    private final UploadTaskCacheManager cacheManager;
+    private final TransferTaskCacheManager cacheManager;
     private final UploadTaskExceptionHandler exceptionHandler;
     @Qualifier("chunkUploadExecutor")
     private final ThreadPoolTaskExecutor chunkUploadExecutor;
     @Qualifier("fileMergeExecutor")
     private final ThreadPoolTaskExecutor fileMergeExecutor;
     private final StorageServiceFacade storageServiceFacade;
+    private final SysUserTransferSettingService userTransferSettingService;
     @Value("${spring.application.name:free-fs}")
     private String applicationName;
 
     @Override
-    public List<FileUploadTaskVO> getTransferFiles(TransferFilesQry qry) {
+    public List<FileTransferTaskVO> getTransferFiles(TransferFilesQry qry) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.where(FILE_UPLOAD_TASK.USER_ID.eq(userId)
-                .and(FILE_UPLOAD_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId)));
+        queryWrapper.where(FILE_TRANSFER_TASK.USER_ID.eq(userId)
+                .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId)));
 //        if (qry.getStatusType() != null) {
 //
 //        }
-        queryWrapper.orderBy(FILE_UPLOAD_TASK.CREATED_AT.asc());
-        List<FileUploadTask> tasks = fileUploadTaskMapper.selectListByQuery(queryWrapper);
-        return converter.convert(tasks, FileUploadTaskVO.class);
+        queryWrapper.orderBy(FILE_TRANSFER_TASK.CREATED_AT.asc());
+        List<FileTransferTask> tasks = this.list(queryWrapper);
+        return converter.convert(tasks, FileTransferTaskVO.class);
     }
 
     /**
@@ -98,7 +102,7 @@ public class FileTransferServiceImpl implements FileTransferService {
             String objectKey = FileUtils.generateObjectKey(applicationName, userId, tempFileName);
 
             // 创建上传任务
-            FileUploadTask task = new FileUploadTask();
+            FileTransferTask task = new FileTransferTask();
             task.setTaskId(taskId);
             task.setUserId(userId);
             task.setParentId(cmd.getParentId());
@@ -108,12 +112,13 @@ public class FileTransferServiceImpl implements FileTransferService {
             task.setMimeType(cmd.getMimeType());
             task.setTotalChunks(cmd.getTotalChunks());
             task.setUploadedChunks(0);
+            task.setTaskType(TransferTaskType.upload);
             task.setChunkSize(cmd.getChunkSize());
             task.setObjectKey(objectKey);
             task.setStoragePlatformSettingId(storagePlatformSettingId);
-            task.setStatus(UploadTaskStatus.initialized); // 初始化状态
+            task.setStatus(TransferTaskStatus.initialized); // 初始化状态
             task.setStartTime(LocalDateTime.now());
-            fileUploadTaskMapper.insert(task);
+            this.save(task);
             cacheManager.cacheTask(task);
             cacheManager.recordStartTime(task.getTaskId());
 
@@ -134,13 +139,13 @@ public class FileTransferServiceImpl implements FileTransferService {
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         String taskId = cmd.getTaskId();
         // 获取任务
-        FileUploadTask task = null;
+        FileTransferTask task = null;
         try {
             task = getTaskFromCacheOrDB(taskId);
-            if (!UploadTaskStatus.initialized.equals(task.getStatus())) {
+            if (!TransferTaskStatus.initialized.equals(task.getStatus())) {
                 throw new BusinessException("任务状态不正确，当前状态: " + task.getStatus());
             }
-            updateTaskStatus(task, UploadTaskStatus.checking);
+            updateTaskStatus(task, TransferTaskStatus.checking);
 
             wsHandler.pushChecking(taskId);
 
@@ -164,7 +169,7 @@ public class FileTransferServiceImpl implements FileTransferService {
             task.setFileMd5(cmd.getFileMd5());
             task.setUploadId(uploadId);
 
-            updateTaskStatus(task, UploadTaskStatus.uploading);
+            updateTaskStatus(task, TransferTaskStatus.uploading);
 
             // 推送可以开始上传消息
             wsHandler.pushReadyToUpload(taskId, uploadId);
@@ -208,16 +213,16 @@ public class FileTransferServiceImpl implements FileTransferService {
     private void doUploadChunk(byte[] fileBytes, UploadChunkCmd cmd) throws IOException {
         String taskId = cmd.getTaskId();
         Integer chunkIndex = cmd.getChunkIndex();
-        FileUploadTask task = getTaskFromCacheOrDB(taskId);
-        if (task.getStatus() == UploadTaskStatus.paused) {
+        FileTransferTask task = getTaskFromCacheOrDB(taskId);
+        if (task.getStatus() == TransferTaskStatus.paused) {
             log.info("任务已暂停，停止上传: taskId={}, chunkIndex={}", taskId, chunkIndex);
             return;
         }
-        if (!UploadTaskStatus.uploading.equals(task.getStatus())) {
+        if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
             throw new BusinessException("任务状态不正确: " + task.getStatus());
         }
         // 检查分片是否已存在（避免重复上传）
-        if (cacheManager.isChunkUploaded(taskId, chunkIndex)) {
+        if (cacheManager.isChunkTransferred(taskId, chunkIndex)) {
             log.info("分片已存在，跳过上传: taskId={}, chunkIndex={}", taskId, chunkIndex);
             return;
         }
@@ -233,16 +238,12 @@ public class FileTransferServiceImpl implements FileTransferService {
                     fileBytes.length,
                     bis);
         }
-        fileUploadTaskMapper.incrementUploadedChunks(taskId);
+        cacheManager.addTransferredChunk(taskId, chunkIndex);
+        cacheManager.recordTransferredBytes(taskId, fileBytes.length);
 
-        cacheManager.incrementUploadedChunks(taskId);           // 递增已上传分片数
-        cacheManager.addUploadedChunk(taskId, chunkIndex);       // 记录已上传分片
-        cacheManager.recordUploadedBytes(taskId, fileBytes.length); // 记录上传字节数
-        task = cacheManager.getTaskFromCache(taskId);
-
-        // 推送进度（WebSocket）
-        UploadProgressDTO progress = buildProgressDTO(task);
-        wsHandler.pushProgress(taskId, progress);
+        // 推送进度
+        UploadProgressDTO progressDTO = buildProgressDTO(task);
+        wsHandler.pushProgress(taskId, progressDTO);
 
         log.info("分片上传成功: taskId={}, chunkIndex={}, progress={}/{}",
                 taskId, chunkIndex, task.getUploadedChunks(), task.getTotalChunks());
@@ -253,12 +254,14 @@ public class FileTransferServiceImpl implements FileTransferService {
     /**
      * 检查并触发合并
      */
-    private void checkAndTriggerMerge(FileUploadTask task) {
+    private void checkAndTriggerMerge(FileTransferTask task) {
         String taskId = task.getTaskId();
-        // 检查是否所有分片都已上传完成
-        if (!task.getUploadedChunks().equals(task.getTotalChunks())) {
+        Integer totalChunks = task.getTotalChunks();
+
+        if (!cacheManager.isAllChunksTransferred(taskId, totalChunks)) {
+            Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
             log.debug("分片未全部上传: taskId={}, progress={}/{}",
-                    taskId, task.getUploadedChunks(), task.getTotalChunks());
+                    taskId, uploadedCount, totalChunks);
             return;
         }
         RLock lock = cacheManager.getMergeLock(taskId);
@@ -267,20 +270,20 @@ public class FileTransferServiceImpl implements FileTransferService {
             if (lock.tryLock(10, 30, TimeUnit.SECONDS)) {
                 try {
                     // 双重检查状态（从 Redis）
-                    FileUploadTask latestTask = cacheManager.getTaskFromCache(taskId);
+                    FileTransferTask latestTask = cacheManager.getTaskFromCache(taskId);
 
-                    if (!UploadTaskStatus.uploading.equals(latestTask.getStatus())) {
+                    if (!TransferTaskStatus.uploading.equals(latestTask.getStatus())) {
                         log.info("任务已在合并或已完成，跳过: taskId={}, status={}",
                                 taskId, latestTask.getStatus());
                         return;
                     }
                     // 新状态为 merging（Redis + 数据库）
-                    cacheManager.updateTaskStatus(taskId, UploadTaskStatus.merging);
+                    cacheManager.updateTaskStatus(taskId, TransferTaskStatus.merging);
 
-                    int updatedRows = fileUploadTaskMapper.updateStatusByTaskIdAndStatus(
+                    int updatedRows = this.getMapper().updateStatusByTaskIdAndStatus(
                             taskId,
-                            UploadTaskStatus.merging,
-                            UploadTaskStatus.uploading
+                            TransferTaskStatus.merging,
+                            TransferTaskStatus.uploading
                     );
                     if (updatedRows == 0) {
                         log.warn("数据库状态更新失败，可能已被其他实例更新: taskId={}", taskId);
@@ -309,48 +312,60 @@ public class FileTransferServiceImpl implements FileTransferService {
     }
 
     @Override
-    public void pauseUpload(String taskId) {
-        String userId = StpUtil.getLoginIdAsString();
-        FileUploadTask task = getTaskFromCacheOrDB(taskId);
-        if (!UploadTaskStatus.uploading.equals(task.getStatus())) {
-            throw new StorageOperationException("当前任务状态不支持暂停操作");
+    public void pauseTransfer(String taskId) {
+        try {
+            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            TransferTaskStatus currentStatus = task.getStatus();
+            if (!TransferTaskStatus.uploading.equals(currentStatus)
+                    && !TransferTaskStatus.downloading.equals(currentStatus)) {
+                throw new BusinessException("当前任务状态不支持暂停操作: " + currentStatus);
+            }
+            // 更新数据库状态
+            updateTaskStatus(task, TransferTaskStatus.paused);
+
+            // 更新缓存状态
+            cacheManager.updateTaskStatus(taskId, TransferTaskStatus.paused);
+            // 推送暂停消息
+            wsHandler.pushPaused(taskId);
+            log.info("暂停任务: taskId={}", taskId);
+        } catch (Exception e) {
+            log.error("暂停失败: taskId={}", taskId, e);
+            wsHandler.pushError(taskId, "暂停失败: " + e.getMessage());
+            throw new StorageOperationException("暂停失败: " + e.getMessage(), e);
         }
-        // 更新数据库状态
-        task.setStatus(UploadTaskStatus.paused);
-        task.setUpdatedAt(LocalDateTime.now());
-        fileUploadTaskMapper.update(task);
-        // 更新缓存状态
-        cacheManager.updateTaskStatus(taskId, UploadTaskStatus.paused);
-        // 推送暂停消息
-        wsHandler.pushPaused(taskId);
-        log.info("暂停上传任务: taskId={}, userId={}", taskId, userId);
     }
 
     @Override
-    public void resumeUpload(String taskId) {
-        String userId = StpUtil.getLoginIdAsString();
-        FileUploadTask task = getTaskFromCacheOrDB(taskId);
-        if (!UploadTaskStatus.paused.equals(task.getStatus())) {
-            throw new StorageOperationException("当前任务状态不支持继续操作");
-        }
-        task.setStatus(UploadTaskStatus.uploading);
-        task.setUpdatedAt(LocalDateTime.now());
-        fileUploadTaskMapper.update(task);
-        cacheManager.updateTaskStatus(taskId, UploadTaskStatus.uploading);
-        Set<Integer> uploadedChunks = cacheManager.getUploadedChunkList(taskId);
-        wsHandler.pushResumed(taskId, uploadedChunks);
-        log.info("继续上传任务: taskId={}, userId={}, uploadedChunks={}/{}",
-                taskId, userId, task.getUploadedChunks(), task.getTotalChunks());
-    }
+    public void resumeTransfer(String taskId) {
+        try {
+            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            if (!TransferTaskStatus.paused.equals(task.getStatus())) {
+                throw new StorageOperationException("当前任务状态不支持继续操作");
+            }
+            TransferTaskStatus newStatus = task.getTaskType() == TransferTaskType.upload
+                    ? TransferTaskStatus.uploading
+                    : TransferTaskStatus.downloading;
 
+            updateTaskStatus(task, newStatus);
+
+            Set<Integer> transferredChunks = cacheManager.getTransferredChunkList(taskId);
+            wsHandler.pushResumed(taskId, transferredChunks);
+            log.info("继续任务成功: taskId={}, transferredChunks={}/{}", taskId, transferredChunks.size(), task.getTotalChunks());
+        } catch (Exception e) {
+            log.error("继续任务失败: taskId={}", taskId, e);
+            wsHandler.pushError(taskId, "继续任务失败: " + e.getMessage());
+            throw new StorageOperationException("继续任务失败: " + e.getMessage(), e);
+        }
+
+    }
 
     @Override
     public Set<Integer> getUploadedChunks(String taskId) {
-        return cacheManager.getUploadedChunkList(taskId);
+        return cacheManager.getTransferredChunkList(taskId);
     }
 
     @Override
-    public void cancelUpload(String taskId) {
+    public void cancelTransfer(String taskId) {
 
     }
 
@@ -363,9 +378,17 @@ public class FileTransferServiceImpl implements FileTransferService {
     public FileInfo doMergeChunks(String taskId) {
         try {
             log.info("开始合并文件: taskId={}", taskId);
-            FileUploadTask task = getByTaskId(taskId);
+            FileTransferTask task = getByTaskId(taskId);
             if (task == null) {
                 throw new StorageOperationException("上传任务不存在: " + taskId);
+            }
+            Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
+            if (!uploadedCount.equals(task.getTotalChunks())) {
+                log.error("分片未全部上传，拒绝合并: taskId={}, uploaded={}, total={}",
+                        taskId, uploadedCount, task.getTotalChunks());
+                throw new StorageOperationException(
+                        String.format("分片不完整：已上传 %d/%d", uploadedCount, task.getTotalChunks())
+                );
             }
             IStorageOperationService storageService = storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
 
@@ -408,9 +431,11 @@ public class FileTransferServiceImpl implements FileTransferService {
             fileInfoMapper.insert(fileInfo);
 
             // 更新任务状态为已完成
-            task.setStatus(UploadTaskStatus.completed);
+            task.setStatus(TransferTaskStatus.completed);
+            // 最终同步一次分片数量
+            task.setUploadedChunks(uploadedCount);
             task.setCompleteTime(completeTime);
-            fileUploadTaskMapper.update(task);
+            this.updateById(task);
 
             cacheManager.cleanTask(taskId);
 
@@ -431,21 +456,28 @@ public class FileTransferServiceImpl implements FileTransferService {
     /**
      * 构建进度DTO
      */
-    private UploadProgressDTO buildProgressDTO(FileUploadTask task) {
+    private UploadProgressDTO buildProgressDTO(FileTransferTask task) {
         String taskId = task.getTaskId();
+
+        // 从 Redis Set 获取真实已上传数量
+        Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
+        long uploadedBytes = cacheManager.getTransferredBytes(taskId);
+
         // 计算进度百分比
         double progress = task.getTotalChunks() > 0
-                ? (task.getUploadedChunks() * 100.0 / task.getTotalChunks())
+                ? (uploadedCount * 100.0 / task.getTotalChunks())
                 : 0;
-        // 从 Redis 获取开始时间和已上传字节数
+
+        // 计算上传速度
         Long startTime = cacheManager.getStartTime(taskId);
-        long uploadedBytes = cacheManager.getUploadedBytes(taskId);
         long speed = 0;
         int remainTime = 0;
+
         if (startTime != null) {
             long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
             if (elapsedSeconds > 0) {
                 speed = uploadedBytes / elapsedSeconds;
+
                 // 计算剩余时间
                 long remainingBytes = task.getFileSize() - uploadedBytes;
                 if (speed > 0) {
@@ -453,9 +485,10 @@ public class FileTransferServiceImpl implements FileTransferService {
                 }
             }
         }
+
         return UploadProgressDTO.builder()
                 .taskId(taskId)
-                .uploadedChunks(task.getUploadedChunks())
+                .uploadedChunks(uploadedCount)  // ⭐ 真实数量
                 .totalChunks(task.getTotalChunks())
                 .uploadedSize(uploadedBytes)
                 .totalSize(task.getFileSize())
@@ -471,18 +504,18 @@ public class FileTransferServiceImpl implements FileTransferService {
      * @param taskId
      * @return
      */
-    private FileUploadTask getByTaskId(String taskId) {
-        return fileUploadTaskMapper.selectOneByQuery(
-                new QueryWrapper().where(FILE_UPLOAD_TASK.TASK_ID.eq(taskId)
+    private FileTransferTask getByTaskId(String taskId) {
+        return this.getOne(
+                new QueryWrapper().where(FILE_TRANSFER_TASK.TASK_ID.eq(taskId)
                 )
         );
     }
 
-    private FileUploadTask getTaskFromCacheOrDB(String taskId) {
-        FileUploadTask task = cacheManager.getTaskFromCache(taskId);
+    private FileTransferTask getTaskFromCacheOrDB(String taskId) {
+        FileTransferTask task = cacheManager.getTaskFromCache(taskId);
         if (task == null) {
-            task = fileUploadTaskMapper.selectOneByQuery(
-                    QueryWrapper.create().where(FileUploadTask::getTaskId).eq(taskId)
+            task = this.getOne(
+                    QueryWrapper.create().where(FileTransferTask::getTaskId).eq(taskId)
             );
             if (task == null) {
                 throw new BusinessException("任务不存在: " + taskId);
@@ -496,12 +529,56 @@ public class FileTransferServiceImpl implements FileTransferService {
     /**
      * 更新任务状态（数据库 + 缓存）
      */
-    private void updateTaskStatus(FileUploadTask task, UploadTaskStatus newStatus) {
+    private void updateTaskStatus(FileTransferTask task, TransferTaskStatus newStatus) {
         task.setStatus(newStatus);
         task.setUpdatedAt(LocalDateTime.now());
-        fileUploadTaskMapper.update(task);
+        this.updateById(task);
         cacheManager.cacheTask(task);
         cacheManager.updateTaskStatus(task.getTaskId(), newStatus);
+    }
+
+    /**
+     * 计算分片总数
+     *
+     * @param fileSize  文件大小（字节）
+     * @param chunkSize 分片大小（字节）
+     * @return 分片总数
+     */
+    private int calculateTotalChunks(Long fileSize, Long chunkSize) {
+        if (fileSize == null || fileSize <= 0) {
+            throw new BusinessException("文件大小无效");
+        }
+
+        if (chunkSize == null || chunkSize <= 0) {
+            throw new BusinessException("分片大小无效");
+        }
+        // 向上取整
+        int totalChunks = (int) Math.ceil((double) fileSize / chunkSize);
+
+        log.debug("计算分片数: fileSize={}, chunkSize={}, totalChunks={}",
+                fileSize, chunkSize, totalChunks);
+
+        return totalChunks;
+    }
+
+    @Override
+    public void clearTransfers() {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+
+        QueryWrapper queryWrapper = new QueryWrapper();
+        queryWrapper.where(FILE_TRANSFER_TASK.STATUS.eq(TransferTaskStatus.completed))
+                .and(FILE_TRANSFER_TASK.USER_ID.eq(userId))
+                .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        List<FileTransferTask> tasks = this.list(queryWrapper);
+        this.removeByIds(tasks);
+
+        List<String> taskIds = tasks.stream()
+                .map(FileTransferTask::getTaskId)
+                .collect(Collectors.toList());
+
+        //清除缓存
+        cacheManager.cleanTasks(taskIds);
     }
 
 }

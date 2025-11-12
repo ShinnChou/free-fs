@@ -1,7 +1,7 @@
 package com.xddcodec.fs.file.domain.vo;
 
 import com.xddcodec.fs.file.domain.FileInfo;
-import com.xddcodec.fs.file.domain.FileUploadTask;
+import com.xddcodec.fs.file.domain.FileTransferTask;
 import lombok.Data;
 
 @Data
@@ -19,7 +19,7 @@ public class UploadInitVO {
     /**
      * 需要上传时返回任务信息
      */
-    private FileUploadTask task;
+    private FileTransferTask task;
 
     /**
      * 提示信息

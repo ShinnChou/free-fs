@@ -39,6 +39,10 @@
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-websocket</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>fs-system</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

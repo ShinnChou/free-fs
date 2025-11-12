@@ -1,9 +1,9 @@
-package com.xddcodec.fs.framework.common.enums;
+package com.xddcodec.fs.file.enums;
 
 /**
- * 上传任务状态枚举
+ * 传输任务状态枚举
  */
-public enum UploadTaskStatus {
+public enum TransferTaskStatus {
     /**
      * 初始化
      */
@@ -20,6 +20,10 @@ public enum UploadTaskStatus {
      * 合并中
      */
     merging,
+    /**
+     * 下载中
+     */
+    downloading,
     /**
      * 失败
      */

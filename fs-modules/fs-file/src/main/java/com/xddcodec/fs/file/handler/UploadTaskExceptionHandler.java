@@ -1,9 +1,9 @@
 package com.xddcodec.fs.file.handler;
 
-import com.xddcodec.fs.file.cache.UploadTaskCacheManager;
-import com.xddcodec.fs.file.domain.FileUploadTask;
-import com.xddcodec.fs.file.mapper.FileUploadTaskMapper;
-import com.xddcodec.fs.framework.common.enums.UploadTaskStatus;
+import com.xddcodec.fs.file.cache.TransferTaskCacheManager;
+import com.xddcodec.fs.file.domain.FileTransferTask;
+import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
+import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.fs.framework.ws.handler.UploadWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +19,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class UploadTaskExceptionHandler {
 
-    private final FileUploadTaskMapper fileUploadTaskMapper;
-    private final UploadTaskCacheManager cacheManager;
+    private final FileTransferTaskMapper fileTransferTaskMapper;
+    private final TransferTaskCacheManager cacheManager;
     private final UploadWebSocketHandler wsHandler;
 
     /**
@@ -35,20 +35,20 @@ public class UploadTaskExceptionHandler {
             log.error("任务失败: taskId={}, error={}", taskId, errorMsg, e);
 
             // 更新数据库状态
-            FileUploadTask task = fileUploadTaskMapper.selectOneByQuery(
+            FileTransferTask task = fileTransferTaskMapper.selectOneByQuery(
                     com.mybatisflex.core.query.QueryWrapper.create()
-                            .where(FileUploadTask::getTaskId).eq(taskId)
+                            .where(FileTransferTask::getTaskId).eq(taskId)
             );
 
             if (task != null) {
-                task.setStatus(UploadTaskStatus.failed);
+                task.setStatus(TransferTaskStatus.failed);
                 task.setErrorMsg(truncateErrorMsg(errorMsg));
                 task.setUpdatedAt(LocalDateTime.now());
-                fileUploadTaskMapper.update(task);
+                fileTransferTaskMapper.update(task);
             }
 
             // 更新缓存状态
-            cacheManager.updateTaskStatus(taskId, UploadTaskStatus.failed);
+            cacheManager.updateTaskStatus(taskId, TransferTaskStatus.failed);
 
             // 延长缓存过期时间（保留1小时供查询）
             cacheManager.extendTaskExpire(taskId, 1);

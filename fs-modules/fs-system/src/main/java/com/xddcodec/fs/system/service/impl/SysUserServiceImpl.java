@@ -19,6 +19,7 @@ import com.xddcodec.fs.system.domain.dto.*;
 import com.xddcodec.fs.system.domain.vo.SysUserVO;
 import com.xddcodec.fs.system.mapper.SysUserMapper;
 import com.xddcodec.fs.system.service.SysUserService;
+import com.xddcodec.fs.system.service.SysUserTransferSettingService;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +47,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final RedisRepository redisRepository;
 
     private final ApplicationEventPublisher eventPublisher;
+
+    private final SysUserTransferSettingService userTransferSettingService;
 
     @Override
     public SysUser getByUsername(String username) {
@@ -112,6 +115,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setNickname(cmd.getNickname());
         user.setAvatar(cmd.getAvatar());
         this.save(user);
+        //初始化用户传输配置
+        userTransferSettingService.initUserTransferSetting(user.getId());
     }
 
     @Override
@@ -129,6 +134,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void removeUser(String id) {
         //删除用户
         this.removeById(id);
+        //清理传输配置
+        userTransferSettingService.deleteUserTransferSetting(id);
     }
 
     @Override

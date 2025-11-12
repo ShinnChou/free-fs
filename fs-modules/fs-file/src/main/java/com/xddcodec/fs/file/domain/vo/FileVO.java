@@ -76,6 +76,11 @@ public class FileVO implements Serializable {
     private LocalDateTime updateTime;
 
     /**
+     * 最后访问时间
+     */
+    private LocalDateTime lastAccessTime;
+
+    /**
      * 是否收藏
      */
     private Boolean isFavorite;

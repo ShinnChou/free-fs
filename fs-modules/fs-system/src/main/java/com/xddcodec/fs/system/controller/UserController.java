@@ -2,9 +2,11 @@ package com.xddcodec.fs.system.controller;
 
 import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
+import com.xddcodec.fs.system.domain.SysUserTransferSetting;
 import com.xddcodec.fs.system.domain.dto.*;
 import com.xddcodec.fs.system.domain.vo.SysUserVO;
 import com.xddcodec.fs.system.service.SysUserService;
+import com.xddcodec.fs.system.service.SysUserTransferSettingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final SysUserService userService;
+
+    private final SysUserTransferSettingService userTransferSettingService;
 
     @Operation(summary = "分页获取用户列表")
     @GetMapping("/pages")
@@ -100,5 +104,12 @@ public class UserController {
     public Result<?> checkForgetPasswordCode(@Validated @RequestBody PasswordForgetEditCmd cmd) {
         userService.updateForgetPassword(cmd);
         return Result.ok();
+    }
+
+    @Operation(summary = "获取用户传输配置")
+    @GetMapping("/transfer/setting")
+    public Result<SysUserTransferSetting> sendForgetPasswordCode() {
+        SysUserTransferSetting userTransferSetting = userTransferSettingService.getByUser();
+        return Result.ok(userTransferSetting);
     }
 }

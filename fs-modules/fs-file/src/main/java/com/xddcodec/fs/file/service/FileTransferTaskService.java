@@ -1,24 +1,26 @@
 package com.xddcodec.fs.file.service;
 
+import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
-import com.xddcodec.fs.file.domain.vo.FileUploadTaskVO;
+import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 
 import java.util.List;
 import java.util.Set;
 
-public interface FileTransferService {
+public interface FileTransferTaskService extends IService<FileTransferTask> {
 
     /**
      * 获取用户传输列表
      *
      * @return
      */
-    List<FileUploadTaskVO> getTransferFiles(TransferFilesQry qry);
+    List<FileTransferTaskVO> getTransferFiles(TransferFilesQry qry);
 
     /**
      * 初始化上传
@@ -36,7 +38,7 @@ public interface FileTransferService {
     CheckUploadResultVO checkUpload(CheckUploadCmd cmd);
 
     /**
-     * 异步上传分片
+     * 上传分片
      *
      * @param fileBytes 分片文件字节数组
      * @param cmd       上传分片命令
@@ -44,18 +46,18 @@ public interface FileTransferService {
     void uploadChunk(byte[] fileBytes, UploadChunkCmd cmd);
 
     /**
-     * 暂停上传
+     * 暂停传输
      *
-     * @param taskId 上传任务ID
+     * @param taskId 任务ID
      */
-    void pauseUpload(String taskId);
+    void pauseTransfer(String taskId);
 
     /**
-     * 继续上传
+     * 继续传输
      *
-     * @param taskId 上传任务ID
+     * @param taskId 任务ID
      */
-    void resumeUpload(String taskId);
+    void resumeTransfer(String taskId);
 
     /**
      * 合并分片
@@ -74,9 +76,14 @@ public interface FileTransferService {
     Set<Integer> getUploadedChunks(String taskId);
 
     /**
-     * 取消上传
+     * 取消传输
      *
-     * @param taskId 上传任务ID
+     * @param taskId 任务ID
      */
-    void cancelUpload(String taskId);
+    void cancelTransfer(String taskId);
+
+    /**
+     * 清空已完成传输列表
+     */
+    void clearTransfers();
 }
