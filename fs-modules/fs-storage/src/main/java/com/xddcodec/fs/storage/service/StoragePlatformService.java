@@ -29,33 +29,4 @@ public interface StoragePlatformService extends IService<StoragePlatform> {
      * @return
      */
     StoragePlatform getStoragePlatformByIdentifier(String identifier);
-
-    /**
-     * 查询用户所有已开通和已配置的存储平台列表
-     *
-     * @param userId 用户ID
-     * @return
-     */
-//    List<StoragePlatformVO> listEnabledStorageSettingByUser(String userId);
-
-    /**
-     * 新增存储平台
-     *
-     * @param cmd
-     */
-//    void saveStoragePlatform(StoragePlatformAddCmd cmd);
-//
-//    /**
-//     * 编辑存储平台
-//     *
-//     * @param cmd
-//     */
-//    void editStoragePlatform(StoragePlatformEditCmd cmd);
-//
-//    /**
-//     * 删除存储平台
-//     *
-//     * @param id
-//     */
-//    void deleteStoragePlatformById(Long id);
 }

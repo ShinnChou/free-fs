@@ -1,6 +1,5 @@
 package com.xddcodec.fs.system.controller;
 
-import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.system.domain.SysUserTransferSetting;
 import com.xddcodec.fs.system.domain.dto.*;
@@ -30,12 +29,6 @@ public class UserController {
 
     private final SysUserTransferSettingService userTransferSettingService;
 
-    @Operation(summary = "分页获取用户列表")
-    @GetMapping("/pages")
-    public PageResult<SysUserVO> getPages(UserPageQry qry) {
-        return userService.getPages(qry);
-    }
-
     @Operation(summary = "获取用户详细信息")
     @GetMapping("/info")
     public Result<SysUserVO> getDetail() {
@@ -50,20 +43,6 @@ public class UserController {
         return Result.ok();
     }
 
-    @Operation(summary = "编辑用户状态")
-    @PutMapping("/status")
-    public Result<?> editStatus(@Validated @RequestBody UserStatusEditCmd cmd) {
-        userService.updateUserStatus(cmd);
-        return Result.ok();
-    }
-
-    @Operation(summary = "添加用户")
-    @PostMapping()
-    public Result<?> add(@Validated @RequestBody UserAddCmd cmd) {
-        userService.addUser(cmd);
-        return Result.ok();
-    }
-
     @Operation(summary = "编辑用户")
     @PutMapping("/info")
     public Result<?> editUserInfo(@Validated @RequestBody UserEditInfoCmd cmd) {
@@ -71,24 +50,10 @@ public class UserController {
         return Result.ok();
     }
 
-    @Operation(summary = "根据ID删除用户")
-    @DeleteMapping("/{id}")
-    public Result<?> delete(@PathVariable("id") String id) {
-        userService.removeUser(id);
-        return Result.ok();
-    }
-
     @Operation(summary = "修改密码")
     @PutMapping("/password")
     public Result<?> resetPassword(@Validated @RequestBody PasswordEditCmd cmd) {
         userService.updatePassword(cmd);
-        return Result.ok();
-    }
-
-    @Operation(summary = "重置密码")
-    @PutMapping("/reset-password/{id}")
-    public Result<?> resetPassword(@PathVariable("id") String id) {
-        userService.resetPassword(id);
         return Result.ok();
     }
 

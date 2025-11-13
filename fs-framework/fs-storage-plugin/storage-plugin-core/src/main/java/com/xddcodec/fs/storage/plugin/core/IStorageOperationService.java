@@ -123,7 +123,7 @@ public interface IStorageOperationService extends Closeable {
      * @param partETags 分片ETag列表
      * @return 文件访问URL
      */
-    String completeMultipartUpload(String objectKey, String uploadId,
+    void completeMultipartUpload(String objectKey, String uploadId,
                                    List<Map<String, Object>> partETags);
 
     /**

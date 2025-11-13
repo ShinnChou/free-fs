@@ -303,6 +303,12 @@ public class RedisRepository {
     }
 
     /**
+     * Hash 获取大小
+     */
+    public Long hSize(String key) {
+        return redisTemplate.opsForHash().size(key);
+    }
+    /**
      * hash递增 如果不存在,就会创建一个 并把新增后的值返回
      *
      * @param key  键

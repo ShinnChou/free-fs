@@ -3,13 +3,11 @@ package com.xddcodec.fs.system.service.impl;
 import cn.dev33.satoken.secure.SaSecureUtil;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.RandomUtil;
-import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.framework.common.constant.RedisExpire;
 import com.xddcodec.fs.framework.common.constant.RedisKey;
-import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.notify.mail.domain.Mail;
 import com.xddcodec.fs.framework.notify.mail.event.MailEvent;
@@ -22,13 +20,11 @@ import com.xddcodec.fs.system.service.SysUserService;
 import com.xddcodec.fs.system.service.SysUserTransferSettingService;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Comparator;
-import java.util.List;
 
 import static com.xddcodec.fs.system.domain.table.SysUserTableDef.SYS_USER;
 
@@ -57,45 +53,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public SysUserVO getByUsernameVo(String username) {
-        SysUser user = this.getByUsername(username);
-        return converter.convert(user, SysUserVO.class);
-    }
-
-    @Override
+    @Cacheable(value = "user", keyGenerator = "userKeyGenerator")
     public SysUserVO getDetail() {
         String userId = StpUtil.getLoginIdAsString();
         SysUser user = this.getById(userId);
         return converter.convert(user, SysUserVO.class);
-    }
-
-    @Override
-    public PageResult<SysUserVO> getPages(UserPageQry pageQry) {
-        Page<SysUser> page = new Page<>(pageQry.getPage(), pageQry.getPageSize());
-        QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.orderBy(SYS_USER.CREATED_AT.desc());
-        if (StringUtils.isNotEmpty(pageQry.getUsername())) {
-            queryWrapper.where(SYS_USER.USERNAME.like(pageQry.getUsername() + "%"));
-        }
-        if (StringUtils.isNotEmpty(pageQry.getNickname())) {
-            queryWrapper.and(SYS_USER.NICKNAME.like(pageQry.getNickname() + "%"));
-        }
-        if (StringUtils.isNotEmpty(pageQry.getEmail())) {
-            queryWrapper.and(SYS_USER.EMAIL.eq(pageQry.getEmail()));
-        }
-        if (pageQry.getStatus() != null) {
-            queryWrapper.and(SYS_USER.STATUS.eq(pageQry.getStatus()));
-        }
-        this.page(page, queryWrapper);
-        Long total = page.getTotalRow();
-        List<SysUser> users = page.getRecords();
-        //把admin用户排在最前面
-        users.sort(Comparator.comparing(user -> !CommonConstant.DEFAULT_SUPER_ADMIN.equals(user.getUsername())));
-        List<SysUserVO> userVOS = converter.convert(users, SysUserVO.class);
-        PageResult.PageRecord<SysUserVO> pageRecord = new PageResult.PageRecord<>();
-        pageRecord.setRecords(userVOS);
-        pageRecord.setTotal(total);
-        return PageResult.<SysUserVO>builder().data(pageRecord).code(200).build();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -119,52 +81,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userTransferSettingService.initUserTransferSetting(user.getId());
     }
 
-    @Override
-    public void updateUserStatus(UserStatusEditCmd cmd) {
-        SysUser user = this.getById(cmd.getUserId());
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        user.setStatus(cmd.getStatus());
-        this.updateById(user);
-    }
-
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void removeUser(String id) {
-        //删除用户
-        this.removeById(id);
-        //清理传输配置
-        userTransferSettingService.deleteUserTransferSetting(id);
-    }
-
-    @Override
-    public void resetPassword(String id) {
-        SysUser user = this.getById(id);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        user.setPassword(SaSecureUtil.sha256(CommonConstant.DEFAULT_PASSWORD));
-        this.updateById(user);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public void addUser(UserAddCmd cmd) {
-        SysUser user = this.getByUsername(cmd.getUsername());
-        if (user != null) {
-            throw new BusinessException("用户名已存在");
-        }
-        user = new SysUser();
-        user.setUsername(cmd.getUsername());
-        user.setEmail(cmd.getEmail());
-        user.setNickname(cmd.getNickname());
-        user.setPassword(SaSecureUtil.sha256(CommonConstant.DEFAULT_PASSWORD));
-        this.save(user);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
+    @CacheEvict(value = "user", keyGenerator = "userKeyGenerator")
     public void editUserInfo(UserEditInfoCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         SysUser existUser = this.getById(userId);
@@ -176,6 +95,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
+    @CacheEvict(value = "user", keyGenerator = "userKeyGenerator")
     public void updatePassword(PasswordEditCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
         SysUser user = this.getById(userId);

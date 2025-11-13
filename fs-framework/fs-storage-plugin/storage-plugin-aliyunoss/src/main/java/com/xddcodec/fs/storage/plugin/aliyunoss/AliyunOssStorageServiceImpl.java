@@ -225,7 +225,7 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             uploadPartRequest.setBucketName(bucketName);
             uploadPartRequest.setKey(objectKey);
             uploadPartRequest.setUploadId(uploadId);
-            uploadPartRequest.setPartNumber(partNumber);
+            uploadPartRequest.setPartNumber(partNumber + 1);
             uploadPartRequest.setPartSize(partSize);
             uploadPartRequest.setInputStream(partInputStream);
 
@@ -296,16 +296,16 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
-    public String completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
+    public void completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
         ensureNotPrototype();
 
         try {
             // 转换partETags为PartETag列表
-            List<PartETag> parts = new java.util.ArrayList<>();
+            List<PartETag> parts = new ArrayList<>();
             for (Map<String, Object> partInfo : partETags) {
                 int partNumber = (int) partInfo.get("partNumber");
                 String eTag = (String) partInfo.get("eTag");
-                parts.add(new PartETag(partNumber, eTag));
+                parts.add(new PartETag(partNumber + 1, eTag));
             }
 
             // 创建CompleteMultipartUploadRequest
@@ -318,7 +318,7 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             log.info("{} 分片合并成功: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId);
 
             // 返回文件URL
-            return getFileUrl(objectKey, null);
+//            return getFileUrl(objectKey, null);
 
         } catch (OSSException e) {
             log.error("{} 分片合并失败: objectKey={}, uploadId={}, errorCode={}, errorMessage={}",
