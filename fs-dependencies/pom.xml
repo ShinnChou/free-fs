@@ -19,6 +19,7 @@
         <spring-boot.version>3.5.4</spring-boot.version>
         <HikariCP.version>5.0.1</HikariCP.version>
         <hutool.version>5.8.28</hutool.version>
+        <guava.version>33.5.0-jre</guava.version>
         <common-lang3.version>3.18.0</common-lang3.version>
         <mybatis-flex.version>1.11.1</mybatis-flex.version>
         <mapstruct-plus.version>1.5.0</mapstruct-plus.version>
@@ -45,6 +46,13 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- guava 工具包-->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
             </dependency>
 
             <!-- hutool 的依赖配置-->

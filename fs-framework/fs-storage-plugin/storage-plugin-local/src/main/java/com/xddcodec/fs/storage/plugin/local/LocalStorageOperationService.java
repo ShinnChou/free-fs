@@ -269,7 +269,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
-    public String completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
+    public void completeMultipartUpload(String objectKey, String uploadId, List<Map<String, Object>> partETags) {
         ensureNotPrototype();
 
         try {
@@ -315,7 +315,7 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
             FileUtil.del(tempDir);
 
             log.info("本地存储分片上传完成: objectKey={}, uploadId={}", objectKey, uploadId);
-            return getFileUrl(objectKey, null);
+//            return getFileUrl(objectKey, null);
 
         } catch (IOException e) {
             log.error("本地存储分片上传完成失败, objectKey={}: {}", objectKey, e.getMessage(), e);

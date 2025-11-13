@@ -230,15 +230,16 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         IStorageOperationService storageService =
                 storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
 
+        String eTag;
         try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes)) {
-            storageService.uploadPart(
+            eTag = storageService.uploadPart(
                     task.getObjectKey(),
                     task.getUploadId(),
                     chunkIndex,
                     fileBytes.length,
                     bis);
         }
-        cacheManager.addTransferredChunk(taskId, chunkIndex);
+        cacheManager.addTransferredChunk(taskId, chunkIndex, eTag);
         cacheManager.recordTransferredBytes(taskId, fileBytes.length);
 
         // 推送进度
@@ -348,8 +349,10 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             updateTaskStatus(task, newStatus);
 
-            Set<Integer> transferredChunks = cacheManager.getTransferredChunkList(taskId);
-            wsHandler.pushResumed(taskId, transferredChunks);
+            Map<Integer, String> transferredChunks = cacheManager.getTransferredChunkList(taskId);
+            Set<Integer> chunkIndexes = transferredChunks.keySet();
+
+            wsHandler.pushResumed(taskId, chunkIndexes);
             log.info("继续任务成功: taskId={}, transferredChunks={}/{}", taskId, transferredChunks.size(), task.getTotalChunks());
         } catch (Exception e) {
             log.error("继续任务失败: taskId={}", taskId, e);
@@ -361,7 +364,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
     @Override
     public Set<Integer> getUploadedChunks(String taskId) {
-        return cacheManager.getTransferredChunkList(taskId);
+        Map<Integer, String> chunks = cacheManager.getTransferredChunkList(taskId);
+        return chunks.keySet();
     }
 
     @Override
@@ -391,13 +395,20 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                 );
             }
             IStorageOperationService storageService = storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
-
+            Map<Integer, String> chunkETags = cacheManager.getTransferredChunkList(taskId);
             // 获取存储服务并完成分片合并
             List<Map<String, Object>> partETags = new ArrayList<>();
             for (int i = 0; i < task.getTotalChunks(); i++) {
+                String etag = chunkETags.get(i);
+                if (etag == null || etag.isEmpty()) {
+                    log.error("分片ETag丢失: taskId={}, chunkIndex={}", taskId, i);
+                    throw new StorageOperationException(
+                            String.format("分片 %d 的 ETag 丢失", i)
+                    );
+                }
                 Map<String, Object> partInfo = new HashMap<>();
                 partInfo.put("partNumber", i);
-                partInfo.put("eTag", "");
+                partInfo.put("eTag", etag);
                 partETags.add(partInfo);
             }
             storageService.completeMultipartUpload(

@@ -11,8 +11,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -73,33 +72,45 @@ public class TransferTaskCacheManager {
      */
     public Integer getTransferredChunks(String taskId) {
         String key = CHUNKS_PREFIX + taskId;
-        Set<Object> chunks = redisRepository.sGet(key);
-        int count = chunks != null ? chunks.size() : 0;
-        log.debug("获取已传输分片数: taskId={}, count={}", taskId, count);
-        return count;
+        Long size = redisRepository.hSize(key);
+        return size != null ? size.intValue() : 0;
     }
 
     /**
      * 记录已传输的分片（上传下载通用）
      */
-    public void addTransferredChunk(String taskId, Integer chunkIndex) {
+    public void addTransferredChunk(String taskId, Integer chunkIndex, String etag) {
         String key = CHUNKS_PREFIX + taskId;
-        redisRepository.sSetAndTime(key, TASK_EXPIRE_DAYS, chunkIndex);
-        log.debug("记录已传输分片: taskId={}, chunkIndex={}", taskId, chunkIndex);
+        redisRepository.hset(key, String.valueOf(chunkIndex), etag);
+        redisRepository.expire(key, TASK_EXPIRE_DAYS);
+        log.debug("保存分片ETag: taskId={}, chunkIndex={}, etag={}", taskId, chunkIndex, etag);
     }
 
     /**
-     * 获取已传输的分片列表（上传下载通用）
+     * 获取所有分片的 ETag（按分片号排序）
      */
-    public Set<Integer> getTransferredChunkList(String taskId) {
+    public Map<Integer, String> getTransferredChunkList(String taskId) {
         String key = CHUNKS_PREFIX + taskId;
-        Set<Object> chunks = redisRepository.sGet(key);
-        if (chunks == null || chunks.isEmpty()) {
-            return Set.of();
+        Map<Object, Object> entries = redisRepository.hmget(key);
+
+        if (entries == null || entries.isEmpty()) {
+            log.warn("未找到任务的ETag记录: taskId={}", taskId);
+            return Collections.emptyMap();
         }
-        return chunks.stream()
-                .map(obj -> Integer.parseInt(obj.toString()))
-                .collect(Collectors.toSet());
+
+        Map<Integer, String> result = new TreeMap<>(); // 使用 TreeMap 自动排序
+        for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+            try {
+                Integer chunkIndex = Integer.parseInt(entry.getKey().toString());
+                String etag = entry.getValue().toString();
+                result.put(chunkIndex, etag);
+            } catch (NumberFormatException e) {
+                log.error("解析分片索引失败: key={}", entry.getKey(), e);
+            }
+        }
+
+        log.debug("获取任务所有ETag: taskId={}, count={}", taskId, result.size());
+        return result;
     }
 
     /**
@@ -107,7 +118,7 @@ public class TransferTaskCacheManager {
      */
     public boolean isChunkTransferred(String taskId, Integer chunkIndex) {
         String key = CHUNKS_PREFIX + taskId;
-        return redisRepository.sHasKey(key, chunkIndex);
+        return redisRepository.hHasKey(key, String.valueOf(chunkIndex));
     }
 
     /**
@@ -115,10 +126,10 @@ public class TransferTaskCacheManager {
      */
     public boolean isAllChunksTransferred(String taskId, Integer totalChunks) {
         Integer transferredCount = getTransferredChunks(taskId);
-        boolean isComplete = transferredCount.equals(totalChunks);
-        log.debug("检查分片完整性: taskId={}, transferred={}, total={}, complete={}",
-                taskId, transferredCount, totalChunks, isComplete);
-        return isComplete;
+        boolean allTransferred = transferredCount.equals(totalChunks);
+        log.debug("检查分片是否全部传输: taskId={}, transferred={}, total={}, result={}",
+                taskId, transferredCount, totalChunks, allTransferred);
+        return allTransferred;
     }
 
     /**
