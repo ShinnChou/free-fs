@@ -104,16 +104,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (fileInfo.getIsDeleted()) {
             throw new StorageOperationException("文件已被删除: " + fileId);
         }
-
-        // 根据文件记录中的 storagePlatformSettingId 获取对应的存储服务
-        try {
-            IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
-            return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
-        } catch (StorageOperationException e) {
-            // 统一转换为友好的业务异常消息
-            log.error("获取文件URL失败: {}", e.getMessage(), e);
-            throw new StorageOperationException("获取文件访问地址失败，请重试");
+        IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+        if (storageService.isFileExist(fileInfo.getObjectKey())) {
+            throw new StorageOperationException("文件不存在: " + fileId);
         }
+        return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
     }
 
     @Override
