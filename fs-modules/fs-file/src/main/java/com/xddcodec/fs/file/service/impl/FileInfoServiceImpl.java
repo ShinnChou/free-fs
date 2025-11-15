@@ -2,14 +2,9 @@ package com.xddcodec.fs.file.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.DigestUtil;
 import com.mybatisflex.core.update.UpdateChain;
-import com.mybatisflex.core.update.UpdateWrapper;
 import com.mybatisflex.core.util.UpdateEntity;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
@@ -261,7 +256,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * @param excludeFileId 排除的文件ID（可选，用于重命名场景）
      * @return 唯一的文件名
      */
-    private String generateUniqueName(String userId, String parentId,
+    @Override
+    public String generateUniqueName(String userId, String parentId,
                                       String desiredName, Boolean isDir,
                                       String excludeFileId) {
 
@@ -465,16 +461,19 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         log.info("用户 {} 永久删除文件/文件夹，共 {} 项", userId, allFileIds.size());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void clearRecycles() {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        remove(new QueryWrapper()
+        List<FileInfo> deletedFiles = this.list(new QueryWrapper()
                 .where(FILE_INFO.USER_ID.eq(userId)
                         .and(FILE_INFO.IS_DELETED.eq(true)
                                 .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                         ))
         );
+        List<String> deletedFileIds = deletedFiles.stream().map(FileInfo::getId).toList();
+        this.permanentlyDeleteFiles(deletedFileIds);
     }
 
     /**
@@ -483,8 +482,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * @param file 文件信息
      */
     private void deletePhysicalFile(FileInfo file) {
-        //TODO 后续通过用户配置，是否同步删除物理文件操作
-
+        IStorageOperationService storageService = storageServiceFacade.getStorageService(file.getStoragePlatformSettingId());
+        storageService.deleteFile(file.getObjectKey());
     }
 
     @Override

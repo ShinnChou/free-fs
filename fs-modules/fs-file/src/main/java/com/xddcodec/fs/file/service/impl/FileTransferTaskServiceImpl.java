@@ -16,8 +16,8 @@ import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.file.handler.UploadTaskExceptionHandler;
-import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
+import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
@@ -56,7 +56,7 @@ import static com.xddcodec.fs.file.domain.table.FileTransferTaskTableDef.FILE_TR
 public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMapper, FileTransferTask> implements FileTransferTaskService {
 
     private final Converter converter;
-    private final FileInfoMapper fileInfoMapper;
+    private final FileInfoService fileInfoService;
     private final UploadWebSocketHandler wsHandler;
     private final TransferTaskCacheManager cacheManager;
     private final UploadTaskExceptionHandler exceptionHandler;
@@ -100,13 +100,20 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             String suffix = FileUtils.extName(cmd.getFileName());
             String tempFileName = IdUtil.fastSimpleUUID() + "." + suffix;
             String objectKey = FileUtils.generateObjectKey(applicationName, userId, tempFileName);
-
+            //如果有同名文件则需要重新生成
+            String displayName = fileInfoService.generateUniqueName(
+                    userId,
+                    cmd.getParentId(),
+                    cmd.getFileName(),
+                    false,
+                    null
+            );
             // 创建上传任务
             FileTransferTask task = new FileTransferTask();
             task.setTaskId(taskId);
             task.setUserId(userId);
             task.setParentId(cmd.getParentId());
-            task.setFileName(cmd.getFileName());
+            task.setFileName(displayName);
             task.setFileSize(cmd.getFileSize());
             task.setSuffix(FileUtils.getSuffix(cmd.getFileName()));
             task.setMimeType(cmd.getMimeType());
@@ -150,7 +157,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             wsHandler.pushChecking(taskId);
 
             // 检查是否存在相同MD5的文件（秒传）
-            FileInfo existFile = fileInfoMapper.selectOneByQuery(
+            FileInfo existFile = fileInfoService.getOne(
                     QueryWrapper.create()
                             .where(FILE_INFO.CONTENT_MD5.eq(cmd.getFileMd5()))
                             .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
@@ -158,8 +165,16 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                             .and(FILE_INFO.IS_DELETED.eq(false))
             );
             if (existFile != null) {
-
-                //TODO 应该复制文件记录
+                // 验证存储插件中文件是否真实存在
+                IStorageOperationService storageService =
+                        storageServiceFacade.getStorageService(storagePlatformSettingId);
+                if (storageService.isFileExist(existFile.getObjectKey())) {
+                    // 执行秒传：直接创建文件记录
+                    return handleQuickUpload(task, existFile, cmd.getFileMd5());
+                } else {
+                    // 清理无效的数据库记录
+                    fileInfoService.removeById(existFile.getId());
+                }
             }
             // 不是秒传，需要正常上传
             // 调用存储插件初始化分片上传
@@ -183,6 +198,73 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             log.error("文件校验失败: taskId={}", taskId, e);
             exceptionHandler.handleTaskFailed(taskId, "文件校验失败: " + e.getMessage(), e);
             throw new StorageOperationException("文件校验失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 处理秒传
+     */
+    protected CheckUploadResultVO handleQuickUpload(FileTransferTask task,
+                                                    FileInfo existFile,
+                                                    String fileMd5) {
+        String taskId = task.getTaskId();
+
+        try {
+            // 创建新的文件记录（引用相同的 objectKey）
+            String fileId = IdUtil.fastSimpleUUID();
+            LocalDateTime now = LocalDateTime.now();
+            String displayName = fileInfoService.generateUniqueName(
+                    task.getUserId(),
+                    task.getParentId(),
+                    task.getFileName(),
+                    false,
+                    null
+            );
+            FileInfo newFileInfo = new FileInfo();
+            newFileInfo.setId(fileId);
+            // 复用已存在文件的 objectKey
+            newFileInfo.setObjectKey(existFile.getObjectKey());
+            newFileInfo.setOriginalName(task.getFileName());
+            newFileInfo.setDisplayName(displayName);
+            newFileInfo.setSuffix(task.getSuffix());
+            newFileInfo.setSize(task.getFileSize());
+            newFileInfo.setMimeType(task.getMimeType());
+            newFileInfo.setIsDir(false);
+            newFileInfo.setParentId(task.getParentId());
+            newFileInfo.setUserId(task.getUserId());
+            newFileInfo.setContentMd5(fileMd5);
+            newFileInfo.setStoragePlatformSettingId(task.getStoragePlatformSettingId());
+            newFileInfo.setUploadTime(now);
+            newFileInfo.setUpdateTime(now);
+            newFileInfo.setIsDeleted(false);
+
+            fileInfoService.save(newFileInfo);
+
+            // 更新任务状态为已完成
+            task.setFileMd5(fileMd5);
+            task.setUploadedChunks(task.getTotalChunks()); // 标记为全部完成
+            task.setStatus(TransferTaskStatus.completed);
+            task.setCompleteTime(now);
+            this.updateById(task);
+
+            // 清理缓存
+            cacheManager.cleanTask(taskId);
+
+            // 推送已完成消息
+            wsHandler.pushComplete(taskId, fileId);
+
+            log.info("秒传成功: taskId={}, newFileId={}, refObjectKey={}",
+                    taskId, fileId, existFile.getObjectKey());
+
+            return CheckUploadResultVO.builder()
+                    .isQuickUpload(true)
+                    .taskId(taskId)
+                    .fileId(fileId)
+                    .message("秒传成功")
+                    .build();
+        } catch (Exception e) {
+            log.error("秒传处理失败: taskId={}", taskId, e);
+            throw new StorageOperationException("秒传处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -418,15 +500,14 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             );
 
             String fileId = IdUtil.fastSimpleUUID();
-            String displayName = task.getObjectKey().substring(task.getObjectKey().lastIndexOf("/") + 1);
 
             LocalDateTime completeTime = LocalDateTime.now();
-            // 创建FileInfo记录
+
             FileInfo fileInfo = new FileInfo();
             fileInfo.setId(fileId);
             fileInfo.setObjectKey(task.getObjectKey());
             fileInfo.setOriginalName(task.getFileName());
-            fileInfo.setDisplayName(displayName);
+            fileInfo.setDisplayName(task.getFileName());
             fileInfo.setSuffix(task.getSuffix());
             fileInfo.setSize(task.getFileSize());
             fileInfo.setMimeType(task.getMimeType());
@@ -439,7 +520,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             fileInfo.setUpdateTime(completeTime);
             fileInfo.setIsDeleted(false);
 
-            fileInfoMapper.insert(fileInfo);
+            fileInfoService.save(fileInfo);
 
             // 更新任务状态为已完成
             task.setStatus(TransferTaskStatus.completed);
