@@ -105,7 +105,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             throw new StorageOperationException("文件已被删除: " + fileId);
         }
         IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
-        if (storageService.isFileExist(fileInfo.getObjectKey())) {
+        if (!storageService.isFileExist(fileInfo.getObjectKey())) {
             throw new StorageOperationException("文件不存在: " + fileId);
         }
         return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
