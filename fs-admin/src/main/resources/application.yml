@@ -101,7 +101,7 @@ mybatis-flex:
 storage:
   local:
     base-path: D:/insentek/upload
-    base-url: http://localhost:8080/files
+    base-url: http://localhost:8081/files
 
   #文件预览地址，这里配置的是kkfileview的部署地址，https://kkfileview.keking.cn/
 #  preview:

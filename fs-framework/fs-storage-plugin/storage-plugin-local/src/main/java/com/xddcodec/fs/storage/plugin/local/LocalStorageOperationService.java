@@ -11,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -175,7 +178,8 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     public boolean isFileExist(String objectKey) {
         ensureNotPrototype();
         String fullPath = resolveFullPath(objectKey);
-        return new File(fullPath).exists();
+        Path path = Paths.get(fullPath).normalize();
+        return Files.exists(path);
     }
 
     @Override

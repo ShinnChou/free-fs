@@ -194,7 +194,7 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     @Override
     public boolean isFileExist(String objectKey) {
         ensureNotPrototype();
-        throw new StorageOperationException("阿里云 OSS 存储插件尚未实现");
+        return ossClient.doesObjectExist(bucketName, objectKey);
     }
 
     @Override
