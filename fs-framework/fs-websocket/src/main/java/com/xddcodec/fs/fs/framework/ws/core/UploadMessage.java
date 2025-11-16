@@ -159,4 +159,17 @@ public class UploadMessage {
                 System.currentTimeMillis()
         );
     }
+
+    /**
+     * 取消中
+     */
+    public static UploadMessage cancelling(String taskId) {
+        return new UploadMessage(
+                UploadMessageType.cancelling,
+                taskId,
+                null,
+                "任务正在取消",
+                System.currentTimeMillis()
+        );
+    }
 }

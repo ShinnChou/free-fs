@@ -18,5 +18,6 @@ public enum UploadMessageType {
     resumed,      // 已继续
     merging,      // 合并中
     complete,     // 上传完成
+    cancelling,     // 取消中
     cancelled     // 已取消
 }

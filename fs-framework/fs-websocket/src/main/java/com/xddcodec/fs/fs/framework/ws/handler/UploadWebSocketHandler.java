@@ -301,6 +301,16 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * 推送正在取消消息
+     */
+    public void pushCancelling(String taskId) {
+        pushMessage(taskId, UploadMessage.cancelling(taskId));
+        // 任务取消后清理订阅
+        taskUserMap.remove(taskId);
+        log.info("推送正在取消消息: taskId={}", taskId);
+    }
+
+    /**
      * 推送取消消息
      */
     public void pushCancelled(String taskId) {
