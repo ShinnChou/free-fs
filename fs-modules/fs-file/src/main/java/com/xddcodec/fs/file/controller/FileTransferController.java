@@ -81,7 +81,7 @@ public class FileTransferController {
         return Result.ok();
     }
 
-    @PostMapping("/cancel/{taskId}")
+    @DeleteMapping("/cancel/{taskId}")
     @Operation(summary = "取消传输")
     public Result<Void> cancelUpload(@PathVariable String taskId) {
         fileTransferTaskService.cancelTransfer(taskId);

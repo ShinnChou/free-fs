@@ -16,7 +16,7 @@ import java.io.Serial;
  * @Date: 2025/11/11 14:35
  */
 @Data
-@Table("sys_user")
+@Table("sys_user_transfer_setting")
 @EqualsAndHashCode(callSuper = true)
 public class SysUserTransferSetting extends BaseEntity {
 

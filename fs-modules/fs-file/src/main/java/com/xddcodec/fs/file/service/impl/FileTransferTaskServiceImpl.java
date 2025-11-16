@@ -296,6 +296,10 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         String taskId = cmd.getTaskId();
         Integer chunkIndex = cmd.getChunkIndex();
         FileTransferTask task = getTaskFromCacheOrDB(taskId);
+        if (task.getStatus() == TransferTaskStatus.canceled) {
+            log.info("任务已取消，停止上传: taskId={}, chunkIndex={}", taskId, chunkIndex);
+            return;
+        }
         if (task.getStatus() == TransferTaskStatus.paused) {
             log.info("任务已暂停，停止上传: taskId={}, chunkIndex={}", taskId, chunkIndex);
             return;
@@ -451,8 +455,51 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void cancelTransfer(String taskId) {
+        try {
+            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            TransferTaskStatus currentStatus = task.getStatus();
 
+            // 检查任务状态是否可以取消
+            if (TransferTaskStatus.completed.equals(currentStatus)) {
+                throw new StorageOperationException("任务已完成，无法取消");
+            }
+            //即可通知前端不要再上传分片
+            wsHandler.pushCancelling(taskId);
+            //修改状态为已取消
+            cacheManager.updateTaskStatus(taskId, TransferTaskStatus.canceled);
+            // 短暂延迟，确保前端收到消息并停止上传
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            // 如果是上传任务且已经初始化了分片上传，需要中止分片上传
+            if (TransferTaskType.upload.equals(task.getTaskType())
+                    && task.getUploadId() != null
+                    && !task.getUploadId().isEmpty()) {
+                try {
+                    IStorageOperationService storageService =
+                            storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
+
+                    // 中止分片上传，清理存储端的临时数据
+                    storageService.abortMultipartUpload(task.getObjectKey(), task.getUploadId());
+                    log.info("已中止分片上传: taskId={}, uploadId={}", taskId, task.getUploadId());
+                } catch (Exception e) {
+                    log.error("中止分片上传失败: taskId={}, uploadId={}", taskId, task.getUploadId(), e);
+                }
+            }
+
+            this.removeById(task.getId());
+            cacheManager.cleanTask(taskId);
+            wsHandler.pushCancelled(taskId);
+            log.info("取消传输任务成功: taskId={}", taskId);
+        } catch (Exception e) {
+            log.error("取消传输任务异常: taskId={}", taskId, e);
+            wsHandler.pushError(taskId, "取消失败: " + e.getMessage());
+            throw new StorageOperationException("取消传输任务失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
