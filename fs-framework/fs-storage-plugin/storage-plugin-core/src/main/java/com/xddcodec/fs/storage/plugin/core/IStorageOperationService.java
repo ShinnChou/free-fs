@@ -68,6 +68,14 @@ public interface IStorageOperationService extends Closeable {
     void deleteFile(String objectKey);
 
     /**
+     * 重命名文件
+     *
+     * @param objectKey
+     * @param newFileName
+     */
+    void rename(String objectKey, String newFileName);
+
+    /**
      * 获取文件访问URL
      *
      * @param objectKey     对象键
@@ -124,7 +132,7 @@ public interface IStorageOperationService extends Closeable {
      * @return 文件访问URL
      */
     void completeMultipartUpload(String objectKey, String uploadId,
-                                   List<Map<String, Object>> partETags);
+                                 List<Map<String, Object>> partETags);
 
     /**
      * 取消分片上传

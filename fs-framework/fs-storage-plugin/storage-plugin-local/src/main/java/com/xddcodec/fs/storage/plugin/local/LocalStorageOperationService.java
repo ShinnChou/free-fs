@@ -165,6 +165,11 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
+    public void rename(String objectKey, String newFileName) {
+
+    }
+
+    @Override
     public String getFileUrl(String objectKey, Integer expireSeconds) {
         ensureNotPrototype();
         String normalizedObjectKey = objectKey.startsWith("/")

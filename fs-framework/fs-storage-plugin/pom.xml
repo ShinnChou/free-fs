@@ -19,6 +19,5 @@
         <module>storage-plugin-core</module>
         <module>storage-plugin-local</module>
         <module>storage-plugin-aliyunoss</module>
-        <module>storage-plugin-minio</module>
     </modules>
 </project>
