@@ -166,6 +166,11 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
+    public void rename(String objectKey, String newFileName) {
+
+    }
+
+    @Override
     public String getFileUrl(String objectKey, Integer expireSeconds) {
         ensureNotPrototype();
         try {
