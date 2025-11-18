@@ -29,7 +29,8 @@ public class RequestLoggingAspect {
      * 定义切点
      */
     @Pointcut("within(@org.springframework.web.bind.annotation.RestController *)")
-    public void controllerLog() {}
+    public void controllerLog() {
+    }
 
     /**
      * 方法执行前日志

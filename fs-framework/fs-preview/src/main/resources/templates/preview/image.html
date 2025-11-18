@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${fileName}">图片预览</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .header {
+            height: 50px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #image-container {
+            height: calc(100vh - 50px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            overflow: auto;
+        }
+
+        #preview-image {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #preview-image.zoomed {
+            cursor: zoom-out;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .zoom-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .zoom-info.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-left">
+        <span class="file-name" th:text="${fileName}">图片文件名</span>
+    </div>
+
+    <div class="toolbar">
+        <button onclick="zoomIn()">放大 +</button>
+        <button onclick="zoomOut()">缩小 -</button>
+        <button onclick="resetZoom()">重置</button>
+        <button onclick="window.close()">关闭</button>
+    </div>
+</div>
+
+<div id="image-container">
+    <div class="loading" id="loading">加载中...</div>
+    <img id="preview-image"
+         th:src="${url}"
+         th:alt="${fileName}"
+         style="display: none;">
+</div>
+
+<div class="zoom-info" id="zoom-info">100%</div>
+
+<script th:inline="javascript">
+    const imageUrl = /*[[${imageUrl}]]*/ '';
+    const fileName = /*[[${fileName}]]*/ '';
+
+    const image = document.getElementById('preview-image');
+    const loading = document.getElementById('loading');
+    const zoomInfo = document.getElementById('zoom-info');
+
+    let scale = 1;
+    let zoomTimeout;
+
+    // 图片加载完成
+    image.onload = function () {
+        loading.style.display = 'none';
+        image.style.display = 'block';
+    };
+
+    // 图片加载失败
+    image.onerror = function () {
+        loading.textContent = '图片加载失败';
+        loading.style.color = '#e74c3c';
+    };
+
+    // 放大
+    function zoomIn() {
+        scale = Math.min(scale + 0.2, 3);
+        updateZoom();
+    }
+
+    // 缩小
+    function zoomOut() {
+        scale = Math.max(scale - 0.2, 0.5);
+        updateZoom();
+    }
+
+    // 重置
+    function resetZoom() {
+        scale = 1;
+        updateZoom();
+    }
+
+    // 更新缩放
+    function updateZoom() {
+        image.style.transform = `scale(${scale})`;
+
+        // 显示缩放比例
+        zoomInfo.textContent = Math.round(scale * 100) + '%';
+        zoomInfo.classList.add('show');
+
+        clearTimeout(zoomTimeout);
+        zoomTimeout = setTimeout(() => {
+            zoomInfo.classList.remove('show');
+        }, 1000);
+    }
+
+    // 点击图片切换缩放
+    image.onclick = function () {
+        if (scale === 1) {
+            scale = 2;
+            image.classList.add('zoomed');
+        } else {
+            scale = 1;
+            image.classList.remove('zoomed');
+        }
+        updateZoom();
+    };
+
+    // 滚轮缩放
+    document.getElementById('image-container').addEventListener('wheel', function (e) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+            zoomIn();
+        } else {
+            zoomOut();
+        }
+    }, {passive: false});
+
+    // 键盘快捷键
+    document.addEventListener('keydown', function (e) {
+        switch (e.key) {
+            case '+':
+            case '=':
+                zoomIn();
+                break;
+            case '-':
+                zoomOut();
+                break;
+            case '0':
+                resetZoom();
+                break;
+            case 'Escape':
+                window.close();
+                break;
+        }
+    });
+</script>
+</body>
+</html>

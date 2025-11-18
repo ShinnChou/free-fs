@@ -117,7 +117,7 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
-            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageSettings", keyGenerator = "storageSettingKeyGenerator"),
             @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
     })
     public void enableOrDisableStoragePlatform(String settingId, Integer action) {
@@ -152,7 +152,7 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     @Transactional(rollbackFor = Exception.class)
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageSettings", keyGenerator = "storageSettingKeyGenerator"),
             @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
     })
     public void addStorageSetting(StorageSettingAddCmd cmd) {
@@ -202,7 +202,7 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     @Transactional(rollbackFor = Exception.class)
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "storageSetting", keyGenerator = "storageSettingKeyGenerator"),
+            @CacheEvict(value = "storageSettings", keyGenerator = "storageSettingKeyGenerator"),
             @CacheEvict(value = "storageActivePlatforms", keyGenerator = "storageSettingKeyGenerator")
     })
     public void editStorageSetting(StorageSettingEditCmd cmd) {

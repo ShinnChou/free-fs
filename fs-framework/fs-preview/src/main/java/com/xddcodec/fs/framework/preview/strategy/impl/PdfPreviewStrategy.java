@@ -7,14 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
-import java.util.Map;
-
 /**
- * PDF预览策略
+ * ✅ PDF预览策略
  */
 @Slf4j
 @Component
 public class PdfPreviewStrategy extends AbstractPreviewStrategy {
+
     @Override
     public boolean support(FileTypeEnum fileType) {
         // 支持 PDF 本身，以及需要转换为 PDF 的类型（Word/Excel/PPT）
@@ -28,30 +27,26 @@ public class PdfPreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
         FileTypeEnum fileType = context.getFileType();
 
-        // 判断是否需要转换
-        if (fileType.isNeedConvert()) {
-            log.info("文件需要转换: {} -> PDF", fileType.getName());
+        model.addAttribute("pdfUrl", context.getFilePath());
 
-            // 🔄 TODO: 这里调用文件转换服务，将 Office 文档转为 PDF
-            // String convertedPdfUrl = fileConvertService.convertToPdf(context.getFilePath());
-            // model.addAttribute("pdfUrl", convertedPdfUrl);
-
-            // 临时：直接使用原文件路径（实际应用中需要替换为转换后的 PDF URL）
-            model.addAttribute("pdfUrl", context.getFilePath());
+        Boolean needConvert = context.getNeedConvert();
+        if (needConvert != null && needConvert) {
             model.addAttribute("needConvert", true);
             model.addAttribute("originalType", fileType.getName());
+            model.addAttribute("convertStatus", "pending");
+
+            log.info("Office 文档需要转换 - 文件: {}, 类型: {} -> PDF",
+                    context.getFileName(), fileType.getName());
         } else {
-            // PDF 文件直接预览
-            model.addAttribute("pdfUrl", context.getFilePath());
             model.addAttribute("needConvert", false);
+            log.info("PDF 文档直接预览 - 文件: {}", context.getFileName());
         }
 
-        model.addAttribute("usePdfJs", true);
-        model.addAttribute("toolbarEnabled", true);
+        log.info("PDF 预览策略填充完成 - 文件名: {}", context.getFileName());
     }
 
     @Override
     public int getPriority() {
-        return 10; // 高优先级
+        return 20;
     }
 }

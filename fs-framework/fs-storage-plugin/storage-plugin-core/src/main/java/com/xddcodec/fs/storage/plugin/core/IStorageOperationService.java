@@ -85,6 +85,14 @@ public interface IStorageOperationService extends Closeable {
     String getFileUrl(String objectKey, Integer expireSeconds);
 
     /**
+     * 获取文件流
+     *
+     * @param objectKey
+     * @return
+     */
+    InputStream getFileStream(String objectKey);
+
+    /**
      * 检查文件是否存在
      *
      * @param objectKey 对象键

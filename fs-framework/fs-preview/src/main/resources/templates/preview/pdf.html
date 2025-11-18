@@ -4,35 +4,62 @@
     <meta charset="UTF-8">
     <title th:text="${fileName}">PDF预览</title>
     <style>
-        body { margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .header {
             height: 50px;
-            background: #2c3e50;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             display: flex;
             align-items: center;
-            padding: 0 20px;
             justify-content: space-between;
+            padding: 0 20px;
         }
-        #pdf-container {
-            height: calc(100vh - 50px);
-            width: 100%;
+        .close-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
         }
+        #pdf-container { height: calc(100vh - 50px); background: #525659; position: relative; }
+        #pdf-iframe { width: 100%; height: 100%; border: none; display: none; }
+        .loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 <div class="header">
     <span th:text="${fileName}">文件名</span>
-    <button onclick="window.close()">关闭</button>
+    <button class="close-btn" onclick="window.close()">关闭</button>
 </div>
-
 <div id="pdf-container">
-    <iframe
-            th:src="@{/lib/pdfjs/web/viewer.html(file=${pdfUrl})}"
-            width="100%"
-            height="100%"
-            frameborder="0">
-    </iframe>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>加载中...</div>
+    </div>
+    <iframe id="pdf-iframe" th:src="@{/lib/pdfjs/web/viewer.html(file=${pdfUrl})}"></iframe>
 </div>
+<script>
+    document.getElementById('pdf-iframe').onload = function() {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('pdf-iframe').style.display = 'block';
+    };
+</script>
 </body>
 </html>

@@ -60,16 +60,17 @@ public interface FileInfoService extends IService<FileInfo> {
      * - 如果不存在重名：返回原名称
      * - 如果存在重名：自动添加 (1), (2), (3)... 后缀
      *
-     * @param userId        用户ID
-     * @param parentId      父目录ID
-     * @param desiredName   期望的文件名
-     * @param isDir         是否是文件夹
-     * @param excludeFileId 排除的文件ID（可选，用于重命名场景）
+     * @param userId                   用户ID
+     * @param parentId                 父目录ID
+     * @param desiredName              期望的文件名
+     * @param isDir                    是否是文件夹
+     * @param excludeFileId            排除的文件ID（可选，用于重命名场景）
+     * @param storagePlatformSettingId 存储平台设置ID
      * @return 唯一的文件名
      */
     String generateUniqueName(String userId, String parentId,
                               String desiredName, Boolean isDir,
-                              String excludeFileId);
+                              String excludeFileId, String storagePlatformSettingId);
 
     /**
      * 重命名文件

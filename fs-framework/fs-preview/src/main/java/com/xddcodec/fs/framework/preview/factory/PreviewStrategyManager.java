@@ -19,23 +19,18 @@ public class PreviewStrategyManager {
     private final List<PreviewStrategy> strategies;
 
     public PreviewStrategyManager(List<PreviewStrategy> strategies) {
-        // 按优先级排序
         this.strategies = strategies.stream()
                 .sorted(Comparator.comparingInt(PreviewStrategy::getPriority))
-                .collect(Collectors.toList());
-
-        log.info("加载了 {} 个预览策略", strategies.size());
-        strategies.forEach(s -> log.info("  - {} (优先级: {})",
-                s.getClass().getSimpleName(), s.getPriority()));
+                .toList();
+        log.info("加载 {} 个预览策略", strategies.size());
     }
 
-    /**
-     * 根据文件类型获取对应的策略
-     */
     public PreviewStrategy getStrategy(FileTypeEnum fileType) {
         return strategies.stream()
-                .filter(strategy -> strategy.support(fileType))
+                .filter(s -> s.support(fileType))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("没有找到支持该文件类型的预览策略: " + fileType.getName()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "不支持的文件类型: " + fileType.getName()
+                ));
     }
 }

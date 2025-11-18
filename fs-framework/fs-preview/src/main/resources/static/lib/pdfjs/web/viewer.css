@@ -7473,3 +7473,10 @@ dialog :link{
     display:none;
   }
 }
+
+#printButton,
+#downloadButton,
+#secondaryPrint,
+#secondaryDownload {
+    display: none !important;
+}
