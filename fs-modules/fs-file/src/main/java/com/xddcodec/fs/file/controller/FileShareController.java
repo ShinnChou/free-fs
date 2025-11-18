@@ -1,8 +1,11 @@
 package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
+import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
+import com.xddcodec.fs.file.domain.vo.FileShareAccessRecordVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
+import com.xddcodec.fs.file.service.FileShareAccessRecordService;
 import com.xddcodec.fs.file.service.FileShareService;
 import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
@@ -12,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Validated
 @Slf4j
@@ -23,10 +28,20 @@ public class FileShareController {
     @Autowired
     private FileShareService fileShareService;
 
+    @Autowired
+    private FileShareAccessRecordService fileShareAccessRecordService;
+
     @GetMapping("/pages")
     @Operation(summary = "分页获取我的分享", description = "分页获取我的分享列表")
     public PageResult<FileShareVO> getMyPages(FileSharePageQry qry) {
         return fileShareService.getMyPages(qry);
+    }
+
+    @GetMapping("/{shareId}/access/records")
+    @Operation(summary = "获取分享访问记录列表", description = "获取分享访问记录列表")
+    public Result<List<FileShareAccessRecordVO>> getListByShareId(@PathVariable String shareId) {
+        List<FileShareAccessRecordVO> result = fileShareAccessRecordService.getListByShareId(shareId);
+        return Result.ok(result);
     }
 
     @PostMapping("/create")
@@ -41,5 +56,12 @@ public class FileShareController {
     public Result<FileShareVO> cancelShare(@PathVariable String id) {
         fileShareService.cancelShare(id);
         return Result.ok();
+    }
+
+    @Operation(summary = "验证提取码", description = "验证提取码")
+    @PostMapping("/verify/code")
+    public Result<Boolean> verifyShareCode(@RequestBody @Validated VerifyShareCodeCmd cmd) {
+        boolean result = fileShareService.verifyShareCode(cmd);
+        return Result.ok(result);
     }
 }

@@ -32,7 +32,7 @@ public class RecycleBinCleanupTask {
 
     /**
      * 定时清理回收站
-     * cron表达式：每天凌晨2点执行
+     * cron表达式：每天00:05执行
      */
     @Scheduled(cron = "0 5 0 * * ?")
     @Transactional(rollbackFor = Exception.class)

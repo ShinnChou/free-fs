@@ -14,9 +14,9 @@ import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
-import com.xddcodec.fs.file.enums.FileTypeEnum;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
@@ -258,8 +258,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      */
     @Override
     public String generateUniqueName(String userId, String parentId,
-                                      String desiredName, Boolean isDir,
-                                      String excludeFileId) {
+                                     String desiredName, Boolean isDir,
+                                     String excludeFileId) {
 
         String nameWithoutExt = desiredName;
         String extension = "";
@@ -576,28 +576,62 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (qry.getFileType() == null || qry.getFileType().trim().isEmpty()) {
             return;
         }
+        FileTypeEnum.FileCategory category = FileTypeEnum.FileCategory.fromCode(qry.getFileType());
+        if (category != null) {
+            // 按大类筛选
+            applyFilterByCategory(wrapper, category);
+            return;
+        }
         FileTypeEnum fileType = FileTypeEnum.fromType(qry.getFileType());
-
         if (fileType == null) {
             log.warn("未识别的文件类型: {}", qry.getFileType());
             return;
         }
-        // 其他类型：排除所有已知后缀
-        if (fileType.isOther()) {
+        // 按具体类型筛选
+        applyFilterByType(wrapper, fileType);
+    }
+
+    /**
+     * 按分类筛选
+     */
+    private void applyFilterByCategory(QueryWrapper wrapper, FileTypeEnum.FileCategory category) {
+        if (category == FileTypeEnum.FileCategory.OTHER) {
+            // 其他类型：排除所有已知后缀
             List<String> knownSuffixes = FileTypeEnum.getAllKnownSuffixes();
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
                     .and(
                             FILE_INFO.SUFFIX.notIn(knownSuffixes)
                                     .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
                     );
-
-            return;
+        } else {
+            // 常规分类：获取该分类下所有后缀
+            List<String> categorySuffixes = FileTypeEnum.getSuffixesByCategory(category);
+            if (!categorySuffixes.isEmpty()) {
+                wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                        .and(FILE_INFO.SUFFIX.in(categorySuffixes));
+            }
         }
-        // 常规类型：直接匹配后缀
-        List<String> suffixes = fileType.getSuffixes();
-        if (suffixes != null && !suffixes.isEmpty()) {
-            wrapper.eq(FileInfo::getIsDir, false)
-                    .in(FileInfo::getSuffix, suffixes);
+    }
+
+    /**
+     * 按具体类型筛选
+     */
+    private void applyFilterByType(QueryWrapper wrapper, FileTypeEnum fileType) {
+        if (fileType.isOther()) {
+            // 其他类型：排除所有已知后缀
+            List<String> knownSuffixes = FileTypeEnum.getAllKnownSuffixes();
+            wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                    .and(
+                            FILE_INFO.SUFFIX.notIn(knownSuffixes)
+                                    .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
+                    );
+        } else {
+            // 具体类型：直接匹配后缀
+            List<String> suffixes = fileType.getSuffixes();
+            if (suffixes != null && !suffixes.isEmpty()) {
+                wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                        .and(FILE_INFO.SUFFIX.in(suffixes));
+            }
         }
     }
 

@@ -3,7 +3,7 @@ package com.xddcodec.fs.system.aspect;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
-import com.xddcodec.fs.log.event.CreateLoginLogEvent;
+import com.xddcodec.fs.log.domain.event.CreateLoginLogEvent;
 import com.xddcodec.fs.system.domain.vo.LoginUserVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

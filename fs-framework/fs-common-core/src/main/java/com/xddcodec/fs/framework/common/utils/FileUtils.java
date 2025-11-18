@@ -3,7 +3,6 @@ package com.xddcodec.fs.framework.common.utils;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -20,73 +19,9 @@ import java.net.URLEncoder;
  * @Date: 2024/6/7 11:12
  */
 public class FileUtils {
+
     private FileUtils() {
         throw new IllegalStateException("Utility class");
-    }
-
-    /**
-     * 合法的后缀名，后续扩展
-     */
-    public static String[] ALLOWED_FILE_SUFFIX = new String[]{
-            "png", "bmp", "jpg", "jpeg", "pdf",
-            "xlsx", "xls", "gif", "svg", "txt",
-            "zip", "ppt", "doc", "docx", "html",
-            "htm", "ico", "mp3", "mp4", "java",
-            "sql", "xml", "js", "py", "php", "vue",
-            "sh", "cmd", "py3", "css", "md", "csv",
-            "rar", "zip", "json"
-    };
-
-    public static String[] FILE_SUFFIX_IMAGE = new String[]{"png", "bmp", "jpg", "jpeg", "svg", "gif"};
-
-    public static String[] FILE_SUFFIX_CODE = new String[]{"java", "sql", "js", "py", "py3", "php", "vue", "sh", "cmd", "css"};
-
-    public static boolean isFileAllowed(String fileName) {
-        for (String ext : ALLOWED_FILE_SUFFIX) {
-            if (ext.equals(fileName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isFileAllowed(String fileName, String[] file) {
-        for (String ext : file) {
-            if (ext.equals(fileName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 是否为图片文件
-     *
-     * @param suffix
-     * @return
-     */
-    public static boolean isImg(String suffix) {
-        for (String ext : FILE_SUFFIX_IMAGE) {
-            if (ext.equals(suffix)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 是否是代码文件
-     *
-     * @param suffix
-     * @return
-     */
-    public static boolean isCode(String suffix) {
-        for (String ext : FILE_SUFFIX_CODE) {
-            if (ext.equals(suffix)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static String getContentType(String filenameExtension) {

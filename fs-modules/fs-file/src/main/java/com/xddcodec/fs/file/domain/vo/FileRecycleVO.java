@@ -1,6 +1,8 @@
 package com.xddcodec.fs.file.domain.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.framework.common.utils.DateUtils;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 
@@ -43,5 +45,6 @@ public class FileRecycleVO implements Serializable {
     /**
      * 上传时间
      */
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime deletedTime;
 }

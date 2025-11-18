@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${fileName}">PDF预览</title>
+    <style>
+        body { margin: 0; padding: 0; }
+        .header {
+            height: 50px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+        #pdf-container {
+            height: calc(100vh - 50px);
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span th:text="${fileName}">文件名</span>
+    <button onclick="window.close()">关闭</button>
+</div>
+
+<div id="pdf-container">
+    <iframe
+            th:src="@{/lib/pdfjs/web/viewer.html(file=${pdfUrl})}"
+            width="100%"
+            height="100%"
+            frameborder="0">
+    </iframe>
+</div>
+</body>
+</html>
