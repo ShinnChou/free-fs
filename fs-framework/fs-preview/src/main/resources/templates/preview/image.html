@@ -119,7 +119,7 @@
 <div id="image-container">
     <div class="loading" id="loading">加载中...</div>
     <img id="preview-image"
-         th:src="${url}"
+         th:src="${streamUrl}"
          th:alt="${fileName}"
          style="display: none;">
 </div>
@@ -127,8 +127,8 @@
 <div class="zoom-info" id="zoom-info">100%</div>
 
 <script th:inline="javascript">
-    const imageUrl = /*[[${imageUrl}]]*/ '';
-    const fileName = /*[[${fileName}]]*/ '';
+    // const imageUrl = /*[[${imageUrl}]]*/ '';
+    // const fileName = /*[[${fileName}]]*/ '';
 
     const image = document.getElementById('preview-image');
     const loading = document.getElementById('loading');

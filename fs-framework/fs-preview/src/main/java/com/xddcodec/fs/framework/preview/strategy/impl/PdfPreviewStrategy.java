@@ -27,8 +27,6 @@ public class PdfPreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
         FileTypeEnum fileType = context.getFileType();
 
-        model.addAttribute("pdfUrl", context.getFilePath());
-
         Boolean needConvert = context.getNeedConvert();
         if (needConvert != null && needConvert) {
             model.addAttribute("needConvert", true);

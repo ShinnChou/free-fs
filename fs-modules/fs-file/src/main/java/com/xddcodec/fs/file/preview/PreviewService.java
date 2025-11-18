@@ -38,14 +38,12 @@ public class PreviewService {
         String streamUrl = buildUrl("/api/file/stream/preview/", fileId);
         PreviewContext context = PreviewContext.builder()
                 .fileName(fileInfo.getDisplayName())
-                .filePath(streamUrl)
+                .streamUrl(streamUrl)
                 .fileSize(fileInfo.getSize())
                 .extension(fileInfo.getSuffix())
                 .fileType(fileType)
                 .needConvert(fileType.isNeedConvert())
                 .build();
-        model.addAttribute("fileId", fileId);
-        model.addAttribute("streamUrl", streamUrl);
         PreviewStrategy strategy = strategyManager.getStrategy(fileType);
         strategy.fillModel(context, model);
         return fileType.getPreviewTemplate();

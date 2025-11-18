@@ -15,9 +15,11 @@ public abstract class AbstractPreviewStrategy implements PreviewStrategy {
     @Override
     public void fillModel(PreviewContext context, Model model) {
         // 填充基础数据
-        model.addAttribute("filePath", context.getFilePath());
         model.addAttribute("fileName", context.getFileName());
+        model.addAttribute("fileSize", context.getFileSize());
         model.addAttribute("fileType", context.getFileType().getName());
+        model.addAttribute("extension", context.getExtension());
+        model.addAttribute("streamUrl", context.getStreamUrl());
 
         // 子类填充特定数据
         fillSpecificModel(context, model);

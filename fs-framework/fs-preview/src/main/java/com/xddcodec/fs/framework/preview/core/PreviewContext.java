@@ -14,9 +14,9 @@ public class PreviewContext {
     private String fileName;
 
     /**
-     * 文件路径
+     * 文件流路径
      */
-    private String filePath;
+    private String streamUrl;
 
     /**
      * 文件大小
