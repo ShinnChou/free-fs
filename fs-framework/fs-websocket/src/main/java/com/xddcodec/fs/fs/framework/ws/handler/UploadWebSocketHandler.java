@@ -95,7 +95,7 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
         if (userId != null) {
             CopyOnWriteArraySet<WebSocketSession> userSessions = sessions.get(userId);
             if (userSessions != null) {
-                // 核心修改：只移除当前断开的 session
+                // 只移除当前断开的 session
                 userSessions.remove(session);
                 log.info("WebSocket 连接关闭: userId={}, sessionId={}, 剩余窗口数={}",
                         userId, session.getId(), userSessions.size());
@@ -138,8 +138,6 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // ========== 私有方法 ==========
-
     /**
      * 订阅任务
      */
@@ -180,27 +178,23 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
     /**
      * 安全发送消息（底层方法，针对单个Session）
      */
-    private boolean sendMessageSafely(WebSocketSession session, UploadMessage message) {
+    private void sendMessageSafely(WebSocketSession session, UploadMessage message) {
         if (session == null || !session.isOpen()) {
-            return false;
+            return;
         }
 
         try {
             // 加锁防止多线程并发写入同一个Session导致报错
             synchronized (session) {
-                if (!session.isOpen()) return false;
+                if (!session.isOpen()) return;
                 String json = JsonUtils.toJsonString(message);
                 session.sendMessage(new TextMessage(Objects.requireNonNull(json)));
-                return true;
             }
-        } catch (ClosedChannelException e) {
-            return false;
+        } catch (ClosedChannelException ignored) {
         } catch (IOException e) {
             log.warn("发送 WebSocket 消息失败: sessionId={}, error={}", session.getId(), e.getMessage());
-            return false;
         } catch (Exception e) {
             log.error("发送 WebSocket 消息异常: sessionId={}", session.getId(), e);
-            return false;
         }
     }
 
@@ -226,8 +220,6 @@ public class UploadWebSocketHandler extends TextWebSocketHandler {
             sendMessageSafely(session, message);
         }
     }
-
-    // ========== 公共推送方法 (保持不变，它们都调用了 pushMessage) ==========
 
     public void pushInitialized(String taskId) {
         pushMessage(taskId, UploadMessage.initialized(taskId));
