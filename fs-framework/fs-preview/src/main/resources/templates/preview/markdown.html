@@ -7,18 +7,19 @@
 
     <script th:src="@{/lib/marked/marked.min.js}"></script>
     <script th:src="@{/lib/marked/highlight.min.js}"></script>
-    
+
     <style>
         :root {
             --color-primary: #165dff;
-            --color-text-1: #1d2129;
-            --color-text-2: #4e5969;
-            --color-text-3: #86909c;
-            --color-bg-1: #ffffff;
-            --color-bg-2: #f2f3f5;
-            --color-border: #e5e6eb;
-            --color-fill-2: #f7f8fa;
+            --color-text-1: #e6e6e6;
+            --color-text-2: #b3b3b3;
+            --color-text-3: #808080;
+            --color-bg-1: #1a1a1a;
+            --color-bg-2: #000000;
+            --color-border: #333333;
+            --color-fill-2: #2a2a2a;
             --color-danger: #f53f3f;
+            --color-code-bg: #2d2d2d;
         }
 
         * {
@@ -34,6 +35,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            color: var(--color-text-1);
+            user-select: text; /* Allow text selection for markdown */
         }
 
         .header {
@@ -45,29 +48,27 @@
             justify-content: space-between;
             padding: 0 20px;
             flex-shrink: 0;
+            user-select: none;
         }
 
         .file-name {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 500;
             color: var(--color-text-1);
         }
 
         .close-btn {
-            padding: 4px 12px;
-            background: var(--color-bg-1);
-            border: 1px solid var(--color-border);
-            color: var(--color-text-2);
-            border-radius: 2px;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .close-btn:hover {
-            background: var(--color-fill-2);
-            color: var(--color-text-1);
-            border-color: var(--color-border);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .wrapper {
@@ -125,8 +126,8 @@
         }
 
         .toc-list a.active {
-            background-color: #e8f3ff;
-            color: var(--color-primary);
+            background-color: rgba(22, 93, 255, 0.2);
+            color: #4080ff;
             font-weight: 500;
         }
 
@@ -155,10 +156,52 @@
             background: var(--color-bg-1);
             padding: 40px 60px;
             border-radius: 4px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
             width: 100%;
             max-width: 900px;
             min-height: fit-content;
+            color: var(--color-text-1);
+        }
+
+        /* Markdown Dark Theme Overrides */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3,
+        .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+            color: var(--color-text-1);
+            border-bottom-color: var(--color-border);
+        }
+
+        .markdown-body a {
+            color: #4080ff;
+        }
+
+        .markdown-body blockquote {
+            color: var(--color-text-2);
+            border-left-color: var(--color-border);
+        }
+
+        .markdown-body hr {
+            background-color: var(--color-border);
+        }
+
+        .markdown-body table tr {
+            background-color: var(--color-bg-1);
+            border-top-color: var(--color-border);
+        }
+
+        .markdown-body table tr:nth-child(2n) {
+            background-color: var(--color-fill-2);
+        }
+
+        .markdown-body table th, .markdown-body table td {
+            border-color: var(--color-border);
+        }
+
+        .markdown-body code {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .markdown-body pre {
+            background-color: var(--color-code-bg);
         }
 
         /* Loading & Error */
@@ -185,7 +228,7 @@
         .spinner {
             width: 32px;
             height: 32px;
-            border: 3px solid var(--color-fill-2);
+            border: 3px solid rgba(255, 255, 255, 0.1);
             border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -196,12 +239,6 @@
             to {
                 transform: rotate(360deg);
             }
-        }
-
-        .error-icon {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 16px;
         }
 
         .error-title {
@@ -226,12 +263,32 @@
                 padding: 20px;
             }
         }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
     </style>
 </head>
 <body>
 <div class="header">
     <span class="file-name" th:text="${fileName}">Markdown 预览</span>
-    <button class="close-btn" onclick="window.close()">关闭</button>
+    <div class="close-btn" onclick="window.close()" title="关闭">
+        <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+            <path d="M14 14L34 34" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 34L34 14" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
 </div>
 
 <div class="wrapper">
@@ -254,11 +311,6 @@
 
     <!-- Error -->
     <div id="error" class="error-container">
-        <svg class="error-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" clip-rule="evenodd"
-                  d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44ZM32.2426 15.7574C32.6331 15.3668 32.6331 14.7337 32.2426 14.3431C31.8521 13.9526 31.2189 13.9526 30.8284 14.3431L24 21.1716L17.1716 14.3431C16.781 13.9526 16.1479 13.9526 15.7574 14.3431C15.3668 14.7337 15.3668 15.3668 15.7574 15.7574L22.5858 22.5858L15.7574 29.4142C15.3668 29.8047 15.3668 30.4379 15.7574 30.8284C16.1479 31.2189 16.781 31.2189 17.1716 30.8284L24 24L30.8284 30.8284C31.2189 31.2189 31.8521 31.2189 32.2426 30.8284C32.6331 30.4379 32.6331 29.8047 32.2426 29.4142L25.4142 22.5858L32.2426 15.7574Z"
-                  fill="#F53F3F"/>
-        </svg>
         <div class="error-title">加载失败</div>
         <div class="error-desc" id="error-msg">文件内容获取失败</div>
     </div>
@@ -376,20 +428,17 @@
     function updateActiveTOC() {
         const headings = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
         const tocLinks = document.querySelectorAll('.toc-list a');
-        const scrollContainer = document.getElementById('scroll-container');
 
-        // Find the heading that is closest to the top of the viewport
         let current = null;
         for (let i = 0; i < headings.length; i++) {
             const heading = headings[i];
             const rect = heading.getBoundingClientRect();
-            // rect.top is relative to viewport
             if (rect.top > 0 && rect.top < window.innerHeight / 3) {
                 current = i;
                 break;
             }
             if (rect.top <= 0) {
-                current = i; // Keep updating as we scroll down past headings
+                current = i;
             }
         }
 
@@ -397,6 +446,11 @@
             link.classList.toggle('active', index === current);
         });
     }
+
+    // Disable context menu
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

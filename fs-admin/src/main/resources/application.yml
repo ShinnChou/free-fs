@@ -20,6 +20,15 @@ spring:
     multipart:
       max-file-size: 500MB
       max-request-size: 500MB
+  web:
+    resources:
+      # 添加静态资源位置
+      static-locations:
+        - classpath:/META-INF/resources/
+        - classpath:/resources/
+        - classpath:/static/
+        - classpath:/public/
+        - classpath:/.well-known/
   # 开启循环依赖
   main:
     allow-circular-references: true
@@ -52,11 +61,6 @@ spring:
           starttls:
             enable: true
             required: true
-
-
-#  web:
-#    resources:
-#      static-locations: classpath:/static
 
 --- # mybatis-flex配置
 mybatis-flex:
