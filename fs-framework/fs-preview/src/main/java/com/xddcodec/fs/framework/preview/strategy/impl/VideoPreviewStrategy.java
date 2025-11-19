@@ -7,25 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-
 /**
- * 图片预览策略
+ * 视频预览策略
  */
 @Slf4j
 @Component
-public class ImagePreviewStrategy extends AbstractPreviewStrategy {
+public class VideoPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum fileType) {
-        return fileType == FileTypeEnum.IMAGE;
+        return fileType == FileTypeEnum.VIDEO;
     }
 
     @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
-        log.info("图片预览策略填充完成 - 文件名: {}, 格式: {}, 大小: {}",
+        log.info("视频预览策略填充完成 - 文件名: {}, 格式: {}, 大小: {}",
                 context.getFileName(),
                 context.getExtension(),
                 context.getFileSize());
@@ -33,7 +29,7 @@ public class ImagePreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public int getPriority() {
-        return 10;
+        return 15;
     }
-
 }
+

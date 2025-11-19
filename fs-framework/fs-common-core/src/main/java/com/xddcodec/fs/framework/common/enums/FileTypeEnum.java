@@ -222,6 +222,17 @@ public enum FileTypeEnum {
     }
 
     /**
+     * 判断文件扩展名是否为媒体文件（视频或音频）
+     */
+    public static boolean isMediaFile(String extension) {
+        if (extension == null || extension.trim().isEmpty()) {
+            return false;
+        }
+        FileTypeEnum fileType = fromSuffix(extension);
+        return fileType == VIDEO || fileType == AUDIO;
+    }
+
+    /**
      * 获取分类下所有后缀（用于前端筛选）
      */
     public static List<String> getSuffixesByCategory(FileCategory category) {

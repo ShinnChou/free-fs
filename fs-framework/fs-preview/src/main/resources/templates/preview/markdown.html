@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${fileName}">Markdown 预览</title>
+
+    <script th:src="@{/lib/marked/marked.min.js}"></script>
+    <script th:src="@{/lib/marked/highlight.min.js}"></script>
+    
+    <style>
+        :root {
+            --color-primary: #165dff;
+            --color-text-1: #1d2129;
+            --color-text-2: #4e5969;
+            --color-text-3: #86909c;
+            --color-bg-1: #ffffff;
+            --color-bg-2: #f2f3f5;
+            --color-border: #e5e6eb;
+            --color-fill-2: #f7f8fa;
+            --color-danger: #f53f3f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "noto sans", "Microsoft YaHei", "SimSun", sans-serif;
+            background: var(--color-bg-2);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            height: 48px;
+            background: var(--color-bg-1);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+        }
+
+        .close-btn {
+            padding: 4px 12px;
+            background: var(--color-bg-1);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-2);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .close-btn:hover {
+            background: var(--color-fill-2);
+            color: var(--color-text-1);
+            border-color: var(--color-border);
+        }
+
+        .wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sidebar */
+        .toc-sidebar {
+            width: 260px;
+            background: var(--color-bg-1);
+            border-right: 1px solid var(--color-border);
+            overflow-y: auto;
+            padding: 20px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toc-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--color-text-1);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-list li {
+            margin-bottom: 4px;
+        }
+
+        .toc-list a {
+            display: block;
+            padding: 6px 8px;
+            color: var(--color-text-2);
+            text-decoration: none;
+            font-size: 13px;
+            border-radius: 2px;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+
+        .toc-list a:hover {
+            background-color: var(--color-fill-2);
+            color: var(--color-text-1);
+        }
+
+        .toc-list a.active {
+            background-color: #e8f3ff;
+            color: var(--color-primary);
+            font-weight: 500;
+        }
+
+        .toc-h1 {
+            padding-left: 8px;
+        }
+
+        .toc-h2 {
+            padding-left: 20px;
+        }
+
+        .toc-h3 {
+            padding-left: 32px;
+        }
+
+        /* Content */
+        .container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .markdown-body {
+            background: var(--color-bg-1);
+            padding: 40px 60px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 900px;
+            min-height: fit-content;
+        }
+
+        /* Loading & Error */
+        .loading-container, .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            color: var(--color-text-3);
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--color-bg-2);
+            z-index: 10;
+        }
+
+        .error-container {
+            display: none;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--color-fill-2);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+        }
+
+        .error-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .markdown-body {
+                padding: 30px 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .toc-sidebar {
+                display: none;
+            }
+
+            .markdown-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span class="file-name" th:text="${fileName}">Markdown 预览</span>
+    <button class="close-btn" onclick="window.close()">关闭</button>
+</div>
+
+<div class="wrapper">
+    <!-- Sidebar -->
+    <div class="toc-sidebar" id="sidebar">
+        <div class="toc-title">目录</div>
+        <ul class="toc-list" id="toc"></ul>
+    </div>
+
+    <!-- Content -->
+    <div class="container" id="scroll-container">
+        <div class="markdown-body" id="content"></div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-container" id="loading">
+        <div class="spinner"></div>
+        <div>渲染中...</div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error-container">
+        <svg class="error-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd"
+                  d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44ZM32.2426 15.7574C32.6331 15.3668 32.6331 14.7337 32.2426 14.3431C31.8521 13.9526 31.2189 13.9526 30.8284 14.3431L24 21.1716L17.1716 14.3431C16.781 13.9526 16.1479 13.9526 15.7574 14.3431C15.3668 14.7337 15.3668 15.3668 15.7574 15.7574L22.5858 22.5858L15.7574 29.4142C15.3668 29.8047 15.3668 30.4379 15.7574 30.8284C16.1479 31.2189 16.781 31.2189 17.1716 30.8284L24 24L30.8284 30.8284C31.2189 31.2189 31.8521 31.2189 32.2426 30.8284C32.6331 30.4379 32.6331 29.8047 32.2426 29.4142L25.4142 22.5858L32.2426 15.7574Z"
+                  fill="#F53F3F"/>
+        </svg>
+        <div class="error-title">加载失败</div>
+        <div class="error-desc" id="error-msg">文件内容获取失败</div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const streamUrl = /*[[${streamUrl}]]*/ '';
+
+    function init() {
+        if (typeof marked === 'undefined') {
+            showError('Marked.js 资源加载失败');
+            return;
+        }
+
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            highlight: function (code, lang) {
+                if (typeof hljs !== 'undefined' && lang) {
+                    try {
+                        if (hljs.getLanguage(lang)) {
+                            return hljs.highlight(code, {language: lang}).value;
+                        }
+                    } catch (e) {
+                        console.warn('代码高亮失败:', e);
+                    }
+                }
+                return code;
+            }
+        });
+
+        fetch(streamUrl)
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(markdown => {
+                const html = marked.parse(markdown);
+                document.getElementById('content').innerHTML = html;
+
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+
+                if (typeof hljs !== 'undefined') {
+                    document.querySelectorAll('pre code').forEach(block => {
+                        if (typeof hljs.highlightElement === 'function') {
+                            hljs.highlightElement(block);
+                        } else if (typeof hljs.highlightBlock === 'function') {
+                            hljs.highlightBlock(block);
+                        }
+                    });
+                }
+
+                generateTOC();
+            })
+            .catch(err => {
+                showError(err.message);
+            });
+    }
+
+    function showError(msg) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'flex';
+        document.getElementById('error-msg').textContent = msg;
+        document.getElementById('sidebar').style.display = 'none';
+        document.getElementById('content').style.display = 'none';
+    }
+
+    function generateTOC() {
+        const content = document.getElementById('content');
+        const toc = document.getElementById('toc');
+        const headings = content.querySelectorAll('h1, h2, h3');
+
+        if (headings.length === 0) {
+            toc.innerHTML = '<li style="color: var(--color-text-3); font-size: 12px; padding: 8px;">暂无目录</li>';
+            return;
+        }
+
+        headings.forEach((heading, index) => {
+            const id = 'heading-' + index;
+            heading.id = id;
+
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = '#' + id;
+            a.textContent = heading.textContent;
+            a.className = 'toc-' + heading.tagName.toLowerCase();
+
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                heading.scrollIntoView({behavior: 'smooth', block: 'start'});
+
+                // Update active state immediately
+                document.querySelectorAll('.toc-list a').forEach(link => link.classList.remove('active'));
+                a.classList.add('active');
+            });
+
+            li.appendChild(a);
+            toc.appendChild(li);
+        });
+
+        // Scroll spy
+        const scrollContainer = document.getElementById('scroll-container');
+        let isScrolling = false;
+        scrollContainer.addEventListener('scroll', () => {
+            if (isScrolling) return;
+            isScrolling = true;
+            requestAnimationFrame(() => {
+                updateActiveTOC();
+                isScrolling = false;
+            });
+        });
+    }
+
+    function updateActiveTOC() {
+        const headings = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+        const scrollContainer = document.getElementById('scroll-container');
+
+        // Find the heading that is closest to the top of the viewport
+        let current = null;
+        for (let i = 0; i < headings.length; i++) {
+            const heading = headings[i];
+            const rect = heading.getBoundingClientRect();
+            // rect.top is relative to viewport
+            if (rect.top > 0 && rect.top < window.innerHeight / 3) {
+                current = i;
+                break;
+            }
+            if (rect.top <= 0) {
+                current = i; // Keep updating as we scroll down past headings
+            }
+        }
+
+        tocLinks.forEach((link, index) => {
+            link.classList.toggle('active', index === current);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+</script>
+</body>
+</html>

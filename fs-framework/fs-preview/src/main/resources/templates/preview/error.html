@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>预览失败</title>
+    <style>
+        :root {
+            --color-primary: #165dff;
+            --color-text-1: #1d2129;
+            --color-text-2: #4e5969;
+            --color-text-3: #86909c;
+            --color-bg-1: #ffffff;
+            --color-bg-2: #f2f3f5;
+            --color-border: #e5e6eb;
+            --color-fill-2: #f7f8fa;
+            --color-danger: #f53f3f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "noto sans", "Microsoft YaHei", "SimSun", sans-serif;
+            background: var(--color-bg-2);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            height: 48px;
+            background: var(--color-bg-1);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+        }
+
+        .btn {
+            height: 28px;
+            padding: 0 12px;
+            background: var(--color-bg-1);
+            border: 1px solid var(--color-border);
+            border-radius: 2px;
+            color: var(--color-text-2);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--color-fill-2);
+            color: var(--color-text-1);
+        }
+
+        .error-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .error-content {
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .error-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            margin-bottom: 12px;
+        }
+
+        .error-message {
+            font-size: 14px;
+            color: var(--color-text-2);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .error-detail {
+            font-size: 13px;
+            color: var(--color-text-3);
+            padding: 12px;
+            background: var(--color-fill-2);
+            border-radius: 4px;
+            margin-bottom: 20px;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span class="file-name">预览失败</span>
+    <button class="btn" onclick="window.close()">关闭</button>
+</div>
+
+<div class="error-container">
+    <div class="error-content">
+        <div class="error-title" th:text="${errorMessage != null ? errorMessage : '无法加载文件预览'}">
+            无法加载文件预览
+        </div>
+        <div class="error-detail" th:if="${errorDetail != null}" th:text="${errorDetail}">
+            文件不存在或已被删除
+        </div>
+    </div>
+</div>
+</body>
+</html>
+

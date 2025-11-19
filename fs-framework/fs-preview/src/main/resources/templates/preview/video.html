@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${fileName}">视频预览</title>
+    <style>
+        :root {
+            --color-primary: #165dff;
+            --color-text-1: #1d2129;
+            --color-text-2: #4e5969;
+            --color-text-3: #86909c;
+            --color-bg-1: #ffffff;
+            --color-bg-2: #f2f3f5;
+            --color-border: #e5e6eb;
+            --color-fill-2: #f7f8fa;
+            --color-danger: #f53f3f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "noto sans", "Microsoft YaHei", "SimSun", sans-serif;
+            background: var(--color-bg-2);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            height: 48px;
+            background: var(--color-bg-1);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+        }
+
+        .close-btn {
+            padding: 4px 12px;
+            background: var(--color-bg-1);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-2);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .close-btn:hover {
+            background: var(--color-fill-2);
+            color: var(--color-text-1);
+        }
+
+        #video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+        }
+
+        #video-player {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            outline: none;
+        }
+
+        /* Loading & Error */
+        .loading-container, .error-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-3);
+            z-index: 10;
+        }
+
+        .error-container {
+            display: none;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--color-fill-2);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            margin-bottom: 8px;
+        }
+
+        .error-desc {
+            font-size: 13px;
+            color: var(--color-text-3);
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span class="file-name" th:text="${fileName}">视频文件名</span>
+    <button class="close-btn" onclick="window.close()">关闭</button>
+</div>
+
+<div id="video-container">
+    <div class="loading-container" id="loading">
+        <div class="spinner"></div>
+        <div>正在加载视频...</div>
+    </div>
+
+    <div class="error-container" id="error">
+        <div class="error-title">视频加载失败</div>
+        <div class="error-desc">视频可能已被删除或无法访问</div>
+    </div>
+
+    <!-- 
+        关键：使用 data-src 而不是直接设置 src
+        通过 JavaScript 动态设置，避免 IDM 直接拦截
+    -->
+    <video id="video-player" 
+           controls 
+           preload="metadata"
+           controlslist="nodownload"
+           style="display: none;">
+        您的浏览器不支持视频播放
+    </video>
+</div>
+
+<script th:inline="javascript">
+    // 获取服务端变量
+    const streamUrl = /*[[${streamUrl}]]*/ '';
+    const fileName = /*[[${fileName}]]*/ '';
+
+    const video = document.getElementById('video-player');
+    const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
+
+    // 关键策略：延迟设置 src，并添加随机参数混淆 IDM
+    function loadVideo() {
+        if (!streamUrl) {
+            showError('视频路径无效');
+            return;
+        }
+
+        // 添加时间戳和随机参数，让 IDM 难以识别
+        // 同时使用 #t=0.1 片段标识符，进一步混淆
+        const urlWithParams = `${streamUrl}?_t=${Date.now()}&_r=${Math.random().toString(36).substring(7)}#t=0.1`;
+
+        // 延迟设置 src，避免页面加载时立即被 IDM 检测
+        setTimeout(() => {
+            video.src = urlWithParams;
+            video.style.display = 'block';
+        }, 100);
+    }
+
+    // 视频元数据加载完成（可以开始播放）
+    video.addEventListener('loadedmetadata', function() {
+        loading.style.display = 'none';
+        console.log('视频元数据加载完成');
+    });
+
+    // 视频可以播放
+    video.addEventListener('canplay', function() {
+        loading.style.display = 'none';
+        console.log('视频可以播放');
+    });
+
+    // 视频加载错误
+    video.addEventListener('error', function(e) {
+        console.error('视频加载错误:', e);
+        showError('视频加载失败，请检查文件是否存在');
+    });
+
+    // 显示错误
+    function showError(message) {
+        loading.style.display = 'none';
+        video.style.display = 'none';
+        errorDiv.style.display = 'flex';
+        if (message) {
+            errorDiv.querySelector('.error-desc').textContent = message;
+        }
+    }
+
+    // 防止右键下载
+    video.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // 禁用拖拽下载
+    video.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // 页面加载完成后加载视频
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadVideo);
+    } else {
+        loadVideo();
+    }
+</script>
+</body>
+</html>
+

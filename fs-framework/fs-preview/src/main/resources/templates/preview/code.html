@@ -5,6 +5,18 @@
     <title th:text="${fileName}">代码预览</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
     <style>
+        :root {
+            --color-primary: #165dff;
+            --color-text-1: #1d2129;
+            --color-text-2: #4e5969;
+            --color-text-3: #86909c;
+            --color-bg-1: #ffffff;
+            --color-bg-2: #f2f3f5;
+            --color-border: #e5e6eb;
+            --color-fill-2: #f7f8fa;
+            --color-danger: #f53f3f;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,56 +24,64 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #1e1e1e;
-            color: #d4d4d4;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "noto sans", "Microsoft YaHei", "SimSun", sans-serif;
+            background: var(--color-bg-2);
+            color: var(--color-text-1);
+            height: 100vh;
+            overflow: hidden;
         }
 
         .header {
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
+            height: 48px;
+            background: var(--color-bg-1);
+            color: var(--color-text-1);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-bottom: 1px solid var(--color-border);
         }
 
         .file-info {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .file-name {
             font-size: 16px;
             font-weight: 500;
+            color: var(--color-text-1);
         }
 
         .language-badge {
-            padding: 4px 12px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 12px;
+            padding: 2px 8px;
+            background: var(--color-fill-2);
+            color: var(--color-text-2);
+            border-radius: 2px;
             font-size: 12px;
+            border: 1px solid var(--color-border);
         }
 
         .close-btn {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            border-radius: 4px;
+            padding: 4px 12px;
+            background: var(--color-bg-1);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-2);
+            border-radius: 2px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            font-size: 13px;
         }
 
         .close-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: var(--color-fill-2);
+            color: var(--color-text-1);
+            border-color: var(--color-border);
         }
 
         .code-container {
-            height: calc(100vh - 50px);
+            height: calc(100vh - 48px);
             overflow: auto;
             padding: 20px;
         }
@@ -69,8 +89,10 @@
         pre {
             margin: 0;
             background: #2d2d2d !important;
-            border-radius: 8px;
+            border-radius: 4px;
             padding: 20px !important;
+            min-height: 100%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
 
         pre code {
@@ -79,39 +101,74 @@
             line-height: 1.6;
         }
 
-        /* 行号样式 */
-        .line-numbers .line-numbers-rows {
-            border-right: 1px solid #4a4a4a;
-        }
-
-        /* 加载状态 */
-        .loading {
+        /* Loading State */
+        .loading-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: calc(100vh - 50px);
-            color: #888;
+            height: 100%;
+            color: var(--color-text-3);
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-top-color: #667eea;
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--color-fill-2);
+            border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        .error {
-            color: #f56565;
+        /* Error State */
+        .error-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--color-text-2);
             text-align: center;
-            padding: 40px;
+        }
+
+        .error-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+        }
+
+        .error-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            margin-bottom: 8px;
+        }
+
+        .error-desc {
+            color: var(--color-text-3);
+            font-size: 14px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
     </style>
 </head>
@@ -125,14 +182,28 @@
 </div>
 
 <div class="code-container">
-    <div class="loading" id="loading">
+    <!-- Loading -->
+    <div class="loading-container" id="loading">
         <div class="spinner"></div>
-        <div>正在加载代码...</div>
+        <div>正在加载资源...</div>
     </div>
-    <div id="code-content" style="display: none;">
-        <pre class="line-numbers"><code class="language-" th:classappend="${'language-' + language}" id="code-block"></code></pre>
+
+    <!-- Content -->
+    <div id="code-content" style="display: none; height: 100%;">
+        <pre class="line-numbers"><code class="language-" th:classappend="${'language-' + language}"
+                                        id="code-block"></code></pre>
     </div>
-    <div id="error" class="error" style="display: none;"></div>
+
+    <!-- Error -->
+    <div id="error" class="error-container">
+        <svg class="error-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd"
+                  d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44ZM32.2426 15.7574C32.6331 15.3668 32.6331 14.7337 32.2426 14.3431C31.8521 13.9526 31.2189 13.9526 30.8284 14.3431L24 21.1716L17.1716 14.3431C16.781 13.9526 16.1479 13.9526 15.7574 14.3431C15.3668 14.7337 15.3668 15.3668 15.7574 15.7574L22.5858 22.5858L15.7574 29.4142C15.3668 29.8047 15.3668 30.4379 15.7574 30.8284C16.1479 31.2189 16.781 31.2189 17.1716 30.8284L24 24L30.8284 30.8284C31.2189 31.2189 31.8521 31.2189 32.2426 30.8284C32.6331 30.4379 32.6331 29.8047 32.2426 29.4142L25.4142 22.5858L32.2426 15.7574Z"
+                  fill="#F53F3F"/>
+        </svg>
+        <div class="error-title">加载失败</div>
+        <div class="error-desc" id="error-msg">请检查网络连接或稍后重试</div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
@@ -143,17 +214,11 @@
     const streamUrl = /*[[${streamUrl}]]*/ '';
     const language = /*[[${language}]]*/ 'plaintext';
 
-    console.log('Stream URL:', streamUrl);
-    console.log('Language:', language);
-
     // 配置 Prism 自动加载器
     Prism.plugins.autoloader.languages_path = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/';
 
-    // 加载代码内容
     async function loadCode() {
         try {
-            console.log('开始加载代码...');
-
             const response = await fetch(streamUrl);
 
             if (!response.ok) {
@@ -162,32 +227,26 @@
 
             const text = await response.text();
 
-            console.log('代码加载成功，长度:', text.length);
-            console.log('内容预览:', text.substring(0, 100));
-
-            // 显示代码
             const codeBlock = document.getElementById('code-block');
             codeBlock.textContent = text;
 
-            // 隐藏加载状态
             document.getElementById('loading').style.display = 'none';
             document.getElementById('code-content').style.display = 'block';
 
-            // 高亮代码
-            console.log('开始语法高亮...');
             Prism.highlightElement(codeBlock);
-            console.log('语法高亮完成');
 
         } catch (error) {
             console.error('加载代码失败:', error);
             document.getElementById('loading').style.display = 'none';
+            document.getElementById('code-content').style.display = 'none';
+
             const errorDiv = document.getElementById('error');
-            errorDiv.textContent = '加载失败: ' + error.message;
-            errorDiv.style.display = 'block';
+            const errorMsg = document.getElementById('error-msg');
+            errorMsg.textContent = error.message || '资源加载失败';
+            errorDiv.style.display = 'flex';
         }
     }
 
-    // 页面加载完成后执行
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadCode);
     } else {

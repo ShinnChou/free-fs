@@ -29,7 +29,7 @@ public class CodePreviewStrategy extends AbstractPreviewStrategy {
             Map.entry("xml", "xml"),
             Map.entry("yaml", "yaml"),
             Map.entry("yml", "yaml"),
-            Map.entry("md", "markdown")
+            Map.entry("md", "markdown.html")
     );
 
     @Override
