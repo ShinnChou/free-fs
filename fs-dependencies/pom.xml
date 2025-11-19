@@ -126,6 +126,11 @@
             </dependency>
             <dependency>
                 <groupId>com.xddcodec.fs</groupId>
+                <artifactId>fs-preview</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.xddcodec.fs</groupId>
                 <artifactId>storage-plugin-boot</artifactId>
                 <version>${revision}</version>
             </dependency>

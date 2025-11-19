@@ -180,6 +180,45 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
+    public InputStream getFileStream(String objectKey) {
+        ensureNotPrototype();
+        try {
+            String fullPath = resolveFullPath(objectKey);
+            File file = new File(fullPath);
+            // 检查文件是否存在
+            if (!file.exists()) {
+                log.error("{} 文件不存在: objectKey={}, fullPath={}",
+                        getLogPrefix(), objectKey, fullPath);
+                throw new StorageOperationException("文件不存在: " + objectKey);
+            }
+            // 检查是否为文件（不是目录）
+            if (!file.isFile()) {
+                log.error("{} 路径不是文件: objectKey={}, fullPath={}",
+                        getLogPrefix(), objectKey, fullPath);
+                throw new StorageOperationException("路径不是文件: " + objectKey);
+            }
+            // 检查文件是否可读
+            if (!file.canRead()) {
+                log.error("{} 文件不可读: objectKey={}, fullPath={}",
+                        getLogPrefix(), objectKey, fullPath);
+                throw new StorageOperationException("文件不可读: " + objectKey);
+            }
+            log.debug("{} 获取文件流: objectKey={}, fileSize={} bytes",
+                    getLogPrefix(), objectKey, file.length());
+            return new BufferedInputStream(new FileInputStream(file), 8192);
+        } catch (FileNotFoundException e) {
+            log.error("{} 文件不存在: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("文件不存在: " + objectKey, e);
+        } catch (SecurityException e) {
+            log.error("{} 文件访问权限不足: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("文件访问权限不足: " + objectKey, e);
+        } catch (Exception e) {
+            log.error("{} 获取文件流失败: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("获取文件流失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public boolean isFileExist(String objectKey) {
         ensureNotPrototype();
         String fullPath = resolveFullPath(objectKey);

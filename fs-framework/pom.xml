@@ -18,6 +18,7 @@
         <module>fs-common-core</module>
         <module>fs-notify</module>
         <module>fs-orm</module>
+        <module>fs-preview</module>
         <module>fs-redis</module>
         <module>fs-security</module>
         <module>fs-swagger</module>

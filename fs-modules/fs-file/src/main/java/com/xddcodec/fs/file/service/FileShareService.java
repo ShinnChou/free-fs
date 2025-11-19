@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.service;
 import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
+import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.framework.common.domain.PageResult;
@@ -36,4 +37,11 @@ public interface FileShareService extends IService<FileShare> {
      * @param shareId 分享ID
      */
     void cancelShare(String shareId);
+
+    /**
+     * 校验提取码
+     *
+     * @param cmd
+     */
+    boolean verifyShareCode(VerifyShareCodeCmd cmd);
 }

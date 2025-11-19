@@ -14,9 +14,9 @@ import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
-import com.xddcodec.fs.file.enums.FileTypeEnum;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
@@ -145,7 +145,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 cmd.getParentId(),
                 baseName,
                 true,
-                null
+                null,
+                platformConfigId
         );
         // 创建目录信息记录
         FileInfo dirInfo = new FileInfo();
@@ -173,6 +174,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (fileInfo.getDisplayName().equals(cmd.getDisplayName())) {
             return;
         }
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         String newName = cmd.getDisplayName().trim();
         //判断同目录下是否有重名
         String finalName = generateUniqueName(
@@ -180,7 +182,9 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 fileInfo.getParentId(),
                 newName,
                 fileInfo.getIsDir(),
-                fileId
+                fileId,
+                storagePlatformSettingId
+
         );
         fileInfo.setDisplayName(finalName);
         LocalDateTime now = LocalDateTime.now();
@@ -258,8 +262,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      */
     @Override
     public String generateUniqueName(String userId, String parentId,
-                                      String desiredName, Boolean isDir,
-                                      String excludeFileId) {
+                                     String desiredName, Boolean isDir,
+                                     String excludeFileId, String storagePlatformSettingId) {
 
         String nameWithoutExt = desiredName;
         String extension = "";
@@ -273,7 +277,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 parentId,
                 nameWithoutExt,
                 isDir,
-                excludeFileId
+                excludeFileId,
+                storagePlatformSettingId
         );
         List<FileInfo> existingFiles = list(query);
         if (existingFiles.isEmpty()) {
@@ -295,7 +300,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      */
     private QueryWrapper buildSameLevelQuery(String userId, String parentId,
                                              String baseName, Boolean isDir,
-                                             String excludeFileId) {
+                                             String excludeFileId, String storagePlatformSettingId) {
         QueryWrapper query = new QueryWrapper();
 
         query.where(FILE_INFO.USER_ID.eq(userId))
@@ -303,7 +308,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .and(FILE_INFO.IS_DIR.eq(isDir))
                 .and(FILE_INFO.IS_DELETED.eq(false))
                 .and(FILE_INFO.DISPLAY_NAME.like(baseName + "%"));
-
+        if (StringUtils.isEmpty(storagePlatformSettingId)) {
+            query.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
+        } else {
+            query.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        }
         // 如果是重命名场景，排除当前文件
         if (StrUtil.isNotBlank(excludeFileId)) {
             query.and(FILE_INFO.ID.ne(excludeFileId));
@@ -503,9 +512,12 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .on(FILE_INFO.ID.eq(FILE_USER_FAVORITES.FILE_ID)
                         .and(FILE_USER_FAVORITES.USER_ID.eq(userId)))
                 .where(FILE_INFO.USER_ID.eq(userId))
-                .and(FILE_INFO.IS_DELETED.eq(false))
-                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
-
+                .and(FILE_INFO.IS_DELETED.eq(false));
+        if (StringUtils.isEmpty(storagePlatformSettingId)) {
+            wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
+        } else {
+            wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        }
         // 收藏过滤
         if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
             wrapper.and("fuf.file_id IS NOT NULL");
@@ -576,28 +588,62 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (qry.getFileType() == null || qry.getFileType().trim().isEmpty()) {
             return;
         }
+        FileTypeEnum.FileCategory category = FileTypeEnum.FileCategory.fromCode(qry.getFileType());
+        if (category != null) {
+            // 按大类筛选
+            applyFilterByCategory(wrapper, category);
+            return;
+        }
         FileTypeEnum fileType = FileTypeEnum.fromType(qry.getFileType());
-
         if (fileType == null) {
             log.warn("未识别的文件类型: {}", qry.getFileType());
             return;
         }
-        // 其他类型：排除所有已知后缀
-        if (fileType.isOther()) {
+        // 按具体类型筛选
+        applyFilterByType(wrapper, fileType);
+    }
+
+    /**
+     * 按分类筛选
+     */
+    private void applyFilterByCategory(QueryWrapper wrapper, FileTypeEnum.FileCategory category) {
+        if (category == FileTypeEnum.FileCategory.OTHER) {
+            // 其他类型：排除所有已知后缀
             List<String> knownSuffixes = FileTypeEnum.getAllKnownSuffixes();
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
                     .and(
                             FILE_INFO.SUFFIX.notIn(knownSuffixes)
                                     .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
                     );
-
-            return;
+        } else {
+            // 常规分类：获取该分类下所有后缀
+            List<String> categorySuffixes = FileTypeEnum.getSuffixesByCategory(category);
+            if (!categorySuffixes.isEmpty()) {
+                wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                        .and(FILE_INFO.SUFFIX.in(categorySuffixes));
+            }
         }
-        // 常规类型：直接匹配后缀
-        List<String> suffixes = fileType.getSuffixes();
-        if (suffixes != null && !suffixes.isEmpty()) {
-            wrapper.eq(FileInfo::getIsDir, false)
-                    .in(FileInfo::getSuffix, suffixes);
+    }
+
+    /**
+     * 按具体类型筛选
+     */
+    private void applyFilterByType(QueryWrapper wrapper, FileTypeEnum fileType) {
+        if (fileType.isOther()) {
+            // 其他类型：排除所有已知后缀
+            List<String> knownSuffixes = FileTypeEnum.getAllKnownSuffixes();
+            wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                    .and(
+                            FILE_INFO.SUFFIX.notIn(knownSuffixes)
+                                    .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
+                    );
+        } else {
+            // 具体类型：直接匹配后缀
+            List<String> suffixes = fileType.getSuffixes();
+            if (suffixes != null && !suffixes.isEmpty()) {
+                wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                        .and(FILE_INFO.SUFFIX.in(suffixes));
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 package com.xddcodec.fs.log.listener;
 
 import com.xddcodec.fs.log.domain.SysLoginLog;
-import com.xddcodec.fs.log.event.CreateLoginLogEvent;
+import com.xddcodec.fs.log.domain.event.CreateLoginLogEvent;
 import com.xddcodec.fs.log.service.SysLoginLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

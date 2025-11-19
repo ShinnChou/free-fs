@@ -43,6 +43,10 @@
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-system</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>fs-preview</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

@@ -82,7 +82,6 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             DefaultCredentialProvider provider = new DefaultCredentialProvider(aliyunOssConfig.getAccessKey(),
                     aliyunOssConfig.getSecretKey());
             ClientBuilderConfiguration clientBuilderConfiguration = new ClientBuilderConfiguration();
-            clientBuilderConfiguration.setSignatureVersion(SignVersion.V4);
             this.ossClient = OSSClientBuilder.create()
                     .credentialsProvider(provider)
                     .clientConfiguration(clientBuilderConfiguration)
@@ -194,6 +193,13 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             log.error("{} 生成文件URL失败: objectKey={}", getLogPrefix(), objectKey, e);
             throw new StorageOperationException("阿里云OSS生成文件URL失败: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public InputStream getFileStream(String objectKey) {
+        GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey);
+        OSSObject ossObject = ossClient.getObject(getObjectRequest);
+        return ossObject.getObjectContent();
     }
 
     @Override

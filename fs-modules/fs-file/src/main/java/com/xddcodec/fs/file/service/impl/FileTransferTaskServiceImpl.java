@@ -23,6 +23,7 @@ import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.FileUtils;
+import com.xddcodec.fs.framework.common.utils.StringUtils;
 import com.xddcodec.fs.fs.framework.ws.core.UploadProgressDTO;
 import com.xddcodec.fs.fs.framework.ws.handler.UploadWebSocketHandler;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
@@ -106,7 +107,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                     cmd.getParentId(),
                     cmd.getFileName(),
                     false,
-                    null
+                    null,
+                    storagePlatformSettingId
             );
             // 创建上传任务
             FileTransferTask task = new FileTransferTask();
@@ -156,21 +158,24 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             wsHandler.pushChecking(taskId);
 
-            // 检查是否存在相同MD5的文件（秒传）
-            FileInfo existFile = fileInfoService.getOne(
-                    QueryWrapper.create()
-                            .where(FILE_INFO.CONTENT_MD5.eq(cmd.getFileMd5()))
-                            .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                            .and(FILE_INFO.USER_ID.eq(userId))
-                            .and(FILE_INFO.IS_DELETED.eq(false))
-            );
+            // 检查同存储平台是否存在相同MD5的文件（秒传）
+            QueryWrapper queryWrapper = new QueryWrapper();
+            queryWrapper.where(FILE_INFO.CONTENT_MD5.eq(cmd.getFileMd5())
+                    .and(FILE_INFO.USER_ID.eq(userId))
+                    .and(FILE_INFO.IS_DELETED.eq(false)));
+            if (StringUtils.isEmpty(storagePlatformSettingId)) {
+                queryWrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
+            } else {
+                queryWrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+            }
+            FileInfo existFile = fileInfoService.getOne(queryWrapper);
             if (existFile != null) {
                 // 验证存储插件中文件是否真实存在
                 IStorageOperationService storageService =
                         storageServiceFacade.getStorageService(storagePlatformSettingId);
                 if (storageService.isFileExist(existFile.getObjectKey())) {
                     // 执行秒传：直接创建文件记录
-                    return handleQuickUpload(task, existFile, cmd.getFileMd5());
+                    return handleQuickUpload(task, existFile, cmd.getFileMd5(), storagePlatformSettingId);
                 } else {
                     // 清理无效的数据库记录
                     fileInfoService.removeById(existFile.getId());
@@ -206,7 +211,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
      */
     protected CheckUploadResultVO handleQuickUpload(FileTransferTask task,
                                                     FileInfo existFile,
-                                                    String fileMd5) {
+                                                    String fileMd5, String storagePlatformSettingId) {
         String taskId = task.getTaskId();
 
         try {
@@ -218,7 +223,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                     task.getParentId(),
                     task.getFileName(),
                     false,
-                    null
+                    null,
+                    storagePlatformSettingId
             );
             FileInfo newFileInfo = new FileInfo();
             newFileInfo.setId(fileId);

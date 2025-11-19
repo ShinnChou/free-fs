@@ -9,6 +9,7 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
+import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.mapper.FileShareMapper;
@@ -160,7 +161,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 
         FileShare share = this.getById(shareId);
         if (share == null) {
-            throw new BusinessException("分享不存在");
+            throw new BusinessException("该分享不存在");
         }
 
         if (!share.getUserId().equals(userId)) {
@@ -170,5 +171,18 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         this.removeById(share);
 
         fileShareItemService.removeByShareId(shareId);
+    }
+
+    @Override
+    public boolean verifyShareCode(VerifyShareCodeCmd cmd) {
+        FileShare share = this.getById(cmd.getShareId());
+        if (share == null) {
+            throw new BusinessException("该分享不存在");
+        }
+
+        if (!share.getShareCode().equals(cmd.getShareCode())) {
+            throw new BusinessException("提取码不正确");
+        }
+        return true;
     }
 }

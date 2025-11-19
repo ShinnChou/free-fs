@@ -1,7 +1,9 @@
 package com.xddcodec.fs.file.domain.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
+import com.xddcodec.fs.framework.common.utils.DateUtils;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 
@@ -73,9 +75,11 @@ public class FileTransferTaskVO implements Serializable {
     /**
      * 开始时间
      */
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime startTime;
     /**
      * 完成时间
      */
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime completeTime;
 }
