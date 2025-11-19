@@ -12,6 +12,7 @@ import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.xddcodec.fs.file.domain.table.FileShareAccessRecordTableDef.FILE_SHARE_ACCESS_RECORD;
@@ -40,6 +41,7 @@ public class FileShareAccessRecordServiceImpl extends ServiceImpl<FileShareAcces
             return;
         }
         FileShareAccessRecord record = converter.convert(cmd, FileShareAccessRecord.class);
+        record.setAccessTime(LocalDateTime.now());
         this.save(record);
     }
 }

@@ -28,7 +28,7 @@ public class CreateShareCmd {
     private String shareName;
 
     /**
-     * 有效期类型：1-1天 2-7天 3-30天 4-自定义 null-永久
+     * 有效期类型：1-7天 2-30天 3-自定义 4-永久
      */
     private Integer expireType;
 
