@@ -5,8 +5,13 @@ import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
+import com.xddcodec.fs.file.domain.qry.FileShareQry;
+import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
+import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.framework.common.domain.PageResult;
+
+import java.util.List;
 
 /**
  * 文件分享服务接口
@@ -44,4 +49,13 @@ public interface FileShareService extends IService<FileShare> {
      * @param cmd
      */
     boolean verifyShareCode(VerifyShareCodeCmd cmd);
+
+    /**
+     * 获取文件分享页对象
+     * @param shareId 分享id
+     * @return vo
+     */
+    FileShareThinVO getFileShareThinVO(String shareId);
+
+    List<FileVO> getShareFileItems(FileShareQry qry);
 }

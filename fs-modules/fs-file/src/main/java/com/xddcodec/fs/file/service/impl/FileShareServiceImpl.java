@@ -10,8 +10,12 @@ import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
+import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
+import com.xddcodec.fs.file.domain.qry.FileShareQry;
+import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
+import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.mapper.FileShareMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileShareItemService;
@@ -184,5 +188,35 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
             throw new BusinessException("提取码不正确");
         }
         return true;
+    }
+
+    @Override
+    public FileShareThinVO getFileShareThinVO(String shareId) {
+        FileShare fileShare = this.getById(shareId);
+        if (fileShare == null) {
+            throw new BusinessException("该分享不存在或已删除");
+        }
+        FileShareThinVO vo = converter.convert(fileShare, FileShareThinVO.class);
+        vo.setHasCheckCode(StringUtils.isNotEmpty(fileShare.getShareCode()));
+        // 查询有几个文件
+        vo.setFileCount(fileShareItemService.countByShareId(shareId));
+        return vo;
+    }
+
+    @Override
+    public List<FileVO> getShareFileItems(FileShareQry qry) {
+        FileShare fileShare = this.getById(qry.getShareId());
+        if (fileShare == null) {
+            throw new BusinessException("该分享不存在或已删除");
+        }
+        if (StringUtils.isNotEmpty(qry.getParentId())) {
+            // 若有父文件ID参数, 则需要查询子数据集
+            FileQry fileQry = new FileQry();
+            fileQry.setParentId(qry.getParentId());
+            return fileInfoService.getList(fileQry);
+        }
+        // 获取分享明细
+        List<String> shareFileIds = fileShareItemService.getShareFileIds(qry.getShareId());
+        return fileInfoService.getByFileIds(shareFileIds);
     }
 }
