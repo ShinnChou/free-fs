@@ -30,4 +30,16 @@ public class FileShareItemServiceImpl extends ServiceImpl<FileShareItemMapper, F
     public void removeByShareId(String shareId) {
         this.remove(new QueryWrapper().where(FILE_SHARE_ITEM.SHARE_ID.eq(shareId)));
     }
+
+    @Override
+    public Long countByShareId(String shareId) {
+        return this.count(new QueryWrapper().where(FILE_SHARE_ITEM.SHARE_ID.eq(shareId)));
+    }
+
+    @Override
+    public List<String> getShareFileIds(String shareId) {
+        return this.listAs(new QueryWrapper()
+                .select(FILE_SHARE_ITEM.FILE_ID)
+                .where(FILE_SHARE_ITEM.SHARE_ID.eq(shareId)), String.class);
+    }
 }
