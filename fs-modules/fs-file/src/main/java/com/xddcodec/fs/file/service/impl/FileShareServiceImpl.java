@@ -200,6 +200,15 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         vo.setHasCheckCode(StringUtils.isNotEmpty(fileShare.getShareCode()));
         // 查询有几个文件
         vo.setFileCount(fileShareItemService.countByShareId(shareId));
+        // 判断是否到期
+        LocalDateTime expireTime = fileShare.getExpireTime();
+        if (expireTime == null) {
+            // 永久有效
+            vo.setIsExpire(false);
+        } else {
+            LocalDateTime now = LocalDateTime.now();
+            vo.setIsExpire(now.isAfter(expireTime));
+        }
         return vo;
     }
 

@@ -34,6 +34,12 @@ public class FileShareThinVO implements Serializable {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime expireTime;
+
+    /**
+     * 是否到期
+     */
+    private Boolean isExpire;
+
     /**
      * 文件数量
      */

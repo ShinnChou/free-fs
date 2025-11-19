@@ -1,6 +1,5 @@
 package com.xddcodec.fs.file.controller;
 
-import cn.dev33.satoken.annotation.SaIgnore;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
@@ -69,13 +68,13 @@ public class FileShareController {
         return Result.ok(result);
     }
 
-    @SaIgnore
     @Operation(summary = "获取分享页数据", description = "获取分享页数据")
-    @GetMapping("/{shareId}")
+    @GetMapping("/{shareId}/info")
     public Result<FileShareThinVO> getFileShareThin(@PathVariable String shareId) {
         return Result.ok(fileShareService.getFileShareThinVO(shareId));
     }
 
+    @Operation(summary = "获取分享页文件列表数据", description = "获取分享页文件列表数据")
     @GetMapping("/items")
     public Result<List<FileVO>> getShareFileItems(@Validated FileShareQry qry) {
         return Result.ok(fileShareService.getShareFileItems(qry));
