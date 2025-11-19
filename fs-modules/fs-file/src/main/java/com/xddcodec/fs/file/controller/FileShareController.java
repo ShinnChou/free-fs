@@ -2,7 +2,6 @@ package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
-import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
 import com.xddcodec.fs.file.domain.vo.FileShareAccessRecordVO;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
@@ -10,7 +9,6 @@ import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileShareAccessRecordService;
 import com.xddcodec.fs.file.service.FileShareService;
-import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,10 +32,18 @@ public class FileShareController {
     @Autowired
     private FileShareAccessRecordService fileShareAccessRecordService;
 
-    @GetMapping("/pages")
-    @Operation(summary = "分页获取我的分享", description = "分页获取我的分享列表")
-    public PageResult<FileShareVO> getMyPages(FileSharePageQry qry) {
-        return fileShareService.getMyPages(qry);
+    @GetMapping("/list")
+    @Operation(summary = "获取我的分享", description = "获取我的分享列表")
+    public Result<List<FileShareVO>> getList(FileShareQry qry) {
+        List<FileShareVO> result = fileShareService.getList(qry);
+        return Result.ok(result);
+    }
+
+    @GetMapping("/{shareId}")
+    @Operation(summary = "获取分享详细信息", description = "获取分享详细信息")
+    public Result<FileShareVO> getDetail(@PathVariable String shareId) {
+        FileShareVO result = fileShareService.getDetail(shareId);
+        return Result.ok(result);
     }
 
     @GetMapping("/{shareId}/access/records")
@@ -54,10 +60,10 @@ public class FileShareController {
         return Result.ok(fileShareVO);
     }
 
-    @PutMapping("/{id}/cancel")
+    @DeleteMapping("/cancels")
     @Operation(summary = "取消分享", description = "取消分享")
-    public Result<FileShareVO> cancelShare(@PathVariable String id) {
-        fileShareService.cancelShare(id);
+    public Result<FileShareVO> cancelShares(@RequestBody List<String> ids) {
+        fileShareService.cancelShares(ids);
         return Result.ok();
     }
 
@@ -75,8 +81,8 @@ public class FileShareController {
     }
 
     @Operation(summary = "获取分享页文件列表数据", description = "获取分享页文件列表数据")
-    @GetMapping("/items")
-    public Result<List<FileVO>> getShareFileItems(@Validated FileShareQry qry) {
-        return Result.ok(fileShareService.getShareFileItems(qry));
+    @GetMapping("/{shareId}/items")
+    public Result<List<FileVO>> getShareFileItems(@PathVariable String shareId, @RequestParam(required = false) String parentId) {
+        return Result.ok(fileShareService.getShareFileItems(shareId, parentId));
     }
 }

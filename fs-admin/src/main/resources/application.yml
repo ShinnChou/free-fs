@@ -121,7 +121,8 @@ security:
     - /apis/user/register
     - /apis/user/forget-password/code/**
     - /apis/user/forget-password
-    - /apis/share/items
+    - /apis/share/**/items
+    - /apis/share/verify/code
     - /apis/share/**/info
 
 --- #Sa-Token 配置

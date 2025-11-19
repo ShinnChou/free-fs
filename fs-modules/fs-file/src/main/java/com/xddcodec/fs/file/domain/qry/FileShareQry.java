@@ -1,22 +1,12 @@
 package com.xddcodec.fs.file.domain.qry;
 
-
-import jakarta.validation.constraints.NotBlank;
+import com.xddcodec.fs.framework.common.domain.PageQuery;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-/**
- *
- * @author Yann
- * @date 2025/11/19 15:50
- */
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class FileShareQry {
+public class FileShareQry extends PageQuery {
 
-    /** 分享ID */
-    @NotBlank(message = "分享ID不能为空")
-    private String shareId;
-    /**
-     * 文件父ID
-     */
-    private String parentId;
+    private String keyword;
 }

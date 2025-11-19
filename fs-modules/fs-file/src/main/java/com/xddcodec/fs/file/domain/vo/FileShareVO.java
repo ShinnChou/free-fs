@@ -27,11 +27,6 @@ public class FileShareVO implements Serializable {
     private String shareName;
 
     /**
-     * 分享链接
-     */
-    private String shareUrl;
-
-    /**
      * 提取码
      */
     private String shareCode;
@@ -70,7 +65,7 @@ public class FileShareVO implements Serializable {
     /**
      * 文件数量
      */
-    private Integer fileCount;
+    private Long fileCount;
 
     /**
      * 创建时间

@@ -4,12 +4,10 @@ import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
-import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
-import com.xddcodec.fs.framework.common.domain.PageResult;
 
 import java.util.List;
 
@@ -27,7 +25,15 @@ public interface FileShareService extends IService<FileShare> {
      * @param qry
      * @return
      */
-    PageResult<FileShareVO> getMyPages(FileSharePageQry qry);
+    List<FileShareVO> getList(FileShareQry qry);
+
+    /**
+     * 获取分享详情
+     *
+     * @param shareId 分享ID
+     * @return
+     */
+    FileShareVO getDetail(String shareId);
 
     /**
      * 创建分享
@@ -39,9 +45,9 @@ public interface FileShareService extends IService<FileShare> {
     /**
      * 取消分享
      *
-     * @param shareId 分享ID
+     * @param ids 分享ID集合
      */
-    void cancelShare(String shareId);
+    void cancelShares(List<String> ids);
 
     /**
      * 校验提取码
@@ -52,10 +58,18 @@ public interface FileShareService extends IService<FileShare> {
 
     /**
      * 获取文件分享页对象
+     *
      * @param shareId 分享id
      * @return vo
      */
     FileShareThinVO getFileShareThinVO(String shareId);
 
-    List<FileVO> getShareFileItems(FileShareQry qry);
+    /**
+     * 获取分享文件列表
+     *
+     * @param shareId  分享id
+     * @param parentId 父目录id
+     * @return
+     */
+    List<FileVO> getShareFileItems(String shareId, String parentId);
 }
