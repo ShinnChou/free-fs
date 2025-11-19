@@ -105,7 +105,11 @@ public class FileStreamController {
                     .contentLength(file.getSize())
                     .body(resource);
         } catch (Exception e) {
-            log.error("流式传输失败: {}", file.getDisplayName(), e);
+            if (isClientAbortException(e)) {
+                log.debug("客户端断开连接: {}", file.getDisplayName());
+            } else {
+                log.error("流式传输失败: {}", file.getDisplayName(), e);
+            }
             // 异常情况下手动关闭流
             if (inputStream != null) {
                 try {
@@ -161,7 +165,11 @@ public class FileStreamController {
                     .contentLength(contentLength)
                     .body(resource);
         } catch (Exception e) {
-            log.error("Range传输失败: {}", file.getDisplayName(), e);
+            if (isClientAbortException(e)) {
+                log.debug("客户端断开连接（Range请求）: {}", file.getDisplayName());
+            } else {
+                log.error("Range传输失败: {}", file.getDisplayName(), e);
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -261,5 +269,45 @@ public class FileStreamController {
         } catch (Exception e) {
             return fileName;
         }
+    }
+
+    /**
+     * 判断是否为客户端断开连接异常
+     * 这种异常通常发生在：
+     * 1. 用户刷新页面
+     * 2. 用户快速切换文件
+     * 3. 浏览器预加载请求被取消
+     * 4. 网络中断
+     */
+    private boolean isClientAbortException(Throwable e) {
+        if (e == null) {
+            return false;
+        }
+
+        String className = e.getClass().getName();
+        String message = e.getMessage();
+
+        // 检查异常类型
+        if (className.contains("ClientAbortException") 
+                || className.contains("AsyncRequestNotUsableException")
+                || className.contains("EOFException")
+                || className.contains("SocketException")) {
+            return true;
+        }
+
+        // 检查异常消息
+        if (message != null) {
+            String lowerMessage = message.toLowerCase();
+            if (lowerMessage.contains("broken pipe")
+                    || lowerMessage.contains("connection reset")
+                    || lowerMessage.contains("connection abort")
+                    || lowerMessage.contains("stream closed")
+                    || lowerMessage.contains("client abort")) {
+                return true;
+            }
+        }
+
+        // 递归检查 cause
+        return isClientAbortException(e.getCause());
     }
 }

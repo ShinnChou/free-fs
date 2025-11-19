@@ -27,4 +27,18 @@ public interface FileShareItemService extends IService<FileShareItem> {
      * @param shareId
      */
     void removeByShareId(String shareId);
+
+    /**
+     * 获取分享对应的文件数量
+     * @param shareId
+     * @return
+     */
+    Long countByShareId(String shareId);
+
+    /**
+     * 获取分享对应的文件IDS
+     * @param shareId
+     * @return
+     */
+    List<String> getShareFileIds(String shareId);
 }

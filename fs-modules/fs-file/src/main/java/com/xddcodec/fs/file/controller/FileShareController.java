@@ -3,8 +3,11 @@ package com.xddcodec.fs.file.controller;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileSharePageQry;
+import com.xddcodec.fs.file.domain.qry.FileShareQry;
 import com.xddcodec.fs.file.domain.vo.FileShareAccessRecordVO;
+import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
+import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileShareAccessRecordService;
 import com.xddcodec.fs.file.service.FileShareService;
 import com.xddcodec.fs.framework.common.domain.PageResult;
@@ -63,5 +66,17 @@ public class FileShareController {
     public Result<Boolean> verifyShareCode(@RequestBody @Validated VerifyShareCodeCmd cmd) {
         boolean result = fileShareService.verifyShareCode(cmd);
         return Result.ok(result);
+    }
+
+    @Operation(summary = "获取分享页数据", description = "获取分享页数据")
+    @GetMapping("/{shareId}/info")
+    public Result<FileShareThinVO> getFileShareThin(@PathVariable String shareId) {
+        return Result.ok(fileShareService.getFileShareThinVO(shareId));
+    }
+
+    @Operation(summary = "获取分享页文件列表数据", description = "获取分享页文件列表数据")
+    @GetMapping("/items")
+    public Result<List<FileVO>> getShareFileItems(@Validated FileShareQry qry) {
+        return Result.ok(fileShareService.getShareFileItems(qry));
     }
 }

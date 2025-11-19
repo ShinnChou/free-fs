@@ -6,13 +6,13 @@
     <style>
         :root {
             --color-primary: #165dff;
-            --color-text-1: #1d2129;
-            --color-text-2: #4e5969;
-            --color-text-3: #86909c;
-            --color-bg-1: #ffffff;
-            --color-bg-2: #f2f3f5;
-            --color-border: #e5e6eb;
-            --color-fill-2: #f7f8fa;
+            --color-text-1: #ffffff;
+            --color-text-2: rgba(255, 255, 255, 0.7);
+            --color-text-3: rgba(255, 255, 255, 0.5);
+            --color-bg-1: #1a1a1a;
+            --color-bg-2: #000000;
+            --color-border: rgba(255, 255, 255, 0.1);
+            --color-fill-2: rgba(255, 255, 255, 0.1);
             --color-danger: #f53f3f;
         }
 
@@ -29,39 +29,47 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            user-select: none;
         }
 
         .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
             height: 48px;
-            background: var(--color-bg-1);
-            border-bottom: 1px solid var(--color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            flex-shrink: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+            z-index: 10;
+            color: var(--color-text-1);
+            pointer-events: none;
+        }
+
+        .header > * {
+            pointer-events: auto;
         }
 
         .file-name {
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--color-text-1);
+            font-size: 14px;
+            opacity: 0.9;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
 
         .close-btn {
-            padding: 4px 12px;
-            background: var(--color-bg-1);
-            border: 1px solid var(--color-border);
-            color: var(--color-text-2);
-            border-radius: 2px;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .close-btn:hover {
-            background: var(--color-fill-2);
-            color: var(--color-text-1);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         #audio-container {
@@ -75,10 +83,11 @@
         }
 
         .audio-card {
-            background: var(--color-bg-1);
-            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
             padding: 40px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
             max-width: 600px;
             width: 100%;
             text-align: center;
@@ -92,7 +101,7 @@
         }
 
         .audio-title {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 500;
             color: var(--color-text-1);
             margin-bottom: 12px;
@@ -108,6 +117,7 @@
         #audio-player {
             width: 100%;
             outline: none;
+            filter: invert(1) hue-rotate(180deg); /* Simple dark mode for default audio player */
         }
 
         /* Loading & Error */
@@ -131,7 +141,7 @@
         .spinner {
             width: 32px;
             height: 32px;
-            border: 3px solid var(--color-fill-2);
+            border: 3px solid rgba(255, 255, 255, 0.1);
             border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -160,7 +170,12 @@
 <body>
 <div class="header">
     <span class="file-name" th:text="${fileName}">音频文件名</span>
-    <button class="close-btn" onclick="window.close()">关闭</button>
+    <div class="close-btn" onclick="window.close()" title="关闭">
+        <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+            <path d="M14 14L34 34" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 34L34 14" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
 </div>
 
 <div id="audio-container">
@@ -179,12 +194,8 @@
         <div class="audio-title" th:text="${fileName}">音频文件名</div>
         <div class="audio-info" id="audio-info">准备播放...</div>
 
-        <!-- 
-            关键：使用 data-src 而不是直接设置 src
-            通过 JavaScript 动态设置，避免 IDM 直接拦截
-        -->
-        <audio id="audio-player" 
-               controls 
+        <audio id="audio-player"
+               controls
                preload="metadata"
                controlslist="nodownload">
             您的浏览器不支持音频播放
@@ -220,45 +231,36 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // 关键策略：延迟设置 src，并添加随机参数混淆 IDM
     function loadAudio() {
         if (!streamUrl) {
             showError('音频路径无效');
             return;
         }
 
-        // 添加时间戳和随机参数，让 IDM 难以识别
         const urlWithParams = `${streamUrl}?_t=${Date.now()}&_r=${Math.random().toString(36).substring(7)}`;
 
-        // 延迟设置 src，避免页面加载时立即被 IDM 检测
         setTimeout(() => {
             audio.src = urlWithParams;
             audioCard.style.display = 'block';
         }, 100);
     }
 
-    // 音频元数据加载完成
-    audio.addEventListener('loadedmetadata', function() {
+    audio.addEventListener('loadedmetadata', function () {
         loading.style.display = 'none';
         const duration = formatDuration(audio.duration);
         const size = formatFileSize(fileSize);
         audioInfo.textContent = `时长: ${duration} | 大小: ${size}`;
-        console.log('音频元数据加载完成');
     });
 
-    // 音频可以播放
-    audio.addEventListener('canplay', function() {
+    audio.addEventListener('canplay', function () {
         loading.style.display = 'none';
-        console.log('音频可以播放');
     });
 
-    // 音频加载错误
-    audio.addEventListener('error', function(e) {
+    audio.addEventListener('error', function (e) {
         console.error('音频加载错误:', e);
         showError('音频加载失败，请检查文件是否存在');
     });
 
-    // 显示错误
     function showError(message) {
         loading.style.display = 'none';
         audioCard.style.display = 'none';
@@ -268,7 +270,11 @@
         }
     }
 
-    // 页面加载完成后加载音频
+    // Disable context menu
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadAudio);
     } else {
@@ -277,4 +283,3 @@
 </script>
 </body>
 </html>
-

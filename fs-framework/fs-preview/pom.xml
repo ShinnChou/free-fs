@@ -18,5 +18,22 @@
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-common-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-export-fo</artifactId>
+            <version>11.5.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.docx4j</groupId>
+            <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
+            <version>11.5.3</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.docx4j</groupId>-->
+<!--            <artifactId>docx4j-JAXB-MOXy</artifactId>-->
+<!--            <version>11.5.3</version>-->
+<!--        </dependency>-->
+
     </dependencies>
 </project>

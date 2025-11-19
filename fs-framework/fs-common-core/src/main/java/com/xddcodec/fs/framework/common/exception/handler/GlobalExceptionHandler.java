@@ -175,6 +175,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理客户端断开连接异常
+     * 这种异常通常发生在用户刷新页面、快速切换文件、网络中断等场景
+     * 不需要记录为错误日志
+     */
+    @ExceptionHandler({
+            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class,
+            java.io.IOException.class
+    })
+    public Result<?> handleClientAbortException(Exception e) {
+        if (isClientAbortException(e)) {
+            log.debug("客户端断开连接: {}", e.getMessage());
+            // 返回空结果，避免二次异常
+            return null;
+        }
+        // 不是客户端断开异常，按正常异常处理
+        return defHandler("系统异常，请联系管理员！", e);
+    }
+
+    /**
      * 处理所有不可知的异常
      */
     @ExceptionHandler(Exception.class)
@@ -188,5 +207,41 @@ public class GlobalExceptionHandler {
     private Result<?> defHandler(String msg, Exception e) {
         log.error(msg, e);
         return Result.error(msg);
+    }
+
+    /**
+     * 判断是否为客户端断开连接异常
+     */
+    private boolean isClientAbortException(Throwable e) {
+        if (e == null) {
+            return false;
+        }
+
+        String className = e.getClass().getName();
+        String message = e.getMessage();
+
+        // 检查异常类型
+        if (className.contains("ClientAbortException") 
+                || className.contains("AsyncRequestNotUsableException")
+                || className.contains("EOFException")
+                || className.contains("SocketException")) {
+            return true;
+        }
+
+        // 检查异常消息
+        if (message != null) {
+            String lowerMessage = message.toLowerCase();
+            if (lowerMessage.contains("broken pipe")
+                    || lowerMessage.contains("connection reset")
+                    || lowerMessage.contains("connection abort")
+                    || lowerMessage.contains("stream closed")
+                    || lowerMessage.contains("client abort")
+                    || lowerMessage.contains("outputstream failed")) {
+                return true;
+            }
+        }
+
+        // 递归检查 cause
+        return isClientAbortException(e.getCause());
     }
 }

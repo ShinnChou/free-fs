@@ -2,11 +2,9 @@ package com.xddcodec.fs.web;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
-import com.xddcodec.fs.framework.common.constant.CommonConstant;
 import com.xddcodec.fs.framework.security.properties.SecurityProperties;
 import com.xddcodec.fs.interceptor.StoragePlatformInterceptor;
 import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
