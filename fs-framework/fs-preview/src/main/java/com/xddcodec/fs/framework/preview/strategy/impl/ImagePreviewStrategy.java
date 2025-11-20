@@ -7,10 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-
 /**
  * 图片预览策略
  */
@@ -24,16 +20,17 @@ public class ImagePreviewStrategy extends AbstractPreviewStrategy {
     }
 
     @Override
+    public String getTemplatePath() {
+        return "preview/image";
+    }
+
+    @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
-        log.info("图片预览策略填充完成 - 文件名: {}, 格式: {}, 大小: {}",
-                context.getFileName(),
-                context.getExtension(),
-                context.getFileSize());
     }
 
     @Override
     public int getPriority() {
-        return 10;
+        return 3;
     }
 
 }

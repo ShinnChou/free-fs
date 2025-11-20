@@ -1,27 +1,38 @@
 package com.xddcodec.fs.framework.preview.strategy.impl;
 
+
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
+import com.xddcodec.fs.framework.preview.converter.IConverter;
+import com.xddcodec.fs.framework.preview.converter.impl.OfficeToPdfConverter;
 import com.xddcodec.fs.framework.preview.core.PreviewContext;
 import com.xddcodec.fs.framework.preview.strategy.AbstractPreviewStrategy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
-/**
- * 视频预览策略
- */
 @Slf4j
 @Component
-public class VideoPreviewStrategy extends AbstractPreviewStrategy {
+@RequiredArgsConstructor
+public class OfficePreviewStrategy extends AbstractPreviewStrategy {
+
+    private final OfficeToPdfConverter officeToPdfConverter;
 
     @Override
     public boolean support(FileTypeEnum fileType) {
-        return fileType == FileTypeEnum.VIDEO;
+        return fileType == FileTypeEnum.WORD ||
+                fileType == FileTypeEnum.EXCEL ||
+                fileType == FileTypeEnum.PPT;
     }
 
     @Override
     public String getTemplatePath() {
-        return "preview/video";
+        return "preview/pdf";
+    }
+
+    @Override
+    public IConverter getConverter() {
+        return officeToPdfConverter;
     }
 
     @Override
@@ -30,7 +41,7 @@ public class VideoPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public int getPriority() {
-        return 7;
+        return 5;
     }
-}
 
+}

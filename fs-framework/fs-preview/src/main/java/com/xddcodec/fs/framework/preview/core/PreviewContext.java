@@ -32,10 +32,5 @@ public class PreviewContext {
      * 预览类型
      */
     private FileTypeEnum fileType;
-
-    /**
-     * 是否需要转换
-     */
-    private Boolean needConvert;
 }
 

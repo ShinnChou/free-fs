@@ -2,14 +2,16 @@ package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.preview.config.FilePreviewConfig;
+import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
+import com.xddcodec.fs.framework.preview.factory.PreviewStrategyManager;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -31,93 +33,107 @@ public class FileStreamController {
     private final FileInfoService fileInfoService;
     private final StorageServiceFacade storageServiceFacade;
     private final FilePreviewConfig previewConfig;
+    private final PreviewStrategyManager strategyManager;
+
     private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d*)-(\\d*)");
 
     @GetMapping("/preview/{fileId}")
     public ResponseEntity<StreamingResponseBody> preview(
             @PathVariable String fileId,
             @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) {
+
         FileInfo fileInfo = fileInfoService.getById(fileId);
         if (fileInfo == null) {
             return ResponseEntity.notFound().build();
         }
-        // 获取存储服务
+
         IStorageOperationService storage = storageServiceFacade
                 .getStorageService(fileInfo.getStoragePlatformSettingId());
-        long fileSize = fileInfo.getSize();
 
-        // 处理 Range 请求 (视频/音频拖动进度条)
-        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-            return handleRangeRequest(storage, fileInfo, rangeHeader, fileSize);
+        FileTypeEnum fileType = FileTypeEnum.fromFileName(fileInfo.getDisplayName());
+        PreviewStrategy strategy = strategyManager.getStrategy(fileType);
+
+        if (!strategy.supportRange() || rangeHeader == null || !rangeHeader.startsWith("bytes=")) {
+            return handleFullRequest(storage, fileInfo, strategy);
         }
-        // 处理全量流式请求 (普通下载或图片加载)
-        return handleFullRequest(storage, fileInfo, fileSize);
+
+        return handleRangeRequest(storage, fileInfo, strategy, rangeHeader);
     }
 
-    /**
-     * 处理全量流式传输
-     */
     private ResponseEntity<StreamingResponseBody> handleFullRequest(
-            IStorageOperationService storage, FileInfo fileInfo, long fileSize) {
+            IStorageOperationService storage, FileInfo fileInfo, PreviewStrategy strategy) {
+
         StreamingResponseBody stream = outputStream -> {
-            try (InputStream inputStream = storage.getFileStream(fileInfo.getObjectKey())) {
-                copyStream(inputStream, outputStream);
+            try (InputStream sourceStream = storage.getFileStream(fileInfo.getObjectKey());
+                 InputStream processedStream = strategy.processStream(sourceStream, fileInfo.getSuffix())) {
+
+                copyStream(processedStream, outputStream);
+
             } catch (IOException e) {
-                log.debug("文件流传输中断 (用户可能是取消了请求): {}", fileInfo.getDisplayName());
+                log.debug("文件流传输中断: {}", fileInfo.getDisplayName());
             }
         };
-        return ResponseEntity.ok()
-                .headers(buildHeaders(fileInfo, fileSize, false))
-                .body(stream);
+
+        HttpHeaders headers = buildHeaders(fileInfo, strategy, fileInfo.getSize(), false);
+        return ResponseEntity.ok().headers(headers).body(stream);
     }
 
-    /**
-     * 处理 Range (断点续传/分片) 请求
-     */
     private ResponseEntity<StreamingResponseBody> handleRangeRequest(
-            IStorageOperationService storage, FileInfo fileInfo, String rangeHeader, long fileSize) {
+            IStorageOperationService storage, FileInfo fileInfo,
+            PreviewStrategy strategy, String rangeHeader) {
+
+        long fileSize = fileInfo.getSize();
         long start = 0;
         long end = fileSize - 1;
+
         Matcher matcher = RANGE_PATTERN.matcher(rangeHeader);
         if (matcher.matches()) {
             String startGroup = matcher.group(1);
             String endGroup = matcher.group(2);
             if (!startGroup.isEmpty()) start = Long.parseLong(startGroup);
-            if (!endGroup.isEmpty()) end = Long.parseLong(endGroup);
+            if (!endGroup.isEmpty()) end = Math.min(Long.parseLong(endGroup), fileSize - 1);
         }
 
-        // 修正 end 范围
-        if (end >= fileSize) end = fileSize - 1;
+        long maxRangeSize = previewConfig.getMaxRangeSize();
+        if (end - start + 1 > maxRangeSize) {
+            end = start + maxRangeSize - 1;
+        }
 
         final long finalStart = start;
         final long finalEnd = end;
         final long contentLength = finalEnd - finalStart + 1;
+
         StreamingResponseBody stream = outputStream -> {
             try (InputStream inputStream = storage.getFileStream(fileInfo.getObjectKey())) {
-                // 跳过不需要的字节
-                if (finalStart > 0) {
-                    long skipped = inputStream.skip(finalStart);
-                    if (skipped < finalStart) {
-                        // 防御性代码：如果skip不到位，手动读取丢弃
-                        // 实际生产建议封装工具类
-                    }
-                }
-                // 只传输 range 范围内的字节
+                skipBytes(inputStream, finalStart);
                 copyStreamLimited(inputStream, outputStream, contentLength);
             } catch (IOException e) {
                 log.debug("Range流传输中断: {}", fileInfo.getDisplayName());
             }
         };
-        HttpHeaders headers = buildHeaders(fileInfo, contentLength, true);
-        headers.add(HttpHeaders.CONTENT_RANGE, String.format("bytes %d-%d/%d", finalStart, finalEnd, fileSize));
-        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .headers(headers)
-                .body(stream);
+
+        HttpHeaders headers = buildHeaders(fileInfo, strategy, contentLength, true);
+        headers.add(HttpHeaders.CONTENT_RANGE,
+                String.format("bytes %d-%d/%d", finalStart, finalEnd, fileSize));
+
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).headers(headers).body(stream);
     }
 
-    /**
-     * 通用流拷贝
-     */
+    private void skipBytes(InputStream in, long skipCount) throws IOException {
+        if (skipCount <= 0) return;
+
+        long remaining = skipCount;
+        while (remaining > 0) {
+            long skipped = in.skip(remaining);
+            if (skipped == 0) {
+                if (in.read() == -1) throw new IOException("无法跳过指定字节数");
+                remaining--;
+            } else {
+                remaining -= skipped;
+            }
+        }
+    }
+
     private void copyStream(InputStream in, OutputStream out) throws IOException {
         byte[] buffer = new byte[previewConfig.getBufferSize()];
         int bytesRead;
@@ -127,38 +143,49 @@ public class FileStreamController {
         out.flush();
     }
 
-    /**
-     * 限制长度的流拷贝
-     */
     private void copyStreamLimited(InputStream in, OutputStream out, long limit) throws IOException {
         byte[] buffer = new byte[previewConfig.getBufferSize()];
         long totalRead = 0;
         int bytesRead;
-        while (totalRead < limit && (bytesRead = in.read(buffer, 0, (int) Math.min(limit - totalRead, previewConfig.getBufferSize()))) != -1) {
+
+        while (totalRead < limit) {
+            int toRead = (int) Math.min(buffer.length, limit - totalRead);
+            bytesRead = in.read(buffer, 0, toRead);
+            if (bytesRead == -1) break;
             out.write(buffer, 0, bytesRead);
             totalRead += bytesRead;
         }
         out.flush();
     }
 
-    private HttpHeaders buildHeaders(FileInfo file, long contentLength, boolean isRange) {
+    private HttpHeaders buildHeaders(FileInfo file, PreviewStrategy strategy,
+                                     long contentLength, boolean isRange) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentLength(contentLength);
 
-        // 自动识别 Content-Type (这里简化处理，实际上应该根据后缀映射正确MIME)
-        String contentType = isPdf(file.getSuffix()) ? "application/pdf" : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-        headers.setContentType(MediaType.parseMediaType(contentType));
-        // inline 表示浏览器直接展示，attachment 表示下载
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodeFileName(file.getDisplayName()));
-        headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+        String responseExtension = strategy.getResponseExtension(file.getSuffix());
+        String fileName = changeExtension(file.getDisplayName(), responseExtension);
 
-        // 缓存策略
-        headers.setCacheControl("public, max-age=604800"); // 缓存7天
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "inline; filename*=UTF-8''" + encodeFileName(fileName));
+
+        if (strategy.supportRange()) {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+            headers.setCacheControl("public, max-age=604800");
+        } else {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "none");
+            headers.setCacheControl("public, max-age=3600");
+        }
+
         return headers;
     }
 
-    private boolean isPdf(String suffix) {
-        return suffix != null && "pdf".equalsIgnoreCase(suffix);
+    private String changeExtension(String fileName, String newExtension) {
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex == -1) return fileName + "." + newExtension;
+        String originalExtension = fileName.substring(dotIndex + 1);
+        if (originalExtension.equalsIgnoreCase(newExtension)) return fileName;
+        return fileName.substring(0, dotIndex) + "." + newExtension;
     }
 
     private String encodeFileName(String name) {

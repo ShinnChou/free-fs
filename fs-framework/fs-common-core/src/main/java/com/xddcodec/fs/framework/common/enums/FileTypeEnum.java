@@ -16,88 +16,76 @@ import java.util.stream.Stream;
 public enum FileTypeEnum {
 
     // ==================== 图片类型 ====================
-    IMAGE("image", "图片", FileCategory.IMAGE,
-            Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
-                    "JPG", "JPEG", "PNG", "GIF", "BMP", "WEBP", "SVG"),
-            true, "preview/image", false),
+    IMAGE("image", "图片", FileCategory.IMAGE, Arrays.asList(
+            "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+            "JPG", "JPEG", "PNG", "GIF", "BMP", "WEBP", "SVG"
+    )),
 
     // ==================== 视频类型 ====================
-    VIDEO("video", "视频", FileCategory.VIDEO,
-            Arrays.asList("mp4", "avi", "mkv", "mov", "wmv", "flv", "webm",
-                    "MP4", "AVI", "MKV", "MOV", "WMV", "FLV", "WEBM"),
-            true, "preview/video", false),
+    VIDEO("video", "视频", FileCategory.VIDEO, Arrays.asList(
+            "mp4", "avi", "mkv", "mov", "wmv", "flv", "webm",
+            "MP4", "AVI", "MKV", "MOV", "WMV", "FLV", "WEBM"
+    )),
 
     // ==================== 音频类型 ====================
-    AUDIO("audio", "音频", FileCategory.AUDIO,
-            Arrays.asList("mp3", "wav", "flac", "aac", "ogg", "m4a", "wma",
-                    "MP3", "WAV", "FLAC", "AAC", "OGG", "M4A", "WMA"),
-            true, "preview/audio", false),
+    AUDIO("audio", "音频", FileCategory.AUDIO, Arrays.asList(
+            "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma",
+            "MP3", "WAV", "FLAC", "AAC", "OGG", "M4A", "WMA"
+    )),
 
     // ==================== 文档类型 ====================
-    PDF("pdf", "PDF文档", FileCategory.DOCUMENT,
-            Arrays.asList("pdf", "PDF"),
-            true, "preview/pdf", false),
+    PDF("pdf", "PDF文档", FileCategory.DOCUMENT, Arrays.asList(
+            "pdf", "PDF"
+    )),
 
-    WORD("word", "Word文档", FileCategory.DOCUMENT,
-            Arrays.asList("doc", "docx", "DOC", "DOCX"),
-            true, "preview/pdf", true),
+    WORD("word", "Word文档", FileCategory.DOCUMENT, Arrays.asList(
+            "doc", "docx", "DOC", "DOCX"
+    )),
 
-    EXCEL("excel", "Excel表格", FileCategory.DOCUMENT,
-            Arrays.asList("xls", "xlsx", "XLS", "XLSX"),
-            true, "preview/pdf", true),
+    EXCEL("excel", "Excel表格", FileCategory.DOCUMENT, Arrays.asList(
+            "xls", "xlsx", "XLS", "XLSX"
+    )),
 
-    PPT("ppt", "PPT演示", FileCategory.DOCUMENT,
-            Arrays.asList("ppt", "pptx", "PPT", "PPTX"),
-            true, "preview/pdf", true),
+    PPT("ppt", "PPT演示", FileCategory.DOCUMENT, Arrays.asList(
+            "ppt", "pptx", "PPT", "PPTX"
+    )),
 
     // ==================== 文本类型 ====================
-    TEXT("text", "文本文件", FileCategory.DOCUMENT,
-            Arrays.asList("txt", "log", "ini", "properties", "yaml", "yml", "conf",
-                    "TXT", "LOG", "INI", "PROPERTIES", "YAML", "YML", "CONF"),
-            true, "preview/text", false),
+    TEXT("text", "文本文件", FileCategory.DOCUMENT, Arrays.asList(
+            "txt", "log", "ini", "properties", "yaml", "yml", "conf",
+            "TXT", "LOG", "INI", "PROPERTIES", "YAML", "YML", "CONF"
+    )),
 
     // ==================== 代码类型 ====================
-    CODE("code", "代码文件", FileCategory.DOCUMENT,
-            Arrays.asList(
-                    // Java系
-                    "java", "JAVA",
-                    // JavaScript/TypeScript
-                    "js", "jsx", "ts", "tsx", "JS", "JSX", "TS", "TSX",
-                    // Python
-                    "py", "PY",
-                    // C/C++
-                    "c", "cpp", "h", "hpp", "cc", "cxx",
-                    "C", "CPP", "H", "HPP", "CC", "CXX",
-                    // Web
-                    "html", "css", "scss", "sass", "less", "vue",
-                    "HTML", "CSS", "SCSS", "SASS", "LESS", "VUE",
-                    // 其他语言
-                    "php", "go", "rs", "rb", "swift", "kt", "scala",
-                    "PHP", "GO", "RS", "RB", "SWIFT", "KT", "SCALA",
-                    // 配置/脚本
-                    "json", "xml", "sql", "sh", "bash", "bat", "ps1",
-                    "JSON", "XML", "SQL", "SH", "BASH", "BAT", "PS1",
-                    // C#/.NET
-                    "cs", "CS",
-                    // Rust
-                    "toml", "TOML"
-            ),
-            true, "preview/code", false),
+    CODE("code", "代码文件", FileCategory.DOCUMENT, Arrays.asList(
+            "java", "JAVA",
+            "js", "jsx", "ts", "tsx", "JS", "JSX", "TS", "TSX",
+            "py", "PY",
+            "c", "cpp", "h", "hpp", "cc", "cxx",
+            "C", "CPP", "H", "HPP", "CC", "CXX",
+            "html", "css", "scss", "sass", "less", "vue",
+            "HTML", "CSS", "SCSS", "SASS", "LESS", "VUE",
+            "php", "go", "rs", "rb", "swift", "kt", "scala",
+            "PHP", "GO", "RS", "RB", "SWIFT", "KT", "SCALA",
+            "json", "xml", "sql", "sh", "bash", "bat", "ps1",
+            "JSON", "XML", "SQL", "SH", "BASH", "BAT", "PS1",
+            "cs", "CS",
+            "toml", "TOML"
+    )),
 
     // ==================== Markdown ====================
-    MARKDOWN("markdown", "Markdown", FileCategory.DOCUMENT,
-            Arrays.asList("md", "markdown", "MD", "MARKDOWN"),
-            true, "preview/markdown", false),
+    MARKDOWN("markdown", "Markdown", FileCategory.DOCUMENT, Arrays.asList(
+            "md", "markdown", "MD", "MARKDOWN"
+    )),
 
     // ==================== 压缩包 ====================
-    ARCHIVE("archive", "压缩包", FileCategory.OTHER,
-            Arrays.asList("zip", "rar", "7z", "tar", "gz", "bz2",
-                    "ZIP", "RAR", "7Z", "TAR", "GZ", "BZ2"),
-            true, "preview/archive", false),
+    ARCHIVE("archive", "压缩包", FileCategory.OTHER, Arrays.asList(
+            "zip", "rar", "7z", "tar", "gz", "bz2",
+            "ZIP", "RAR", "7Z", "TAR", "GZ", "BZ2"
+    )),
 
     // ==================== 其他 ====================
-    OTHER("other", "其他", FileCategory.OTHER,
-            null, false, "preview/unsupported", false);
+    OTHER("other", "其他", FileCategory.OTHER, null);
 
     /**
      * 类型标识（唯一）
@@ -119,31 +107,11 @@ public enum FileTypeEnum {
      */
     private final List<String> suffixes;
 
-    /**
-     * 是否支持预览
-     */
-    private final Boolean previewable;
-
-    /**
-     * 预览模板路径
-     */
-    private final String previewTemplate;
-
-    /**
-     * 是否需要转换（如Office转PDF）
-     */
-    private final Boolean needConvert;
-
-    FileTypeEnum(String code, String name, FileCategory category,
-                 List<String> suffixes, Boolean previewable,
-                 String previewTemplate, Boolean needConvert) {
+    FileTypeEnum(String code, String name, FileCategory category, List<String> suffixes) {
         this.code = code;
         this.name = name;
         this.category = category;
         this.suffixes = suffixes;
-        this.previewable = previewable;
-        this.previewTemplate = previewTemplate;
-        this.needConvert = needConvert;
     }
 
     private static final Map<String, FileTypeEnum> EXTENSION_MAP = new HashMap<>();
@@ -278,20 +246,6 @@ public enum FileTypeEnum {
      */
     public boolean isCategory(FileCategory category) {
         return this.category == category;
-    }
-
-    /**
-     * 判断是否支持预览
-     */
-    public boolean isPreviewable() {
-        return Boolean.TRUE.equals(this.previewable);
-    }
-
-    /**
-     * 判断是否需要转换
-     */
-    public boolean isNeedConvert() {
-        return Boolean.TRUE.equals(this.needConvert);
     }
 
     /**

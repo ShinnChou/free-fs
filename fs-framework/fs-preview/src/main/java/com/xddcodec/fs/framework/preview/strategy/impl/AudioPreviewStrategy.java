@@ -20,16 +20,17 @@ public class AudioPreviewStrategy extends AbstractPreviewStrategy {
     }
 
     @Override
+    public String getTemplatePath() {
+        return "preview/audio";
+    }
+
+    @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
-        log.info("音频预览策略填充完成 - 文件名: {}, 格式: {}, 大小: {}",
-                context.getFileName(),
-                context.getExtension(),
-                context.getFileSize());
     }
 
     @Override
     public int getPriority() {
-        return 16;
+        return 1;
     }
 }
 
