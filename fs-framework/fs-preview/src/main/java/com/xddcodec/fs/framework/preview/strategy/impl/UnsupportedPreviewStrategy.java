@@ -16,7 +16,7 @@ public class UnsupportedPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum fileType) {
-        return !fileType.isPreviewable();
+        return false;
     }
 
     @Override

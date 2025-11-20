@@ -28,13 +28,11 @@ public class PreviewService {
     private String contextPath;
 
     public String preview(String fileId, Model model) {
-        // 1. 验证 fileId
         if (fileId == null || fileId.trim().isEmpty()) {
             log.warn("预览失败: fileId 为空");
             return buildErrorPage(model, "文件ID无效", "文件ID不能为空");
         }
 
-        // 2. 查询文件信息
         FileInfo fileInfo = null;
         try {
             fileInfo = fileInfoService.getById(fileId);
@@ -48,7 +46,6 @@ public class PreviewService {
             return buildErrorPage(model, "文件不存在", "文件不存在或已被删除");
         }
 
-        // 3. 检查文件大小
         if (fileInfo.getSize() != null && fileInfo.getSize() > previewConfig.getMaxFileSize()) {
             log.warn("预览失败: 文件过大, fileId={}, size={}MB", 
                     fileId, fileInfo.getSize() / 1024 / 1024);
@@ -58,7 +55,6 @@ public class PreviewService {
                             previewConfig.getMaxFileSize() / 1024 / 1024));
         }
 
-        // 4. 检查文件类型
         FileTypeEnum fileType = FileTypeEnum.fromFileName(fileInfo.getDisplayName());
         if (!fileType.isPreviewable()) {
             log.warn("预览失败: 文件类型不支持预览, fileName={}, fileType={}", 
@@ -67,7 +63,6 @@ public class PreviewService {
                     "该文件类型暂不支持在线预览，请下载后查看");
         }
 
-        // 5. 构建预览上下文
         try {
             String streamUrl = buildUrl("/api/file/stream/preview/", fileId);
             PreviewContext context = PreviewContext.builder()

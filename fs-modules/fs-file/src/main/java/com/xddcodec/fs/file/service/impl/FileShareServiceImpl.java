@@ -55,6 +55,8 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 
     private final ApplicationEventPublisher eventPublisher;
 
+    private static final String CACHE_NAME = "share";
+
     @Override
     public List<FileShareVO> getList(FileShareQry qry) {
         String userId = StpUtil.getLoginIdAsString();
@@ -77,6 +79,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     }
 
     @Override
+//    @Cacheable(value = CACHE_NAME, key = "#shareId", unless = "#result == null", sync = true)
     public FileShareVO getDetail(String shareId) {
         FileShare share = this.getById(shareId);
         if (share == null) {

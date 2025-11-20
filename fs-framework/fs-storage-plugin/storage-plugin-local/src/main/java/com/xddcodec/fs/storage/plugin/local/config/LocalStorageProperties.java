@@ -12,7 +12,7 @@ import java.util.Map;
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "storage.local")
+@ConfigurationProperties(prefix = "fs.storage.local")
 public class LocalStorageProperties {
 
     /**
@@ -23,7 +23,7 @@ public class LocalStorageProperties {
     /**
      * 访问基础URL
      */
-    private String baseUrl = "http://localhost:8080/files";
+    private String baseUrl = "http://localhost:8081/files";
 
     /**
      * 转换为 StorageConfig 的 properties Map
