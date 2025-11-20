@@ -40,6 +40,8 @@ spring:
 
   # 邮件配置
   mail:
+    # 开关
+    enable: false
     #smtp服务主机  qq邮箱则为smtp.qq.com
     host: smtp.qq.com
     #编码集
