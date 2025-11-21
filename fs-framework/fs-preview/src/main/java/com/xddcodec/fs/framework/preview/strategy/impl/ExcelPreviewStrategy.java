@@ -8,20 +8,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
 /**
- * 视频预览策略
+ * 音频预览策略
  */
 @Slf4j
 @Component
-public class VideoPreviewStrategy extends AbstractPreviewStrategy {
+public class ExcelPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum fileType) {
-        return fileType == FileTypeEnum.VIDEO;
+        return fileType == FileTypeEnum.EXCEL;
     }
 
     @Override
     public String getTemplatePath() {
-        return "preview/video";
+        return "preview/excel";
     }
 
     @Override
@@ -30,7 +30,7 @@ public class VideoPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public int getPriority() {
-        return 7;
+        return 1;
     }
 }
 

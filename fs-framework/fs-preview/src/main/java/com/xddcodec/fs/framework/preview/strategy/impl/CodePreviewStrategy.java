@@ -38,6 +38,11 @@ public class CodePreviewStrategy extends AbstractPreviewStrategy {
     }
 
     @Override
+    public String getTemplatePath() {
+        return "preview/code";
+    }
+
+    @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
         String language = LANGUAGE_MAP.getOrDefault(
                 context.getExtension() == null ? "" : context.getExtension().toLowerCase(),
@@ -49,6 +54,6 @@ public class CodePreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public int getPriority() {
-        return 30;
+        return 2;
     }
 }

@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
   undertow:
     threads:
       io: 8
@@ -40,6 +40,8 @@ spring:
 
   # 邮件配置
   mail:
+    # 开关
+    enable: false
     #smtp服务主机  qq邮箱则为smtp.qq.com
     host: smtp.qq.com
     #编码集
@@ -99,17 +101,6 @@ mybatis-flex:
     deleted-value-of-logic-delete: 1
     # 默认的逻辑删除字段
     logic-delete-column: del_flag
-
---- # fs配置
-# 本地存储配置（默认）
-storage:
-  local:
-    base-path: D:/insentek/upload
-    base-url: http://localhost:8081/files
-
-  #文件预览地址，这里配置的是kkfileview的部署地址，https://kkfileview.keking.cn/
-#  preview:
-#    endpoint: xxxxxxxxxxxxxxxxxxxxxxxxx
 
 --- # 认证授权相关配置
 security:

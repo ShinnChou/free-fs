@@ -27,7 +27,7 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: 123456
+      password: insentek
       database: 0
       # 连接超时时间
       timeout: 10s
@@ -54,14 +54,17 @@ redisson:
   config: |
     singleServerConfig:
       address: "redis://127.0.0.1:6379"
-      password: "123456"
+      password: "insentek"
       database: 0
       timeout: 3000 
       connectionPoolSize: 64
       connectionMinimumIdleSize: 10
 
 fs:
+  # 预览配置
   preview:
+    # 预览文件流处理地址，默认是本服务地址,端口号
+    stream-api: http://localhost:8080/api/file/stream/preview
     # 预览文件最大大小（字节），默认500MB
     max-file-size: 524288000
     # 单次Range请求最大大小（字节），默认10MB
@@ -72,6 +75,24 @@ fs:
     small-file-size: 10485760
     # 缓冲区大小（字节），默认8KB
     buffer-size: 8192
+    office:
+      enabled: true
+      #LibreOffice 安装路径
+      # Linux: /usr/lib/libreoffice
+      # Windows: C:/Program Files/LibreOffice
+      # Mac: /Applications/LibreOffice.app/Contents
+      office-home: C:/Program Files/LibreOffice
+      pool-size: 2
+      task-execution-timeout: 120000
+      task-queue-timeout: 30000
+      max-tasks-per-process: 200
+      cache-path: ${java.io.tmpdir}/office-convert
+
+  # 本地存储配置（默认）
+  storage:
+    local:
+      base-path: D:/insentek/upload
+      base-url: http://localhost:8080/files
 
 mybatis-flex:
   # sql审计

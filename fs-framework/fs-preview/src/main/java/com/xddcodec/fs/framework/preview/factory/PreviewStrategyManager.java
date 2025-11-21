@@ -2,11 +2,15 @@ package com.xddcodec.fs.framework.preview.factory;
 
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
+import com.xddcodec.fs.framework.preview.strategy.impl.UnsupportedPreviewStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * 预览策略管理器
@@ -15,40 +19,34 @@ import java.util.List;
 @Component
 public class PreviewStrategyManager {
 
-    private final List<PreviewStrategy> strategies;
-    private final PreviewStrategy defaultStrategy;
+    private final List<PreviewStrategy> sortedStrategies;
+    private final PreviewStrategy unsupportedStrategy;
+    private final Map<FileTypeEnum, PreviewStrategy> strategyCache = new ConcurrentHashMap<>();
 
     public PreviewStrategyManager(List<PreviewStrategy> strategies) {
-        this.strategies = strategies.stream()
+        this.unsupportedStrategy = strategies.stream()
+                .filter(s -> s instanceof UnsupportedPreviewStrategy)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("缺少 UnsupportedPreviewStrategy 实现"));
+        this.sortedStrategies = strategies.stream()
+                .filter(s -> !(s instanceof UnsupportedPreviewStrategy))
+                // 优先级数字越小越靠前
                 .sorted(Comparator.comparingInt(PreviewStrategy::getPriority))
-                .toList();
-        
-        // 找到兜底策略（UnsupportedPreviewStrategy，优先级最低）
-        this.defaultStrategy = strategies.stream()
-                .max(Comparator.comparingInt(PreviewStrategy::getPriority))
-                .orElse(null);
-        
-        log.info("加载 {} 个预览策略", strategies.size());
-        if (defaultStrategy != null) {
-            log.info("默认策略: {}", defaultStrategy.getClass().getSimpleName());
-        }
+                .collect(Collectors.toList());
+
+        log.info("初始化预览策略管理器，已加载 {} 个策略", sortedStrategies.size());
     }
 
     /**
      * 获取预览策略
-     * 注意：此方法不应该抛异常，因为Service层已经检查过isPreviewable()
      */
     public PreviewStrategy getStrategy(FileTypeEnum fileType) {
-        PreviewStrategy strategy = strategies.stream()
-                .filter(s -> s.support(fileType))
-                .findFirst()
-                .orElse(defaultStrategy);
-        
-        if (strategy == null) {
-            log.error("找不到预览策略: fileType={}", fileType.getName());
-            throw new IllegalStateException("预览策略未正确初始化");
-        }
-        
-        return strategy;
+        if (fileType == null) return unsupportedStrategy;
+        return strategyCache.computeIfAbsent(fileType, type ->
+                sortedStrategies.stream()
+                        .filter(s -> s.support(type))
+                        .findFirst()
+                        .orElse(unsupportedStrategy)
+        );
     }
 }

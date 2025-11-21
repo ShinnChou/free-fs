@@ -18,22 +18,19 @@
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-common-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.docx4j</groupId>
-            <artifactId>docx4j-export-fo</artifactId>
-            <version>11.5.3</version>
-        </dependency>
 
+        <!-- LibreOffice 转换核心包 -->
         <dependency>
-            <groupId>org.docx4j</groupId>
-            <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
-            <version>11.5.3</version>
+            <groupId>org.jodconverter</groupId>
+            <artifactId>jodconverter-local</artifactId>
+            <version>4.4.11</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.docx4j</groupId>-->
-<!--            <artifactId>docx4j-JAXB-MOXy</artifactId>-->
-<!--            <version>11.5.3</version>-->
-<!--        </dependency>-->
+        <!-- Spring Boot Starter -->
+        <dependency>
+            <groupId>org.jodconverter</groupId>
+            <artifactId>jodconverter-spring-boot-starter</artifactId>
+            <version>4.4.11</version>
+        </dependency>
 
     </dependencies>
 </project>

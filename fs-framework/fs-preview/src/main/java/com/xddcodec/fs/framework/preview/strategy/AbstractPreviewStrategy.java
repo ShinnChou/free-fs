@@ -1,9 +1,13 @@
 package com.xddcodec.fs.framework.preview.strategy;
 
+import com.xddcodec.fs.framework.preview.converter.IConverter;
 import com.xddcodec.fs.framework.preview.core.PreviewContext;
 import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ui.Model;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 
 /**
@@ -23,8 +27,34 @@ public abstract class AbstractPreviewStrategy implements PreviewStrategy {
 
         // 子类填充特定数据
         fillSpecificModel(context, model);
+    }
 
-        log.info("策略 [{}] 填充完成", this.getClass().getSimpleName());
+    @Override
+    public IConverter getConverter() {
+        return null;
+    }
+
+    @Override
+    public InputStream processStream(InputStream sourceStream, String extension) {
+        IConverter converter = getConverter();
+        if (converter != null) {
+            return converter.convert(sourceStream, extension);
+        }
+        return sourceStream;
+    }
+
+    @Override
+    public String getResponseExtension(String originalExtension) {
+        IConverter converter = getConverter();
+        if (converter != null) {
+            return converter.getTargetExtension();
+        }
+        return originalExtension;
+    }
+
+    @Override
+    public boolean supportRange() {
+        return getConverter() == null;
     }
 
     /**

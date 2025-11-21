@@ -22,12 +22,15 @@ public class MarkdownPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
-        log.info("Markdown 预览策略填充完成 - 文件名: {}, 大小: {} bytes",
-                context.getFileName(), context.getFileSize());
+    }
+
+    @Override
+    public String getTemplatePath() {
+        return "preview/markdown";
     }
 
     @Override
     public int getPriority() {
-        return 25;
+        return 4;
     }
 }

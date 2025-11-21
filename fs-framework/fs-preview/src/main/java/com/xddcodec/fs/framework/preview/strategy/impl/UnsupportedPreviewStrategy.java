@@ -16,15 +16,18 @@ public class UnsupportedPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum fileType) {
-        return !fileType.isPreviewable();
+        return false;
+    }
+
+    @Override
+    public String getTemplatePath() {
+        return "preview/unsupported";
     }
 
     @Override
     protected void fillSpecificModel(PreviewContext context, Model model) {
         log.warn("不支持预览的文件类型: {}", context.getFileType().getName());
-
         model.addAttribute("message", "该文件类型暂不支持在线预览");
-        model.addAttribute("supportDownload", true);
     }
 
     @Override

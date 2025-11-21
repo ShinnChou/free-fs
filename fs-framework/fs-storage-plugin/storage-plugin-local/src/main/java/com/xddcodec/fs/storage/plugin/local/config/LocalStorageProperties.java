@@ -12,7 +12,7 @@ import java.util.Map;
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "storage.local")
+@ConfigurationProperties(prefix = "fs.storage.local")
 public class LocalStorageProperties {
 
     /**
