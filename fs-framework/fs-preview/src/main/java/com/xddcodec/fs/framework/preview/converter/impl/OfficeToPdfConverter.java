@@ -8,7 +8,6 @@ import org.jodconverter.core.DocumentConverter;
 import org.jodconverter.core.office.OfficeException;
 import org.jodconverter.core.office.OfficeManager;
 import org.jodconverter.local.LocalConverter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -53,7 +52,7 @@ public class OfficeToPdfConverter implements IConverter {
 
             // 读取结果
             byte[] pdfData = Files.readAllBytes(tempOutputFile);
-            log.debug("Office文件转换成功: {} -> PDF, size={}KB",
+            log.info("Office文件转换成功: {} -> PDF, size={}KB",
                     sourceExtension, pdfData.length / 1024);
 
             return new ByteArrayInputStream(pdfData);

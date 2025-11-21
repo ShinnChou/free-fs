@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -53,6 +54,10 @@ public class FileStreamController {
         FileTypeEnum fileType = FileTypeEnum.fromFileName(fileInfo.getDisplayName());
         PreviewStrategy strategy = strategyManager.getStrategy(fileType);
 
+        log.info("文件: {}, 类型: {}, 匹配策略: {}", fileInfo.getDisplayName(), fileType, strategy.getClass().getSimpleName());
+
+        // 修复逻辑：如果策略不支持Range（说明是转换流，如Docx转PDF），则强制走FullRequest
+        // 即使前端传了Range头也不处理，防止截断
         if (!strategy.supportRange() || rangeHeader == null || !rangeHeader.startsWith("bytes=")) {
             return handleFullRequest(storage, fileInfo, strategy);
         }
@@ -74,6 +79,7 @@ public class FileStreamController {
             }
         };
 
+        // 传入 fileInfo.getSize() 仅作为参考，buildHeaders 内部决定是否使用
         HttpHeaders headers = buildHeaders(fileInfo, strategy, fileInfo.getSize(), false);
         return ResponseEntity.ok().headers(headers).body(stream);
     }
@@ -119,6 +125,52 @@ public class FileStreamController {
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).headers(headers).body(stream);
     }
 
+    /**
+     * 构建响应头（核心修复位置）
+     */
+    private HttpHeaders buildHeaders(FileInfo file, PreviewStrategy strategy,
+                                     long visibleLength, boolean isRange) {
+        HttpHeaders headers = new HttpHeaders();
+
+        String responseExtension = strategy.getResponseExtension(file.getSuffix());
+        String fileName = changeExtension(file.getDisplayName(), responseExtension);
+
+        // === 核心修复开始 ===
+
+        // 1. 设置 Content-Type
+        // 如果是PDF预览，强制设置 application/pdf，否则有些浏览器会下载而不是预览
+        if ("pdf".equalsIgnoreCase(responseExtension)) {
+            headers.setContentType(MediaType.APPLICATION_PDF);
+        } else {
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        }
+
+        // 2. 智能设置 Content-Length
+        // 如果该策略需要转换(needConvert=true, 如Word转PDF)，因为文件大小变了，
+        // 所以不能使用数据库里的原始文件大小。不设置Length，走Chunked传输。
+        // 如果是Range请求，说明是流片段，长度是确定的，必须设置。
+        if (isRange || !strategy.needConvert()) {
+            headers.setContentLength(visibleLength);
+        }
+        // 这里的 Else 就是核心：needConvert=true 且不是Range请求 -> 不设置 Content-Length
+
+        // === 核心修复结束 ===
+
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "inline; filename*=UTF-8''" + encodeFileName(fileName));
+
+        if (strategy.supportRange()) {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+            headers.setCacheControl("public, max-age=604800");
+        } else {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "none");
+            // 转换后的流尽量不长缓存，或者根据业务需求调整
+            headers.setCacheControl("no-cache");
+        }
+
+        return headers;
+    }
+
     private void skipBytes(InputStream in, long skipCount) throws IOException {
         if (skipCount <= 0) return;
 
@@ -156,28 +208,6 @@ public class FileStreamController {
             totalRead += bytesRead;
         }
         out.flush();
-    }
-
-    private HttpHeaders buildHeaders(FileInfo file, PreviewStrategy strategy,
-                                     long contentLength, boolean isRange) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentLength(contentLength);
-
-        String responseExtension = strategy.getResponseExtension(file.getSuffix());
-        String fileName = changeExtension(file.getDisplayName(), responseExtension);
-
-        headers.set(HttpHeaders.CONTENT_DISPOSITION,
-                "inline; filename*=UTF-8''" + encodeFileName(fileName));
-
-        if (strategy.supportRange()) {
-            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
-            headers.setCacheControl("public, max-age=604800");
-        } else {
-            headers.set(HttpHeaders.ACCEPT_RANGES, "none");
-            headers.setCacheControl("public, max-age=3600");
-        }
-
-        return headers;
     }
 
     private String changeExtension(String fileName, String newExtension) {

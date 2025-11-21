@@ -1,5 +1,6 @@
 package com.xddcodec.fs.framework.preview.office;
 
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jodconverter.core.office.OfficeManager;
@@ -18,6 +19,8 @@ public class JodConverterConfiguration {
 
     private final OfficeToPdfConfig config;
 
+    private OfficeManager officeManager;
+
     @Bean
     public OfficeManager officeManager() {
         // 自动创建工作目录
@@ -31,22 +34,35 @@ public class JodConverterConfiguration {
         }
         LocalOfficeManager.Builder builder = LocalOfficeManager.builder()
                 .officeHome(config.getOfficeHome())
-//                .poolSize(config.getPoolSize())
                 .taskExecutionTimeout(config.getTaskExecutionTimeout())
                 .taskQueueTimeout(config.getTaskQueueTimeout())
                 .maxTasksPerProcess(config.getMaxTasksPerProcess())
                 .workingDir(new File(config.getCachePath()));
-        OfficeManager manager = builder.build();
+        officeManager = builder.build();
 
         try {
-            manager.start();
+            officeManager.start();
             log.info("LibreOffice 进程池启动成功: home={}, poolSize={}",
                     config.getOfficeHome(), config.getPoolSize());
         } catch (Exception e) {
             log.error("LibreOffice 进程池启动失败", e);
-            throw new IllegalStateException("无法启动 LibreOffice，请检查安装路径: " + config.getOfficeHome(), e);
         }
 
-        return manager;
+        return officeManager;
+    }
+
+    /**
+     * 确保项目关闭时，LibreOffice 也能关闭
+     */
+    @PreDestroy
+    public void destroy() {
+        if (officeManager != null && officeManager.isRunning()) {
+            log.info("正在关闭 LibreOffice 进程...");
+            try {
+                officeManager.stop();
+            } catch (Exception e) {
+                log.error("关闭 LibreOffice 异常", e);
+            }
+        }
     }
 }

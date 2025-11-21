@@ -43,7 +43,7 @@ public enum FileTypeEnum {
     )),
 
     EXCEL("excel", "Excel表格", FileCategory.DOCUMENT, Arrays.asList(
-            "xls", "xlsx", "XLS", "XLSX"
+            "xls", "xlsx", "XLS", "XLSX", "csv", "CSV"
     )),
 
     PPT("ppt", "PPT演示", FileCategory.DOCUMENT, Arrays.asList(
