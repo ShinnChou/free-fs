@@ -17,6 +17,9 @@
 </div>
 
 ---
+
+- 当前为预览版本，部分功能还未实现，如有问题，请提Issues谢谢！
+
 ## 源码链接：
 
 Gitee：https://gitee.com/xddcode/free-fs
