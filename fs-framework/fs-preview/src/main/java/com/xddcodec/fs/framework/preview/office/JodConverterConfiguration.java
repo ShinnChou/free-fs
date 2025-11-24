@@ -14,7 +14,7 @@ import java.io.File;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "file.preview.office", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "fs.preview.office", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class JodConverterConfiguration {
 
     private final OfficeToPdfConfig config;
