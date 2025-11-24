@@ -1,5 +1,7 @@
 package com.xddcodec.fs.framework.preview.office;
 
+import com.xddcodec.fs.framework.preview.converter.impl.OfficeToPdfConverter;
+import com.xddcodec.fs.framework.preview.strategy.impl.OfficePreviewStrategy;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +51,16 @@ public class JodConverterConfiguration {
         }
 
         return officeManager;
+    }
+
+    @Bean
+    public OfficeToPdfConverter officeToPdfConverter(OfficeManager officeManager, OfficeToPdfConfig config) {
+        return new OfficeToPdfConverter(officeManager, config);
+    }
+
+    @Bean
+    public OfficePreviewStrategy officePreviewStrategy(OfficeToPdfConverter officeToPdfConverter) {
+        return new OfficePreviewStrategy(officeToPdfConverter);
     }
 
     /**

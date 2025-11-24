@@ -8,7 +8,6 @@ import org.jodconverter.core.DocumentConverter;
 import org.jodconverter.core.office.OfficeException;
 import org.jodconverter.core.office.OfficeManager;
 import org.jodconverter.local.LocalConverter;
-import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class OfficeToPdfConverter implements IConverter {
 
