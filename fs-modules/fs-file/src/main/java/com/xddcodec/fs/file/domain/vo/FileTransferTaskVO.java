@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.domain.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
+import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.framework.common.utils.DateUtils;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
@@ -22,6 +23,10 @@ public class FileTransferTaskVO implements Serializable {
      * 任务ID
      */
     private String taskId;
+    /**
+     * 任务类型
+     */
+    private TransferTaskType taskType;
     /**
      * 用户ID
      */
