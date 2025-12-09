@@ -30,6 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -443,31 +445,43 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (CollUtil.isEmpty(fileIds)) {
             return;
         }
-
         String userId = StpUtil.getLoginIdAsString();
-
         Set<String> allFileIds = collectFileIdsRecursively(
                 fileIds,
                 userId,
                 wrapper -> wrapper.and(FILE_INFO.IS_DELETED.eq(true)) // 只能删除回收站中的
         );
-
         if (CollUtil.isEmpty(allFileIds)) {
             throw new BusinessException("未找到要删除的文件或文件夹");
         }
+        List<FileInfo> physicalFilesToDelete = new ArrayList<>();
+        for (String allFileId : allFileIds) {
+            FileInfo fileInfo = getById(allFileId);
+            String objectKey = fileInfo.getObjectKey();
 
-        // 查询所有文件信息（用于删除物理文件）
-        List<FileInfo> allFiles = listByIds(allFileIds);
+            long count = this.count(new QueryWrapper()
+                    .where(FILE_INFO.OBJECT_KEY.eq(objectKey)
+                            .and(FILE_INFO.ID.ne(allFileId)))); // 排除当前要删除的
 
-        // 批量删除物理文件
-        allFiles.stream()
-                .filter(file -> !file.getIsDir())
-                .forEach(this::deletePhysicalFile);
-
-        // 批量删除数据库记录
+            if (count == 0) {
+                physicalFilesToDelete.add(fileInfo);
+            }
+        }
         removeByIds(allFileIds);
-
-        log.info("用户 {} 永久删除文件/文件夹，共 {} 项", userId, allFileIds.size());
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (FileInfo file : physicalFilesToDelete) {
+                            try {
+                                deletePhysicalFile(file);
+                            } catch (Exception e) {
+                                log.error("删除物理文件失败: {}", file.getObjectKey(), e);
+                            }
+                        }
+                    }
+                }
+        );
     }
 
     @Transactional(rollbackFor = Exception.class)
