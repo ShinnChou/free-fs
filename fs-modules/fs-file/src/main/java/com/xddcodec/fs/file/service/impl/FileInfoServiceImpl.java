@@ -454,20 +454,26 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (CollUtil.isEmpty(allFileIds)) {
             throw new BusinessException("未找到要删除的文件或文件夹");
         }
+        List<FileInfo> allFiles = listByIds(allFileIds);
+        // 找出需要删除物理文件的（没有其他引用的）
         List<FileInfo> physicalFilesToDelete = new ArrayList<>();
-        for (String allFileId : allFileIds) {
-            FileInfo fileInfo = getById(allFileId);
-            String objectKey = fileInfo.getObjectKey();
+        for (FileInfo file : allFiles) {
+            if (StrUtil.isBlank(file.getObjectKey())) {
+                continue;
+            }
 
+            // 查询除了本次要删除的文件外，还有没有其他文件引用这个objectKey
             long count = this.count(new QueryWrapper()
-                    .where(FILE_INFO.OBJECT_KEY.eq(objectKey)
-                            .and(FILE_INFO.ID.ne(allFileId)))); // 排除当前要删除的
+                    .where(FILE_INFO.OBJECT_KEY.eq(file.getObjectKey())
+                            .and(FILE_INFO.ID.notIn(allFileIds))));
 
             if (count == 0) {
-                physicalFilesToDelete.add(fileInfo);
+                physicalFilesToDelete.add(file);
             }
         }
+
         removeByIds(allFileIds);
+
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
