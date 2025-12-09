@@ -8,11 +8,9 @@ import com.xddcodec.fs.framework.preview.core.PreviewContext;
 import com.xddcodec.fs.framework.preview.strategy.AbstractPreviewStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class OfficePreviewStrategy extends AbstractPreviewStrategy {
 

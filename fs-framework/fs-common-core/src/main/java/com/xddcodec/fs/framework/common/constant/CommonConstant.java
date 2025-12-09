@@ -42,5 +42,5 @@ public interface CommonConstant {
     /**
      * 验证码长度
      */
-    Integer VERIFY_CODE_LENGTH = 4;
+    Integer VERIFY_CODE_LENGTH = 6;
 }
