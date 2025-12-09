@@ -223,6 +223,20 @@ public enum FileTypeEnum {
     }
 
     /**
+     * 获取除指定分类外的所有已知后缀
+     */
+    public static List<String> getAllKnownSuffixesExcluding(FileCategory excludeCategory) {
+        return Stream.of(values())
+                .filter(type -> type != OTHER
+                        && type.getCategory() != excludeCategory
+                        && type.getSuffixes() != null)
+                .flatMap(type -> type.getSuffixes().stream())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+
+    /**
      * 判断是否为其他类型
      */
     public boolean isOther() {

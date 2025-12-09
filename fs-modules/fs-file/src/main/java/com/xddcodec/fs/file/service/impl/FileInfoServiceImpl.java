@@ -627,23 +627,27 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * 按分类筛选
      */
     private void applyFilterByCategory(QueryWrapper wrapper, FileTypeEnum.FileCategory category) {
+        List<String> categorySuffixes = FileTypeEnum.getSuffixesByCategory(category);
+
         if (category == FileTypeEnum.FileCategory.OTHER) {
-            // 其他类型：排除所有已知后缀
-            List<String> knownSuffixes = FileTypeEnum.getAllKnownSuffixes();
+            // OTHER 分类：匹配 OTHER 分类的已知后缀 + 所有未知后缀
+            List<String> allOtherKnownSuffixes = FileTypeEnum.getAllKnownSuffixesExcluding(FileTypeEnum.FileCategory.OTHER);
+
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
                     .and(
-                            FILE_INFO.SUFFIX.notIn(knownSuffixes)
+                            FILE_INFO.SUFFIX.in(categorySuffixes) // zip、rar 等
+                                    .or(FILE_INFO.SUFFIX.notIn(allOtherKnownSuffixes)) // 真正的未知类型
                                     .or(FILE_INFO.SUFFIX.isNull().or(FILE_INFO.SUFFIX.eq("")))
                     );
         } else {
-            // 常规分类：获取该分类下所有后缀
-            List<String> categorySuffixes = FileTypeEnum.getSuffixesByCategory(category);
+            // 常规分类：直接匹配后缀
             if (!categorySuffixes.isEmpty()) {
                 wrapper.and(FILE_INFO.IS_DIR.eq(false))
                         .and(FILE_INFO.SUFFIX.in(categorySuffixes));
             }
         }
     }
+
 
     /**
      * 按具体类型筛选
