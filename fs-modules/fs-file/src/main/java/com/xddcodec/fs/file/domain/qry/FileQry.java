@@ -25,4 +25,7 @@ public class FileQry {
 
     @Schema(description = "是否收藏", example = "true")
     private Boolean isFavorite;
+
+    @Schema(description = "最近使用", example = "true")
+    private Boolean isRecents;
 }

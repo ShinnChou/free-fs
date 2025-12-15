@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 
+import java.time.LocalDateTime;
+
 /**
  * 预览服务
  */
@@ -50,6 +52,10 @@ public class PreviewService {
                 .fileType(fileType)
                 .build();
         strategy.fillModel(context, model);
+
+        //修改文件访问记录
+        fileInfo.setLastAccessTime(LocalDateTime.now());
+        fileInfoService.updateById(fileInfo);
         return strategy.getTemplatePath();
     }
 
