@@ -519,10 +519,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-
         // 构建查询条件
         QueryWrapper wrapper = new QueryWrapper();
-
         wrapper.select(
                         "fi.*",
                         "CASE WHEN fuf.file_id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite"
@@ -538,11 +536,19 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         } else {
             wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         }
+        // 最近使用过滤（优先级最高）
+        if (Boolean.TRUE.equals(qry.getIsRecents())) {
+            wrapper.and(FILE_INFO.IS_DIR.eq(false))
+                    .orderBy(FILE_INFO.LAST_ACCESS_TIME.desc())
+                    .limit(8);  // 限制返回 8 条
+
+            log.info("用户 {} 查询最近使用文件", userId);
+            return this.listAs(wrapper, FileVO.class);
+        }
         // 收藏过滤
         if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
             wrapper.and("fuf.file_id IS NOT NULL");
         }
-
         // 父目录过滤
         if (qry.getParentId() == null) {
             wrapper.and(FILE_INFO.PARENT_ID.isNull());
@@ -557,15 +563,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                             .or(FILE_INFO.DISPLAY_NAME.like(keyword))
             );
         }
-
         // 文件类型过滤
         applyFileTypeFilter(wrapper, qry);
+        // 排序
         String orderBy = StrUtil.toUnderlineCase(qry.getOrderBy());
         boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
         wrapper.orderBy(FILE_INFO.IS_DIR.desc())
                 .orderBy(FILE_INFO.UPDATE_TIME.desc())
                 .orderBy(orderBy, isAsc);
-
         return this.listAs(wrapper, FileVO.class);
     }
 

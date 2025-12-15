@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,10 +41,8 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
         if (CollUtil.isEmpty(fileIds)) {
             throw new BusinessException("收藏文件ID列表不能为空");
         }
-
         List<String> distinctFileIds = fileIds.stream().distinct().collect(Collectors.toList());
         String userId = StpUtil.getLoginIdAsString();
-
         // 查询当前用户的文件
         List<FileInfo> fileInfos = fileInfoService.list(
                 QueryWrapper.create()
@@ -51,11 +50,9 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
                         .and(FILE_INFO.USER_ID.eq(userId))  // 限制只能收藏自己的文件
                         .and(FILE_INFO.IS_DELETED.eq(false))
         );
-
         if (fileInfos.isEmpty()) {
             throw new BusinessException("没有找到可收藏的文件或文件不属于您");
         }
-
         // 查询已收藏的文件
         List<FileUserFavorites> existingFavorites = list(
                 new QueryWrapper()
@@ -65,7 +62,6 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
         Set<String> existingFileIds = existingFavorites.stream()
                 .map(FileUserFavorites::getFileId)
                 .collect(Collectors.toSet());
-
         // 过滤掉已收藏的文件
         List<FileUserFavorites> favoritesToAdd = fileInfos.stream()
                 .filter(fileInfo -> !existingFileIds.contains(fileInfo.getId()))
@@ -76,21 +72,53 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
                     return favoritesFile;
                 })
                 .collect(Collectors.toList());
-
         if (favoritesToAdd.isEmpty()) {
             log.info("用户 {} 的文件已全部收藏，fileIds: {}", userId, fileIds);
             return;
         }
         this.saveBatch(favoritesToAdd);
+
+        // 修改访问时间
+        LocalDateTime now = LocalDateTime.now();
+        List<String> fileIdsToUpdate = favoritesToAdd.stream()
+                .map(FileUserFavorites::getFileId)
+                .collect(Collectors.toList());
+
+        fileIdsToUpdate.forEach(fileId -> {
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setId(fileId);
+            fileInfo.setLastAccessTime(now);
+            fileInfoService.updateById(fileInfo);
+        });
+
+        log.info("用户 {} 成功收藏 {} 个文件，并更新了访问时间", userId, favoritesToAdd.size());
     }
 
     @Override
     public void unFavoritesFile(List<String> fileIds) {
+        if (CollUtil.isEmpty(fileIds)) {
+            return;
+        }
+
         String userId = StpUtil.getLoginIdAsString();
+        List<String> distinctFileIds = fileIds.stream().distinct().collect(Collectors.toList());
+
+        // 删除收藏记录
         this.remove(
                 new QueryWrapper()
-                        .where(FILE_USER_FAVORITES.FILE_ID.in(fileIds))
+                        .where(FILE_USER_FAVORITES.FILE_ID.in(distinctFileIds))
                         .and(FILE_USER_FAVORITES.USER_ID.eq(userId))
         );
+
+        // 修改访问时间
+        LocalDateTime now = LocalDateTime.now();
+        distinctFileIds.forEach(fileId -> {
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setId(fileId);
+            fileInfo.setLastAccessTime(now);
+            fileInfoService.updateById(fileInfo);
+        });
+
+        log.info("用户 {} 成功取消收藏 {} 个文件，并更新了访问时间", userId, distinctFileIds.size());
     }
 }

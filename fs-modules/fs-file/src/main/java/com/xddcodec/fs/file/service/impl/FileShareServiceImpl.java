@@ -24,10 +24,8 @@ import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
-import com.xddcodec.fs.log.domain.event.CreateLoginLogEvent;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,9 +138,30 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 
         fileShareItemService.saveShareItems(share.getId(), cmd.getFileIds());
 
+        // 更新被分享文件的访问时间
+        updateFileLastAccessTime(cmd.getFileIds());
+
         return buildShareVO(share);
     }
 
+
+    /**
+     * 更新文件最后访问时间
+     *
+     * @param fileIds 文件ID列表
+     */
+    private void updateFileLastAccessTime(List<String> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        fileIds.forEach(fileId -> {
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setId(fileId);
+            fileInfo.setLastAccessTime(now);
+            fileInfoService.updateById(fileInfo);
+        });
+    }
 
     /**
      * 计算过期时间
