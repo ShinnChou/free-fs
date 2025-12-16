@@ -9,6 +9,7 @@ import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.file.service.FileRecycleService;
 import com.xddcodec.fs.file.service.FileUserFavoritesService;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
@@ -46,6 +47,9 @@ public class FileController {
 
     @Autowired
     private FileInfoService fileInfoService;
+
+    @Autowired
+    private FileRecycleService fileRecycleService;
 
     @Autowired
     private FileUserFavoritesService fileUserFavoritesService;
@@ -116,7 +120,7 @@ public class FileController {
     @DeleteMapping()
     @Operation(summary = "移到回收站", description = "将文件移动到回收站")
     public Result<?> deleteFiles(@RequestBody List<String> fileIds) {
-        fileInfoService.deleteFiles(fileIds);
+        fileInfoService.moveFilesToRecycleBin(fileIds);
         return Result.ok();
     }
 
@@ -152,28 +156,28 @@ public class FileController {
     @GetMapping("/recycles")
     @Operation(summary = "获取回收站列表", description = "获取回收站列表")
     public Result<?> getRecycles(String keyword) {
-        List<FileRecycleVO> list = fileInfoService.getRecycles(keyword);
+        List<FileRecycleVO> list = fileRecycleService.getRecycles(keyword);
         return Result.ok(list);
     }
 
     @PutMapping("/recycles")
     @Operation(summary = "恢复文件", description = "从回收站批量恢复文件")
     public Result<?> restoreFile(@RequestBody List<String> fileIds) {
-        fileInfoService.restoreFiles(fileIds);
+        fileRecycleService.restoreFiles(fileIds);
         return Result.ok();
     }
 
     @DeleteMapping("/recycles")
     @Operation(summary = "永久删除文件", description = "永久删除文件，不可恢复")
     public Result<?> permanentlyDeleteFiles(@RequestBody List<String> fileIds) {
-        fileInfoService.permanentlyDeleteFiles(fileIds);
+        fileRecycleService.permanentlyDeleteFiles(fileIds);
         return Result.ok();
     }
 
     @DeleteMapping("/recycles/clear")
     @Operation(summary = "清空回收站", description = "清空回收站，永久删除所有文件")
     public Result<?> clearRecycles() {
-        fileInfoService.clearRecycles();
+        fileRecycleService.clearRecycles();
         return Result.ok();
     }
 

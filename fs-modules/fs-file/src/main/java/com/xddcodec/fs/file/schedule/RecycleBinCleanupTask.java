@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.file.service.FileRecycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,6 +30,7 @@ import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 public class RecycleBinCleanupTask {
 
     private final FileInfoService fileInfoService;
+    private final FileRecycleService recycleService;
 
     /**
      * 定时清理回收站
@@ -50,7 +52,7 @@ public class RecycleBinCleanupTask {
             }
             List<String> fileIds = expiredFiles.stream().map(FileInfo::getId).toList();
             log.info("查询到 {} 个过期文件，开始清理", fileIds.size());
-            fileInfoService.permanentlyDeleteFiles(fileIds);
+            recycleService.permanentlyDeleteFiles(fileIds);
             stopWatch.stop();
             log.info("回收站清理结束, 总计: {} 个, 耗时: {} ms", fileIds.size(), stopWatch.getTotalTimeMillis());
         } catch (Exception e) {

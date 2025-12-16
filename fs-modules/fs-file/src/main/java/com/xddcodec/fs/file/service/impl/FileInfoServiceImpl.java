@@ -4,7 +4,6 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.mybatisflex.core.update.UpdateChain;
 import com.mybatisflex.core.util.UpdateEntity;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
@@ -12,7 +11,6 @@ import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
-import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
@@ -30,20 +28,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 import static com.xddcodec.fs.file.domain.table.FileUserFavoritesTableDef.FILE_USER_FAVORITES;
-
 
 /**
  * 文件资源服务实现类
@@ -110,7 +104,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteFiles(List<String> fileIds) {
+    public void moveFilesToRecycleBin(List<String> fileIds) {
         if (fileIds == null || fileIds.isEmpty()) {
             return;
         }
@@ -408,113 +402,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         return pathList;
     }
 
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void restoreFiles(List<String> fileIds) {
-        if (CollUtil.isEmpty(fileIds)) {
-            return;
-        }
-
-        String userId = StpUtil.getLoginIdAsString();
-
-        Set<String> allFileIds = collectFileIdsRecursively(
-                fileIds,
-                userId,
-                wrapper -> wrapper.and(FILE_INFO.IS_DELETED.eq(true)) // 只收集已删除的
-        );
-
-        if (CollUtil.isEmpty(allFileIds)) {
-            throw new BusinessException("未找到要恢复的文件或文件夹");
-        }
-
-        // 批量恢复
-        UpdateChain.of(FileInfo.class)
-                .set(FileInfo::getIsDeleted, false)
-                .set(FileInfo::getDeletedTime, null)
-                .where(FILE_INFO.ID.in(allFileIds))
-                .and(FILE_INFO.USER_ID.eq(userId))
-                .update();
-
-        log.info("用户 {} 恢复文件/文件夹，共 {} 项", userId, allFileIds.size());
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void permanentlyDeleteFiles(List<String> fileIds) {
-        if (CollUtil.isEmpty(fileIds)) {
-            return;
-        }
-        String userId = StpUtil.getLoginIdAsString();
-        Set<String> allFileIds = collectFileIdsRecursively(
-                fileIds,
-                userId,
-                wrapper -> wrapper.and(FILE_INFO.IS_DELETED.eq(true)) // 只能删除回收站中的
-        );
-        if (CollUtil.isEmpty(allFileIds)) {
-            throw new BusinessException("未找到要删除的文件或文件夹");
-        }
-        List<FileInfo> allFiles = listByIds(allFileIds);
-        // 找出需要删除物理文件的（没有其他引用的）
-        List<FileInfo> physicalFilesToDelete = new ArrayList<>();
-        for (FileInfo file : allFiles) {
-            if (StrUtil.isBlank(file.getObjectKey())) {
-                continue;
-            }
-
-            // 查询除了本次要删除的文件外，还有没有其他文件引用这个objectKey
-            long count = this.count(new QueryWrapper()
-                    .where(FILE_INFO.OBJECT_KEY.eq(file.getObjectKey())
-                            .and(FILE_INFO.ID.notIn(allFileIds))));
-
-            if (count == 0) {
-                physicalFilesToDelete.add(file);
-            }
-        }
-
-        removeByIds(allFileIds);
-
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        for (FileInfo file : physicalFilesToDelete) {
-                            try {
-                                deletePhysicalFile(file);
-                            } catch (Exception e) {
-                                log.error("删除物理文件失败: {}", file.getObjectKey(), e);
-                            }
-                        }
-                    }
-                }
-        );
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public void clearRecycles() {
-        String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        List<FileInfo> deletedFiles = this.list(new QueryWrapper()
-                .where(FILE_INFO.USER_ID.eq(userId)
-                        .and(FILE_INFO.IS_DELETED.eq(true)
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                        ))
-        );
-        List<String> deletedFileIds = deletedFiles.stream().map(FileInfo::getId).toList();
-        this.permanentlyDeleteFiles(deletedFileIds);
-    }
-
-    /**
-     * 删除物理文件
-     *
-     * @param file 文件信息
-     */
-    private void deletePhysicalFile(FileInfo file) {
-        IStorageOperationService storageService = storageServiceFacade.getStorageService(file.getStoragePlatformSettingId());
-        storageService.deleteFile(file.getObjectKey());
-    }
-
     @Override
     public List<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
@@ -572,6 +459,27 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .orderBy(FILE_INFO.UPDATE_TIME.desc())
                 .orderBy(orderBy, isAsc);
         return this.listAs(wrapper, FileVO.class);
+    }
+
+    @Override
+    public Long calculateUsedStorage() {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+
+        // 查询所有未删除的文件
+        List<FileInfo> fileInfoList = this.list(new QueryWrapper()
+                .where(FILE_INFO.USER_ID.eq(userId)
+                        .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+                        .and(FILE_INFO.IS_DELETED.eq(false))
+                        .and(FILE_INFO.IS_DIR.eq(false)) // 只统计文件，不统计文件夹
+                ));
+
+        // 统计总大小
+        return fileInfoList.stream()
+                .map(FileInfo::getSize)
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
     }
 
     @Override
@@ -653,7 +561,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }
     }
 
-
     /**
      * 按具体类型筛选
      */
@@ -673,102 +580,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 wrapper.and(FILE_INFO.IS_DIR.eq(false))
                         .and(FILE_INFO.SUFFIX.in(suffixes));
             }
-        }
-    }
-
-    @Override
-    public List<FileRecycleVO> getRecycles(String keyword) {
-        String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_INFO.USER_ID.eq(userId));
-        wrapper.and(FILE_INFO.IS_DELETED.eq(true));
-        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
-        if (StrUtil.isNotBlank(keyword)) {
-            keyword = "%" + keyword.trim() + "%";
-            wrapper.and(
-                    FILE_INFO.ORIGINAL_NAME.like(keyword)
-                            .or(FILE_INFO.DISPLAY_NAME.like(keyword))
-            );
-        }
-        List<FileInfo> fileInfos = this.list(wrapper);
-        return converter.convert(fileInfos, FileRecycleVO.class);
-    }
-
-    /**
-     * 递归收集文件ID（通用方法）
-     *
-     * @param fileIds 初始文件ID列表
-     * @param userId  用户ID
-     * @param filter  过滤条件（可选）
-     * @return 收集到的所有文件ID集合
-     */
-    private Set<String> collectFileIdsRecursively(
-            List<String> fileIds,
-            String userId,
-            Consumer<QueryWrapper> filter) {
-
-        // 查询初始文件列表
-        QueryWrapper initialWrapper = new QueryWrapper()
-                .where(FILE_INFO.ID.in(fileIds))
-                .and(FILE_INFO.USER_ID.eq(userId));
-
-        // 应用额外过滤条件
-        if (filter != null) {
-            filter.accept(initialWrapper);
-        }
-
-        List<FileInfo> files = list(initialWrapper);
-
-        if (CollUtil.isEmpty(files)) {
-            return Collections.emptySet();
-        }
-
-        // 递归收集
-        Set<String> allFileIds = new HashSet<>();
-        files.forEach(file -> {
-            collectFileIdsRecursive(file, allFileIds, userId, filter);
-        });
-
-        return allFileIds;
-    }
-
-    /**
-     * 递归收集单个文件及其子文件的ID
-     *
-     * @param file       文件信息
-     * @param allFileIds 收集的文件ID集合
-     * @param userId     用户ID
-     * @param filter     过滤条件（可选）
-     */
-    private void collectFileIdsRecursive(
-            FileInfo file,
-            Set<String> allFileIds,
-            String userId,
-            Consumer<QueryWrapper> filter) {
-
-        // 添加当前文件ID
-        allFileIds.add(file.getId());
-
-        // 如果是文件夹，递归处理子项
-        if (file.getIsDir()) {
-            log.debug("收集文件夹 {} 的子项", file.getDisplayName());
-
-            // 构建查询条件
-            QueryWrapper wrapper = new QueryWrapper()
-                    .where(FILE_INFO.PARENT_ID.eq(file.getId()))
-                    .and(FILE_INFO.USER_ID.eq(userId));
-
-            // 应用额外过滤条件
-            if (filter != null) {
-                filter.accept(wrapper);
-            }
-
-            // 查询所有子文件
-            List<FileInfo> children = list(wrapper);
-
-            // 递归收集子项ID
-            children.forEach(child -> collectFileIdsRecursive(child, allFileIds, userId, filter));
         }
     }
 }

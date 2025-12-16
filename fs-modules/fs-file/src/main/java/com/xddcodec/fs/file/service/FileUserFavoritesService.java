@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.service;
 import com.xddcodec.fs.file.domain.FileUserFavorites;
 import com.mybatisflex.core.service.IService;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -28,4 +29,19 @@ public interface FileUserFavoritesService extends IService<FileUserFavorites> {
      * @return 是否取消收藏成功
      */
     void unFavoritesFile(List<String> fileIds);
+
+    /**
+     * 根据文件ID批量删除收藏记录
+     *
+     * @param fileIds 文件ID列表
+     * @param userId  用户ID
+     */
+    void removeByFileIds(Collection<String> fileIds, String userId);
+
+    /**
+     * 获取用户收藏文件数量
+     *
+     * @return
+     */
+    Long getFavoritesCount();
 }

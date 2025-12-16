@@ -9,12 +9,14 @@ import com.xddcodec.fs.file.service.FileUserFavoritesService;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -120,5 +122,28 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
         });
 
         log.info("用户 {} 成功取消收藏 {} 个文件，并更新了访问时间", userId, distinctFileIds.size());
+    }
+
+    @Override
+    public void removeByFileIds(Collection<String> fileIds, String userId) {
+        if (CollUtil.isEmpty(fileIds)) {
+            return;
+        }
+        this.remove(new QueryWrapper()
+                .where(FILE_USER_FAVORITES.FILE_ID.in(fileIds))
+                .and(FILE_USER_FAVORITES.USER_ID.eq(userId)));
+    }
+
+    @Override
+    public Long getFavoritesCount() {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        return this.count(new QueryWrapper()
+                .from(FILE_USER_FAVORITES)
+                .leftJoin(FILE_INFO).on(FILE_USER_FAVORITES.FILE_ID.eq(FILE_INFO.ID))
+                .where(FILE_USER_FAVORITES.USER_ID.eq(userId))
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+                .and(FILE_INFO.IS_DELETED.eq(false)) // 只统计未删除的文件
+        );
     }
 }
