@@ -25,6 +25,7 @@
         <mapstruct-plus.version>1.5.0</mapstruct-plus.version>
         <aliyun-sdk-oss.version>3.18.1</aliyun-sdk-oss.version>
         <minio.version>8.5.7</minio.version>
+        <s3.version>2.25.27</s3.version>
         <sa-token.version>1.44.0</sa-token.version>
         <springdoc.version>2.8.13</springdoc.version>
         <tika.version>2.7.0</tika.version>
@@ -151,7 +152,7 @@
             </dependency>
             <dependency>
                 <groupId>com.xddcodec.fs</groupId>
-                <artifactId>storage-plugin-minio</artifactId>
+                <artifactId>storage-plugin-rustfs</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!-- ORM  -->
@@ -209,6 +210,13 @@
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
+            </dependency>
+
+            <!-- S3 Java SDK -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${s3.version}</version>
             </dependency>
 
             <!-- 如果jdk大于1.8，则还需导入下面依赖-->

@@ -11,7 +11,7 @@ import lombok.Getter;
 @Getter
 public enum StoragePlatformIdentifierEnum {
     LOCAL("Local", "本地存储", "icon-bendicunchu1"),
-    MINIO("Minio", "MinIO对象存储", "icon-Minio1"),
+    RUSTFS("RustFS", "RustFS对象存储", "icon-bendicunchu1"),
     ALIYUN_OSS("AliyunOSS", "阿里云OSS", "icon-aliyun1"),
     QINIU_KODO("Kodo", "七牛云Kodo", "icon-normal-logo-blue");
 

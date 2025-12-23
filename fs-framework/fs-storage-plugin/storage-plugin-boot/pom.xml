@@ -26,10 +26,10 @@
             <artifactId>storage-plugin-aliyunoss</artifactId>
         </dependency>
 
-        <!-- MinIO插件（可选，根据需要添加） -->
+        <!-- RustFSs插件（可选，根据需要添加） -->
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
-            <artifactId>storage-plugin-minio</artifactId>
+            <artifactId>storage-plugin-rustfs</artifactId>
         </dependency>
     </dependencies>
 </project>
