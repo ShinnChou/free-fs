@@ -151,7 +151,7 @@ mvn spring-boot:run
 ### 存储平台支持
 
 - **本地存储** - 本地文件系统
-- [MinIO](https://min.io/) - 对象存储服务
+- [RustFS](https://rustfs.com.cn) - 对象存储服务
 - [阿里云 OSS](https://www.aliyun.com/product/oss) - 对象存储服务
 - [七牛云 Kodo](https://www.qiniu.com/products/kodo) - 对象存储服务
 - 各类S3体系云存储
@@ -206,18 +206,19 @@ free-fs/
 ├── fs-admin/                    # Web 管理模块
 ├── fs-dependencies/             # 依赖版本管理（BOM）
 ├── fs-framework/                # 框架层
-│   ├── fs-common-core/         # 公共核心模块
-│   ├── fs-orm/                 # ORM 配置模块
-│   ├── fs-redis/               # Redis 配置模块
-│   ├── fs-security/            # 安全认证模块
-│   ├── fs-swagger/             # API 文档配置
-│   ├── fs-websocket/           # WebSocket 支持
-│   ├── fs-notify/              # 通知模块
-│   └── fs-storage-plugin/      # 存储插件框架
+│   ├── fs-common-core/          # 公共核心模块
+│   ├── fs-notify/               # 通知模块
+│   ├── fs-orm/                  # ORM 配置模块
+│   ├── fs-preview/              # 预览封装模块
+│   ├── fs-redis/                # Redis 配置模块
+│   ├── fs-security/             # 安全认证模块
+│   ├── fs-swagger/              # API 文档配置
+│   ├── fs-websocket/            # WebSocket 支持
+│   └── fs-storage-plugin/       # 存储插件框架
 │       ├── storage-plugin-core/        # 插件核心接口
 │       ├── storage-plugin-local/       # 本地存储插件
 │       ├── storage-plugin-aliyunoss/   # 阿里云 OSS 插件
-│       └── storage-plugin-minio/       # MinIO 插件
+│       └── storage-plugin-rustfs/      # RustFS 插件
 └── fs-modules/                  # 业务模块
     ├── fs-file/                 # 文件管理模块
     ├── fs-storage/              # 存储平台管理模块
