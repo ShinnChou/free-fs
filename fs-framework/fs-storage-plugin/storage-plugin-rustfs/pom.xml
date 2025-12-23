@@ -7,10 +7,10 @@
         <artifactId>fs-storage-plugin</artifactId>
         <version>${revision}</version>
     </parent>
-    <artifactId>storage-plugin-cos</artifactId>
+    <artifactId>storage-plugin-rustfs</artifactId>
 
     <description>
-        storage-plugin-cos - 存储插件-Cos
+        storage-plugin-rustfs - 存储插件-RustFS
     </description>
 
     <dependencies>
@@ -18,11 +18,6 @@
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>storage-plugin-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.qcloud</groupId>
-            <artifactId>cos_api</artifactId>
         </dependency>
 
     </dependencies>

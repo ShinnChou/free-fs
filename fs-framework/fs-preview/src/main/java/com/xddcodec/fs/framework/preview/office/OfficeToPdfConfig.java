@@ -15,7 +15,7 @@ public class OfficeToPdfConfig {
      * Windows: C:/Program Files/LibreOffice
      * Mac: /Applications/LibreOffice.app/Contents
      */
-    private String officeHome = "/usr/lib/libreoffice";
+    private String officeHome = "C:/Program Files/LibreOffice";
 
     /**
      * 进程池大小
