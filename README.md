@@ -296,6 +296,12 @@ chore: 构建/工具链更新
 
 ---
 
+## 🔗 友情链接
+
+- enjoy-iot 开源物联网平台，完整的IoT解决方案 - **[https://gitee.com/open-enjoy/enjoy-iot](https://gitee.com/open-enjoy/enjoy-iot)**
+
+---
+
 ## 📮 联系方式
 
 - GitHub: [@Freedom](https://github.com/xddcode)
