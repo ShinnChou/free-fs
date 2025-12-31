@@ -42,4 +42,11 @@ public class FileShareItemServiceImpl extends ServiceImpl<FileShareItemMapper, F
                 .select(FILE_SHARE_ITEM.FILE_ID)
                 .where(FILE_SHARE_ITEM.SHARE_ID.eq(shareId)), String.class);
     }
+
+    @Override
+    public boolean isFileInShare(String shareId, String fileId) {
+        return this.count(new QueryWrapper()
+                .where(FILE_SHARE_ITEM.SHARE_ID.eq(shareId))
+                .and(FILE_SHARE_ITEM.FILE_ID.eq(fileId))) > 0;
+    }
 }

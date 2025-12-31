@@ -4,6 +4,7 @@ import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 import com.mybatisflex.core.keygen.KeyGenerators;
+import com.xddcodec.fs.file.enums.FileShareScope;
 import com.xddcodec.fs.framework.orm.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -43,6 +44,11 @@ public class FileShare extends BaseEntity {
      * 过期时间
      */
     private LocalDateTime expireTime;
+
+    /**
+     * 权限范围: preview,download  (逗号分隔)
+     */
+    private String scope;
 
     /**
      * 查看次数

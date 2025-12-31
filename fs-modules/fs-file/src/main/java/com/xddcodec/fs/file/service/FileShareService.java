@@ -5,6 +5,7 @@ import com.xddcodec.fs.file.domain.FileShare;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
+import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
@@ -72,4 +73,12 @@ public interface FileShareService extends IService<FileShare> {
      * @return
      */
     List<FileVO> getShareFileItems(String shareId, String parentId);
+
+    /**
+     * 下载文件
+     *
+     * @param shareId 分享id
+     * @param fileId  文件id
+     */
+    FileDownloadVO downloadFiles(String shareId, String fileId);
 }

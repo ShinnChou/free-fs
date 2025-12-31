@@ -39,6 +39,11 @@ public class CreateShareCmd {
     private LocalDateTime expireTime;
 
     /**
+     * 权限范围: preview,download  (多个权限逗号分隔)
+     */
+    private String scope;
+
+    /**
      * 是否需要提取码
      */
     private Boolean needShareCode;
