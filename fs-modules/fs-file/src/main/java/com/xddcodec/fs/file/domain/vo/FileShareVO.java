@@ -38,6 +38,11 @@ public class FileShareVO implements Serializable {
     private LocalDateTime expireTime;
 
     /**
+     * 权限范围: preview,download  (逗号分隔)
+     */
+    private String scope;
+
+    /**
      * 是否永久有效
      */
     private Boolean isPermanent;

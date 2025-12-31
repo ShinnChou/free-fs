@@ -30,6 +30,7 @@ public interface FileShareItemService extends IService<FileShareItem> {
 
     /**
      * 获取分享对应的文件数量
+     *
      * @param shareId
      * @return
      */
@@ -37,8 +38,18 @@ public interface FileShareItemService extends IService<FileShareItem> {
 
     /**
      * 获取分享对应的文件IDS
+     *
      * @param shareId
      * @return
      */
     List<String> getShareFileIds(String shareId);
+
+    /**
+     * 判断文件是否在分享中
+     *
+     * @param shareId
+     * @param fileId
+     * @return
+     */
+    boolean isFileInShare(String shareId, String fileId);
 }

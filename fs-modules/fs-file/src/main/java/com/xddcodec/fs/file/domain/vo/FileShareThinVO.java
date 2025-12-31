@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.domain.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.file.domain.FileShare;
+import com.xddcodec.fs.file.enums.FileShareScope;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 
@@ -34,6 +35,11 @@ public class FileShareThinVO implements Serializable {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime expireTime;
+
+    /**
+     * 权限范围: preview,download  (逗号分隔)
+     */
+    private String scope;
 
     /**
      * 是否到期

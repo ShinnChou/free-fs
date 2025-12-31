@@ -3,10 +3,7 @@ package com.xddcodec.fs.file.controller;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
-import com.xddcodec.fs.file.domain.vo.FileShareAccessRecordVO;
-import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
-import com.xddcodec.fs.file.domain.vo.FileShareVO;
-import com.xddcodec.fs.file.domain.vo.FileVO;
+import com.xddcodec.fs.file.domain.vo.*;
 import com.xddcodec.fs.file.service.FileShareAccessRecordService;
 import com.xddcodec.fs.file.service.FileShareService;
 import com.xddcodec.fs.framework.common.domain.Result;
@@ -14,9 +11,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Validated
@@ -84,5 +86,27 @@ public class FileShareController {
     @GetMapping("/{shareId}/items")
     public Result<List<FileVO>> getShareFileItems(@PathVariable String shareId, @RequestParam(required = false) String parentId) {
         return Result.ok(fileShareService.getShareFileItems(shareId, parentId));
+    }
+
+    @Operation(summary = "分享内文件下载", description = "分享内文件下载")
+    @GetMapping("/{shareId}/download/{fileId}")
+    public ResponseEntity<Resource> downloadShareFile(@PathVariable String shareId, @PathVariable String fileId) {
+        try {
+            // 获取文件信息和文件流
+            FileDownloadVO fileDownload = fileShareService.downloadFiles(shareId, fileId);
+
+            // 设置响应头
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + URLEncoder.encode(fileDownload.getFileName(), StandardCharsets.UTF_8) + "\"");
+            headers.add(HttpHeaders.CONTENT_TYPE, "application/octet-stream");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentLength(fileDownload.getFileSize())
+                    .body(fileDownload.getResource());
+        } catch (Exception e) {
+            throw new RuntimeException("文件下载失败", e);
+        }
     }
 }

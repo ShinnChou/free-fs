@@ -90,6 +90,7 @@ CREATE TABLE `file_shares`  (
   `share_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '分享名称',
   `share_code` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '提取码（可为空）',
   `expire_time` datetime NULL DEFAULT NULL COMMENT '过期时间（null表示永久有效）',
+  `scope` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '权限范围: preview,download  (逗号分隔)',
   `view_count` int NULL DEFAULT 0 COMMENT '查看次数统计',
   `max_view_count` int NULL DEFAULT NULL COMMENT '最大查看次数（NULL表示无限制）',
   `download_count` int NULL DEFAULT 0 COMMENT '下载次数统计',

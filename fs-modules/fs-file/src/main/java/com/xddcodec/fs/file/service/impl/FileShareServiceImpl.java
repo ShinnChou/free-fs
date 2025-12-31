@@ -13,6 +13,7 @@ import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.event.CreateFileShareAccessRecordEvent;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
+import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
@@ -24,12 +25,19 @@ import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
+import com.xddcodec.fs.storage.facade.StorageServiceFacade;
+import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -52,6 +60,9 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     private final Converter converter;
 
     private final ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private StorageServiceFacade storageServiceFacade;
 
     private static final String CACHE_NAME = "share";
 
@@ -131,6 +142,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
             share.setShareCode(RandomUtil.randomString(4));
         }
 
+        share.setScope(cmd.getScope());
         share.setMaxViewCount(cmd.getMaxViewCount());
         share.setMaxDownloadCount(cmd.getMaxDownloadCount());
 
@@ -252,6 +264,31 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 //        incrementViewCount(qry.getShareId());
 
         return fileInfoService.getByFileIds(shareFileIds);
+    }
+
+    @Override
+    public FileDownloadVO downloadFiles(String shareId, String fileId) {
+        //判断是否分享内文件
+        if (!fileShareItemService.isFileInShare(shareId, fileId)) {
+            throw new BusinessException("下载失败，该文件不在当前分享内");
+        }
+        FileInfo fileInfo = fileInfoService.getById(fileId);
+        //判断是否文件夹
+        if (fileInfo == null) {
+            throw new BusinessException("下载失败，该文件不存在");
+        }
+
+        IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+
+        InputStream inputStream = storageService.downloadFile(fileInfo.getObjectKey());
+        // 将 InputStream 包装成 Resource
+        InputStreamResource resource = new InputStreamResource(inputStream);
+
+        FileDownloadVO downloadVO = new FileDownloadVO();
+        downloadVO.setFileName(fileInfo.getDisplayName());
+        downloadVO.setFileSize(fileInfo.getSize());
+        downloadVO.setResource(resource);
+        return downloadVO;
     }
 
     /**
