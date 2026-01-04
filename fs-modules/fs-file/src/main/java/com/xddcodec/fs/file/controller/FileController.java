@@ -1,6 +1,5 @@
 package com.xddcodec.fs.file.controller;
 
-import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
@@ -12,24 +11,15 @@ import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileRecycleService;
 import com.xddcodec.fs.file.service.FileUserFavoritesService;
 import com.xddcodec.fs.framework.common.domain.Result;
-import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -73,39 +63,6 @@ public class FileController {
     public Result<List<FileVO>> getDirs(String parentId) {
         List<FileVO> list = fileInfoService.getDirs(parentId);
         return Result.ok(list);
-    }
-
-    @GetMapping("/download/{fileId}")
-    @Operation(summary = "下载文件", description = "根据文件ID下载文件")
-    @Parameter(name = "fileId", description = "文件ID", in = ParameterIn.PATH, required = true)
-    public ResponseEntity<InputStreamResource> downloadFile(@Parameter(description = "文件ID") @PathVariable("fileId") String fileId) {
-
-        try {
-            FileInfo fileInfo = fileInfoService.getById(fileId);
-            if (fileInfo == null || fileInfo.getIsDir() || fileInfo.getIsDeleted()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            InputStream inputStream = fileInfoService.downloadFile(fileId);
-            InputStreamResource resource = new InputStreamResource(inputStream);
-
-            String encodedFileName = URLEncoder.encode(fileInfo.getOriginalName(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
-                    .contentType(MediaType.parseMediaType(fileInfo.getMimeType()))
-                    .contentLength(fileInfo.getSize())
-                    .body(resource);
-        } catch (StorageOperationException e) {
-            log.error("下载文件失败: {}", e.getMessage(), e);
-            // 根据异常消息返回适当的HTTP状态码
-            String message = e.getMessage().toLowerCase();
-            if (message.contains("文件不存在") || message.contains("nosuchkey")) {
-                return ResponseEntity.notFound().build();
-            }
-            // 其他错误返回500
-            return ResponseEntity.status(500).build();
-        }
     }
 
     @GetMapping("/url/{fileId}")

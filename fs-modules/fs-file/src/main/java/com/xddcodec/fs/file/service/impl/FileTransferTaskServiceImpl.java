@@ -13,6 +13,7 @@ import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
+import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.file.handler.UploadTaskExceptionHandler;
@@ -36,12 +37,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -724,6 +728,29 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
         //清除缓存
         cacheManager.cleanTasks(taskIds);
+    }
+
+    @Override
+    public FileDownloadVO downloadFile(String fileId) {
+        String userId = StpUtil.getLoginIdAsString();
+        FileInfo fileInfo = fileInfoService.getById(fileId);
+        if (fileInfo == null) {
+            throw new BusinessException("下载失败，该文件不存在");
+        }
+        if (!fileInfo.getUserId().equals(userId)) {
+            throw new BusinessException("无权限下载");
+        }
+        IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+        if (!storageService.isFileExist(fileInfo.getObjectKey())) {
+            throw new BusinessException("下载失败，该文件不存在");
+        }
+        InputStream inputStream = storageService.downloadFile(fileInfo.getObjectKey());
+        InputStreamResource resource = new InputStreamResource(inputStream);
+        FileDownloadVO downloadVO = new FileDownloadVO();
+        downloadVO.setFileName(fileInfo.getDisplayName());
+        downloadVO.setFileSize(fileInfo.getSize());
+        downloadVO.setResource(resource);
+        return downloadVO;
     }
 
 }

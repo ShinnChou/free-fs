@@ -423,11 +423,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         } else {
             wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         }
+        if (Boolean.TRUE.equals(qry.getIsDir())) {
+            wrapper.and(FILE_INFO.IS_DIR.eq(true));
+        }
         // 最近使用过滤（优先级最高）
         if (Boolean.TRUE.equals(qry.getIsRecents())) {
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
                     .orderBy(FILE_INFO.LAST_ACCESS_TIME.desc())
-                    .limit(8);  // 限制返回 8 条
+                    .limit(20);
 
             log.info("用户 {} 查询最近使用文件", userId);
             return this.listAs(wrapper, FileVO.class);
