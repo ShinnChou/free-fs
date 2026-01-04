@@ -280,6 +280,10 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 
         IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
 
+        if (!storageService.isFileExist(fileInfo.getObjectKey())) {
+            throw new BusinessException("下载失败，该文件不存在");
+        }
+
         InputStream inputStream = storageService.downloadFile(fileInfo.getObjectKey());
         // 将 InputStream 包装成 Resource
         InputStreamResource resource = new InputStreamResource(inputStream);

@@ -5,17 +5,25 @@ import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
+import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.framework.common.domain.Result;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
@@ -100,5 +108,29 @@ public class FileTransferController {
     public Result<Set<Integer>> clearTransfers() {
         fileTransferTaskService.clearTransfers();
         return Result.ok();
+    }
+
+    @GetMapping("/download/{fileId}")
+    @Operation(summary = "下载文件", description = "根据文件ID下载文件")
+    @Parameter(name = "fileId", description = "文件ID", in = ParameterIn.PATH, required = true)
+    public ResponseEntity<Resource> downloadFile(@Parameter(description = "文件ID") @PathVariable("fileId") String fileId) {
+
+        try {
+            // 获取文件信息和文件流
+            FileDownloadVO fileDownload = fileTransferTaskService.downloadFile(fileId);
+
+            // 设置响应头
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + URLEncoder.encode(fileDownload.getFileName(), StandardCharsets.UTF_8) + "\"");
+            headers.add(HttpHeaders.CONTENT_TYPE, "application/octet-stream");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentLength(fileDownload.getFileSize())
+                    .body(fileDownload.getResource());
+        } catch (Exception e) {
+            throw new RuntimeException("文件下载失败", e);
+        }
     }
 }

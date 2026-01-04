@@ -8,6 +8,7 @@ import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
+import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 
 import java.util.List;
@@ -86,4 +87,12 @@ public interface FileTransferTaskService extends IService<FileTransferTask> {
      * 清空已完成传输列表
      */
     void clearTransfers();
+
+    /**
+     * 下载文件
+     *
+     * @param fileId 文件ID
+     * @return
+     */
+    FileDownloadVO downloadFile(String fileId);
 }
