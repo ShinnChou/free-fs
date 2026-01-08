@@ -84,6 +84,14 @@ public enum FileTypeEnum {
             "ZIP", "RAR", "7Z", "TAR", "GZ", "BZ2"
     )),
 
+    TIF("tif", "TIF", FileCategory.OTHER, Arrays.asList(
+            "tif", "tiff", "TIF", "TIFF"
+    )),
+
+    DRAWIO("drawio", "Drawio", FileCategory.OTHER, Arrays.asList(
+            "drawio", "Drawio"
+    )),
+
     // ==================== 其他 ====================
     OTHER("other", "其他", FileCategory.OTHER, null);
 
