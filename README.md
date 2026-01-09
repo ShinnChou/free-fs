@@ -46,7 +46,7 @@ GitHub：https://github.com/xddcode/free-fs
 - **模块化架构** - 清晰的分层设计，易于维护和扩展
 - **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
-### 🗂功能特性
+### 功能特性
 
 - **文件管理**
     - 文件上传（分片上传、断点续传、秒传）
@@ -138,6 +138,19 @@ mvn spring-boot:run
 ---
 
 ## 界面预览
+
+## 基础内容
+
+| 功能   | 效果图 | 效果图                                                                                                                   | 效果图 |
+|------|--------|-----------------------------------------------------------------------------------------------------------------------|--------|
+| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>| ![组件详情](图片URL2)                                                                                                       |
+| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/> | ![布局管理2](图片URL5)                                                                                                      |
+| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/> | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>            |
+| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/> |                                                                                                                       |
+| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/> |                                                                                                                       |
+| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share.png"/> | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_create.png"/> |
+
+
 
 <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
 
