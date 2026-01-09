@@ -73,7 +73,7 @@
 
 ### 预览支持
 
-**系统默认支持以下多种文件类型的预览台**：
+**系统默认支持以下多种文件类型的预览**：
 
 - 图片: jpg, jpeg, png, gif, bmp, webp, svg, tif, tiff
 - 文档: pdf, doc, docx, xls, xlsx, csv, ppt, pptx
