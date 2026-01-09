@@ -49,7 +49,7 @@ COMMENT ON COLUMN "file_info"."deleted_time" IS '删除时间';
 -- ----------------------------
 DROP TABLE IF EXISTS "file_share_access_record";
 CREATE TABLE "file_share_access_record" (
-                                            "id" BIGINT NOT NULL,
+                                            "id" BIGSERIAL NOT NULL,
                                             "share_id" VARCHAR(128) NOT NULL,
                                             "access_ip" VARCHAR(50) DEFAULT NULL,
                                             "access_address" VARCHAR(255) DEFAULT NULL,
