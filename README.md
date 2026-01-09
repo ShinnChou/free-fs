@@ -141,40 +141,17 @@ mvn spring-boot:run
 
 ## 基础内容
 
-| 功能   | 效果图 | 效果图                                                                                                                   | 效果图 |
-|------|--------|-----------------------------------------------------------------------------------------------------------------------|--------|
-| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>| ![组件详情](图片URL2)                                                                                                       |
-| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/> | ![布局管理2](图片URL5)                                                                                                      |
-| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/> | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>            |
-| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/> |                                                                                                                       |
-| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/> |                                                                                                                       |
-| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share.png"/> | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_create.png"/> |
-
-
-
-<img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
-
-<img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/>
-
-<img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/>
-
-<img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>
-
-<img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/>
-
-<img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/>
-
-<img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share.png"/>
-
-<img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_create.png"/>
-
-<img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_list.png"/>
-
-<img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/transmission.png"/>
-
-<img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/storage.png"/>
-
-<img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/profile.png"/>
+| 功能   | 效果图 | 效果图                                                                                                                          | 效果图                                                                                                                         |
+|------|--------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>| ![组件详情](图片URL2)                                                                                                              | ![组件配置](图片URL3)                                                                                                             |
+| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/> | ![布局管理2](图片URL5)                                                                                                             | ![属性配置](图片URL6)                                                                                                             |
+| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/> | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>                   | ![编码管理](图片URL9)                                                                                                             |
+| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/> | <img alt="recycle_clear.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle_clear.png"/> | ![编码管理](图片URL9)                                                                                                             |
+| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share.png"/> | <img alt="share_create.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_list.png"/>      |
+| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/> |                                                                                                                              |                                                                                                                             |
+| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/transmission.png"/> |                                                                                                                              |                                                                                                                             |
+| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/storage.png"/> | <img alt="add_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/add_storage.png"/> | <img alt="enable_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/enable_storage.png"/> |
+| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/profile.png"/> | | |
 
 ---
 
