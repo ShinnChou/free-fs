@@ -1,10 +1,10 @@
 <div align="center">
 
-# Free FS - 现代化文件管理网盘系统
+# 🔥Free FS - 现代化文件管理网盘系统
 
 <img alt="Free FS Logo" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/logo.png" width="180"/>
 
-一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，支持多存储平台、分片上传、断点续传和完整的文件操作。
+一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
 
  <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-blue.svg" alt="Downloads">
  <img src="https://img.shields.io/badge/Vue-3.2-blue.svg" alt="Downloads">
@@ -23,11 +23,12 @@
 
 ---
 
-## 源码链接：
+## 源码地址
 
-Gitee：https://gitee.com/xddcode/free-fs
+[Gitee：https://gitee.com/xddcode/free-fs](https://gitee.com/xddcode/free-fs)
 
-GitHub：https://github.com/xddcode/free-fs
+[GitHub：https://github.com/xddcode/free-fs](https://github.com/xddcode/free-fs)
+
 
 ## 前端仓库
 
@@ -39,45 +40,48 @@ GitHub：https://github.com/xddcode/free-fs
 
 ### 核心亮点
 
-- **分片上传 + 断点续传** - 支持 TB 级大文件上传，网络中断后可继续上传
+- **大文件上传** - 分片上传、断点续传、秒传功能，支持 TB 级文件
 - **实时上传进度** - 实时推送上传进度，精确到分片级别
 - **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
 - **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
 - **模块化架构** - 清晰的分层设计，易于维护和扩展
+- **在线预览** - 支持多种文件格式的在线预览
 - **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
 ### 功能特性
 
 - **文件管理**
     - 文件上传（分片上传、断点续传、秒传）
+    - 文件预览
     - 文件下载
     - 文件夹创建与管理
     - 文件/文件夹重命名、移动
-    - 文件分享
-    - 🗑文件删除
+    - 文件分享/授权码分享
+    - 文件删除
 
 - **回收站**
     - 文件还原（支持批量操作）
-    - 🗑彻底删除（支持批量操作）
+    - 彻底删除（支持批量操作）
     - 一键清空回收站
     - 自动清理机制
 
 - **存储平台**
     - 支持多存储平台（本地、MinIO、阿里云 OSS、七牛云 Kodo、S3 体系等）
-    - 动态切换存储平台
+    - 一键切换存储平台
     - 平台配置管理
     - 存储空间统计
 
-### 技术亮点
+### 预览支持
 
-- **高性能** - Undertow 服务器，异步处理，支持高并发
-- **安全认证** - Sa-Token JWT 无状态认证，支持分布式部署
-- **模块化设计** - 清晰的分层架构，职责明确
-- **插件化存储** - SPI 机制，无需修改核心代码即可扩展
-- **实时通信** - WebSocket 实时推送上传进度和通知
-- **数据持久化** - MyBatis Flex 轻量级 ORM，性能优异
-- **API 文档** - SpringDoc OpenAPI 3，自动生成接口文档
-- **现代化技术栈** - Spring Boot 3.5.4 + Java 17，拥抱最新技术
+**系统默认支持以下多种文件类型的预览台**：
+
+- 图片: jpg, jpeg, png, gif, bmp, webp, svg, tif, tiff
+- 文档: pdf, doc, docx, xls, xlsx, csv, ppt, pptx
+- 文本/代码: txt, log, ini, properties, yaml, yml, conf, java, js, jsx, ts, tsx, py, c, cpp, h, hpp, cc, cxx, html, css, scss, sass, less, vue, php, go, rs, rb, swift, kt, scala, json, xml, sql, sh, bash, bat, ps1, cs, toml
+Markdown: md, markdown
+- 音视频: mp4, avi, mkv, mov, wmv, flv, webm, mp3, wav, flac, aac, ogg, m4a, wma
+- 压缩包: zip, rar, 7z, tar, gz, bz2 (支持查看目录结构)
+- 其他: drawio
 
 ---
 
@@ -108,9 +112,16 @@ mvn clean install -DskipTests
 1. **初始化数据库**
 
    ```bash
-   mysql -u root -p < _sql/free-fs.sql
+   # mysql
+   mysql -u root -p < _sql/mysql/free-fs.sql
    ```
 
+   ```bash
+   # postgresql
+    psql -U postgres -c "CREATE DATABASE free_fs;"
+    psql -U postgres -d free_fs -f _sql/postgresql/free-fs_pg.sql
+   ```
+   
 2. **修改配置文件**
 
    修改 `fs-admin/src/main/resources/application-dev.yml` 中的数据库和 Redis 配置
@@ -140,8 +151,6 @@ mvn spring-boot:run
 
 ## 界面预览
 
-## 基础内容
-
 | 功能   | 效果图                                                                                                                   | 效果图                                                                                                                     | 效果图                                                                                                                          |
 |------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/login.png"/>              | <img alt="register.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/register.png"/>          | <img alt="forget_password.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/forget_password.png"/> |
@@ -152,7 +161,7 @@ mvn spring-boot:run
 | 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/move.png"/>                 |                                                                                                                         |                                                                                                                              |
 | 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
 | 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/storage.png"/>           | <img alt="add_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/enable_storage.png"/>    |
-| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile.png"/>           |                                                                                                                         |                                                                                                                              |
+| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile.png"/>           | <img alt="profile_auth.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile_auth.png"/>   |                                                                                                                              |
 
 ---
 
