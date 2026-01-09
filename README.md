@@ -91,7 +91,7 @@ Markdown: md, markdown
 
 - JDK >= 17
 - Maven >= 3.8
-- MySQL >= 8.0
+- MySQL >= 8.0 或 PostgreSQL >= 14
 - Redis
 
 ### 安装
@@ -118,8 +118,8 @@ mvn clean install -DskipTests
 
    ```bash
    # postgresql
-    psql -U postgres -c "CREATE DATABASE free_fs;"
-    psql -U postgres -d free_fs -f _sql/postgresql/free-fs_pg.sql
+    psql -U postgres -c "CREATE DATABASE free-fs;"
+    psql -U postgres -d free-fs -f _sql/postgresql/free-fs_pg.sql
    ```
    
 2. **修改配置文件**
