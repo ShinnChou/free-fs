@@ -31,6 +31,19 @@
             <artifactId>jodconverter-spring-boot-starter</artifactId>
             <version>4.4.11</version>
         </dependency>
+        <!-- Apache Commons Compress -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.25.0</version>
+        </dependency>
+
+        <!-- JUnrar (RAR 支持) -->
+        <dependency>
+            <groupId>com.github.junrar</groupId>
+            <artifactId>junrar</artifactId>
+            <version>7.5.5</version>
+        </dependency>
 
     </dependencies>
 </project>

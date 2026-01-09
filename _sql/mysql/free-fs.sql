@@ -1,18 +1,5 @@
-/*
- Navicat Premium Dump SQL
-
- Source Server         : mysql8
- Source Server Type    : MySQL
- Source Server Version : 80300 (8.3.0)
- Source Host           : localhost:3306
- Source Schema         : free-fs
-
- Target Server Type    : MySQL
- Target Server Version : 80300 (8.3.0)
- File Encoding         : 65001
-
- Date: 17/11/2025 16:57:34
-*/
+-- free-fs.sql
+-- Date: 17/11/2025 16:57:34
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
