@@ -1,28 +1,27 @@
-# 🔥Free FS - 现代化文件管理网盘系统
-
 <div align="center">
+
+# Free FS - 现代化文件管理网盘系统
 
 <img alt="Free FS Logo" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/logo.png" width="180"/>
 
 一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，支持多存储平台、分片上传、断点续传和完整的文件操作。
 
-[![GitHub stars](https://img.shields.io/github/stars/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/network)
+ <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-blue.svg" alt="Downloads">
+ <img src="https://img.shields.io/badge/Vue-3.2-blue.svg" alt="Downloads">
+
 [![star](https://gitee.com/xddcode/free-fs/badge/star.svg?theme=dark)](https://gitee.com/xddcode/free-fs/stargazers)
 [![fork](https://gitee.com/xddcode/free-fs/badge/fork.svg?theme=dark)](https://gitee.com/xddcode/free-fs/members)
+[![GitHub stars](https://img.shields.io/github/stars/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/network)
 [![AUR](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg)](https://gitee.com/xddcode/free-fs/blob/master/LICENSE)
 
 [问题反馈](https://gitee.com/xddcode/free-fs/issues) · [功能请求](https://gitee.com/xddcode/free-fs/issues/new)
 
+[项目文档](https://free-fs-doc.vercel.app/)
+
 </div>
 
 ---
-
-- 当前为预览版本，部分功能还未实现，如有问题，请提Issues谢谢！
-
-## 文档地址：
-
-[项目文档](https://free-fs-doc.vercel.app/)
 
 ## 源码链接：
 
@@ -30,59 +29,59 @@ Gitee：https://gitee.com/xddcode/free-fs
 
 GitHub：https://github.com/xddcode/free-fs
 
-## 🔗 前端仓库
+## 前端仓库
 
 [![Free FS/free-fs-vue](https://gitee.com/xddcode/free-fs-vue/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-vue.git)
 
 ---
 
-## ✨ 特性
+## 特性
 
-### 🚀 核心亮点
+### 核心亮点
 
-- ⚡ **分片上传 + 断点续传** - 支持 TB 级大文件上传，网络中断后可继续上传
-- 📊 **实时上传进度** - 实时推送上传进度，精确到分片级别
-- ⚡ **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
-- 🔌 **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
-- 🏗️ **模块化架构** - 清晰的分层设计，易于维护和扩展
-- 🔐 **安全可靠** - JWT 认证、权限控制、文件完整性校验
+- **分片上传 + 断点续传** - 支持 TB 级大文件上传，网络中断后可继续上传
+- **实时上传进度** - 实时推送上传进度，精确到分片级别
+- **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
+- **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
+- **模块化架构** - 清晰的分层设计，易于维护和扩展
+- **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
-### 🗂️ 功能特性
+### 🗂功能特性
 
 - **文件管理**
-    - 📤 文件上传（分片上传、断点续传、秒传）
-    - 📥 文件下载
-    - 📁 文件夹创建与管理
-    - 🔄 文件/文件夹重命名、移动
-    - 🔗 文件分享
-    - 🗑️ 文件删除
+    - 文件上传（分片上传、断点续传、秒传）
+    - 文件下载
+    - 文件夹创建与管理
+    - 文件/文件夹重命名、移动
+    - 文件分享
+    - 🗑文件删除
 
 - **回收站**
-    - ♻️ 文件还原（支持批量操作）
-    - 🗑️ 彻底删除（支持批量操作）
-    - 🧹 一键清空回收站
-    - ⏰ 自动清理机制
+    - 文件还原（支持批量操作）
+    - 🗑彻底删除（支持批量操作）
+    - 一键清空回收站
+    - 自动清理机制
 
 - **存储平台**
-    - 📦 支持多存储平台（本地、MinIO、阿里云 OSS、七牛云 Kodo、S3 体系等）
-    - 🔄 动态切换存储平台
-    - 🔐 平台配置管理
-    - 📊 存储空间统计
+    - 支持多存储平台（本地、MinIO、阿里云 OSS、七牛云 Kodo、S3 体系等）
+    - 动态切换存储平台
+    - 平台配置管理
+    - 存储空间统计
 
-### 🎯 技术亮点
+### 技术亮点
 
-- ⚡ **高性能** - Undertow 服务器，异步处理，支持高并发
-- 🔐 **安全认证** - Sa-Token JWT 无状态认证，支持分布式部署
-- 🏗️ **模块化设计** - 清晰的分层架构，职责明确
-- 🔌 **插件化存储** - SPI 机制，无需修改核心代码即可扩展
-- 📡 **实时通信** - WebSocket 实时推送上传进度和通知
-- 🗄️ **数据持久化** - MyBatis Flex 轻量级 ORM，性能优异
-- 📝 **API 文档** - SpringDoc OpenAPI 3，自动生成接口文档
-- 🚀 **现代化技术栈** - Spring Boot 3.5.4 + Java 17，拥抱最新技术
+- **高性能** - Undertow 服务器，异步处理，支持高并发
+- **安全认证** - Sa-Token JWT 无状态认证，支持分布式部署
+- **模块化设计** - 清晰的分层架构，职责明确
+- **插件化存储** - SPI 机制，无需修改核心代码即可扩展
+- **实时通信** - WebSocket 实时推送上传进度和通知
+- **数据持久化** - MyBatis Flex 轻量级 ORM，性能优异
+- **API 文档** - SpringDoc OpenAPI 3，自动生成接口文档
+- **现代化技术栈** - Spring Boot 3.5.4 + Java 17，拥抱最新技术
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
@@ -138,45 +137,8 @@ mvn spring-boot:run
 
 ---
 
-## 📦 技术栈
+## 界面预览
 
-### 核心框架
-
-- [Spring Boot](https://spring.io/projects/spring-boot) 3.5.4 - 企业级应用框架
-- [MyBatis Flex](https://mybatis-flex.com/) 1.11.1 - 轻量级 ORM 框架
-- [Sa-Token](https://sa-token.cc/) 1.44.0 - 轻量级权限认证框架
-
-### 数据存储
-
-- [MySQL](https://www.mysql.com/) 8.0+ - 关系型数据库
-- [Redis](https://redis.io/) - 缓存和会话存储
-- [Caffeine](https://github.com/ben-manes/caffeine) - 本地缓存
-
-### 存储平台支持
-
-- **本地存储** - 本地文件系统
-- [RustFS](https://rustfs.com.cn) - 对象存储服务
-- [阿里云 OSS](https://www.aliyun.com/product/oss) - 对象存储服务
-- [七牛云 Kodo](https://www.qiniu.com/products/kodo) - 对象存储服务
-- 各类S3体系云存储
-
-### 工具库
-
-- [Hutool](https://hutool.cn/) - Java 工具类库
-- [MapStruct Plus](https://github.com/linpeilie/mapstruct-plus) - 对象映射工具
-- [Apache Tika](https://tika.apache.org/) - 文件类型检测
-- [Thumbnailator](https://github.com/coobird/thumbnailator) - 图片处理
-- [ip2region](https://github.com/lionsoul2014/ip2region) - IP 地址解析
-
-### 开发工具
-
-- [SpringDoc OpenAPI](https://springdoc.org/) - API 文档生成
-- [Lombok](https://projectlombok.org/) - 简化 Java 代码
-- [Undertow](https://undertow.io/) - 高性能 Web 服务器
-
----
-
-## 🎨 界面预览
 <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>
 
 <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/>
@@ -203,7 +165,7 @@ mvn spring-boot:run
 
 ---
 
-## 📁 项目结构
+## 项目结构
 
 ```
 free-fs/
@@ -233,17 +195,7 @@ free-fs/
 
 ---
 
-## 📝 API 文档
-
-启动应用后，访问 Swagger UI：
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
----
-
-## 🤝 贡献指南
+## 贡献指南
 
 我们欢迎所有的贡献，无论是新功能、Bug 修复还是文档改进！
 
@@ -277,7 +229,7 @@ chore: 构建/工具链更新
 
 ---
 
-## 🐛 问题反馈
+## 问题反馈
 
 如果你发现了 Bug 或有功能建议，请通过以下方式反馈：
 
@@ -285,13 +237,13 @@ chore: 构建/工具链更新
 
 ---
 
-## 📄 开源协议
+## 开源协议
 
 本项目采用 [Apache License 2.0](LICENSE) 协议开源。
 
 ---
 
-## 🙏 鸣谢
+## 鸣谢
 
 - [Spring Boot](https://spring.io/projects/spring-boot) - 感谢 Spring 团队
 - [MyBatis Flex](https://mybatis-flex.com/) - 感谢 MyBatis Flex 团队
@@ -300,13 +252,13 @@ chore: 构建/工具链更新
 
 ---
 
-## 🔗 友情链接
+## 友情链接
 
 - enjoy-iot 开源物联网平台，完整的IoT解决方案 - **[https://gitee.com/open-enjoy/enjoy-iot](https://gitee.com/open-enjoy/enjoy-iot)**
 
 ---
 
-## 📮 联系方式
+## 联系方式
 
 - GitHub: [@Freedom](https://github.com/xddcode)
 - Gitee: [@Freedom](https://gitee.com/xddcode)
