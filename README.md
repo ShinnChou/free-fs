@@ -126,6 +126,7 @@ mvn spring-boot:run
 ```
 
 访问：
+
 - 服务地址：http://localhost:8080
 - API 文档：http://localhost:8080/swagger-ui.html
 
@@ -141,17 +142,17 @@ mvn spring-boot:run
 
 ## 基础内容
 
-| 功能   | 效果图 | 效果图                                                                                                                          | 效果图                                                                                                                         |
-|------|--------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/login.png"/>| ![组件详情](图片URL2)                                                                                                              | ![组件配置](图片URL3)                                                                                                             |
-| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/dashboard.png"/> | ![布局管理2](图片URL5)                                                                                                             | ![属性配置](图片URL6)                                                                                                             |
-| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/grid_file.png"/> | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/file.png"/>                   | ![编码管理](图片URL9)                                                                                                             |
-| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle.png"/> | <img alt="recycle_clear.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/recycle_clear.png"/> | ![编码管理](图片URL9)                                                                                                             |
-| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share.png"/> | <img alt="share_create.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/share_list.png"/>      |
-| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/move.png"/> |                                                                                                                              |                                                                                                                             |
-| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/transmission.png"/> |                                                                                                                              |                                                                                                                             |
-| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/storage.png"/> | <img alt="add_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/add_storage.png"/> | <img alt="enable_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/enable_storage.png"/> |
-| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/profile.png"/> | | |
+| 功能   | 效果图                                                                                                                   | 效果图                                                                                                                     | 效果图                                                                                                                          |
+|------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/login.png"/>              | <img alt="register.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/register.png"/>          | <img alt="forget_password.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/forget_password.png"/> |
+| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/dashboard.png"/>       |                                                                                                                         |                                                                                                                              |
+| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/grid_file.png"/>       | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/file.png"/>                   |                                                                                                                              |
+| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/recycle.png"/>           | <img alt="recycle_clear.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/recycle_clear.png"/> |                                                                                                                              |
+| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share.png"/>               | <img alt="share_create.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share_list.png"/>            |
+| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/move.png"/>                 |                                                                                                                         |                                                                                                                              |
+| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
+| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/storage.png"/>           | <img alt="add_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/enable_storage.png"/>    |
+| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile.png"/>           |                                                                                                                         |                                                                                                                              |
 
 ---
 
@@ -244,7 +245,8 @@ chore: 构建/工具链更新
 
 ## 友情链接
 
-- enjoy-iot 开源物联网平台，完整的IoT解决方案 - **[https://gitee.com/open-enjoy/enjoy-iot](https://gitee.com/open-enjoy/enjoy-iot)**
+- enjoy-iot 开源物联网平台，完整的IoT解决方案 - *
+  *[https://gitee.com/open-enjoy/enjoy-iot](https://gitee.com/open-enjoy/enjoy-iot)**
 
 ---
 
