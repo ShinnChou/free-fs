@@ -30,9 +30,9 @@ Gitee：https://gitee.com/xddcode/free-fs
 
 GitHub：https://github.com/xddcode/free-fs
 
-## 🔗 相关项目
+## 🔗 前端仓库
 
-- 🎨 [Free FS Frontend](https://gitee.com/xddcode/free-fs-vue) - Vue 3 前端项目
+[![Free FS/free-fs-vue](https://gitee.com/xddcode/free-fs-vue/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-vue.git)
 
 ---
 
