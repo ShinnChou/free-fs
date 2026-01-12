@@ -21,59 +21,18 @@ import java.util.*;
 
 /**
  * 阿里云 OSS 存储插件实现
- * TODO: 待实现
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @StoragePlugin(
-    identifier = "AliyunOSS",
-    name = "阿里云OSS",
-    description = "阿里云对象存储服务",
-    icon = "icon-aliyun1",
-    link = "https://www.aliyun.com/product/oss",
-    configSchema = """
-        [
-            {
-                "label": "Access-Key",
-                "dataType": "string",
-                "identifier": "accessKey",
-                "validation": {
-                    "required": true
-                }
-            },
-            {
-                "label": "Secret-key",
-                "dataType": "string",
-                "identifier": "secretKey",
-                "validation": {
-                    "required": true
-                }
-            },
-            {
-                "label": "服务器端点",
-                "dataType": "string",
-                "identifier": "endpoint",
-                "validation": {
-                    "required": true
-                }
-            },
-            {
-                "label": "存储桶名",
-                "dataType": "string",
-                "identifier": "bucket",
-                "validation": {
-                    "required": true
-                }
-            },
-            {
-                "label": "区域",
-                "dataType": "string",
-                "identifier": "region",
-                "validation": {
-                    "required": true
-                }
-            }
-        ]
-        """
+        identifier = "AliyunOSS",
+        name = "阿里云OSS",
+        description = "阿里云对象存储服务",
+        icon = "icon-aliyun1",
+        link = "https://www.aliyun.com/product/oss",
+        schemaResource = "classpath:schema/aliyunoss-storage-schema.json"
 )
 public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService {
 

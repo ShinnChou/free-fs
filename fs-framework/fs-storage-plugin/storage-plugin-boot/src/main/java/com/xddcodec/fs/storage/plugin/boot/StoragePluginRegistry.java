@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 插件注册器
  *
  * @Author: xddcode
- * @Date: 2024/10/26
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @Component

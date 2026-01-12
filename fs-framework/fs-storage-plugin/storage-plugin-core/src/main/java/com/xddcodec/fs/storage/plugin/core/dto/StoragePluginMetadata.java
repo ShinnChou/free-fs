@@ -12,7 +12,8 @@ import java.nio.charset.StandardCharsets;
  * 存储插件元数据
  * 从 @StoragePlugin 注解提取
  *
- * @author kiro
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Data
 @Builder

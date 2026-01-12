@@ -5,6 +5,9 @@ import software.amazon.awssdk.regions.Region;
 
 /**
  * S3兼容存储配置基类
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Data
 public abstract class S3CompatibleConfig {

@@ -6,7 +6,10 @@ import lombok.EqualsAndHashCode;
 import software.amazon.awssdk.regions.Region;
 
 /**
- * RustFS配置类
+ * RustFS配置
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

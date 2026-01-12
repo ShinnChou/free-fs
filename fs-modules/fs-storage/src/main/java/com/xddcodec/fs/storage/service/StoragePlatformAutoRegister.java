@@ -22,7 +22,8 @@ import java.util.Objects;
  * 
  * 注意：Local 插件作为系统内置默认插件，不需要插入数据库
  *
- * @author kiro
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @Component

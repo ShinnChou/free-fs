@@ -14,6 +14,9 @@ import java.util.Objects;
 /**
  * 抽象存储操作服务
  * 提供公共的方法实现和初始化状态管理
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 public abstract class AbstractStorageOperationService implements IStorageOperationService {
 
@@ -70,7 +73,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
 
     /**
      * 从注解获取平台标识符
-     * 
+     *
      * @return 平台标识符，如果未标注注解则返回 "unknown"
      */
     protected String getIdentifierFromAnnotation() {

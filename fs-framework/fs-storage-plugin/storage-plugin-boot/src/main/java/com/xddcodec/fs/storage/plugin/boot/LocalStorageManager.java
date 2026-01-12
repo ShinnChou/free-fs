@@ -15,13 +15,13 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Local 存储管理器
- * 职责：
- * 1. 管理 Local 存储全局单例
- * 2. 懒加载创建实例
- * 3. 提供线程安全的单例访问
+ *
+ * 管理 Local 存储全局单例
+ * 懒加载创建实例
+ * 提供线程安全的单例访问
  *
  * @Author: xddcode
- * @Date: 2024/10/26
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @Component
