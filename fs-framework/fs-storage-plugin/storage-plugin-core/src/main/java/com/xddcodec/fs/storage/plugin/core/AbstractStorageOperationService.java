@@ -3,6 +3,7 @@ package com.xddcodec.fs.storage.plugin.core;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.storage.plugin.core.annotation.StoragePlugin;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,6 +51,7 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
 
     /**
      * 工厂方法默认实现
+     * 从注解获取标识符用于日志
      */
     @Override
     public IStorageOperationService createConfiguredInstance(StorageConfig config) {
@@ -58,10 +60,22 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
                     this.getClass().getConstructor(StorageConfig.class);
             return constructor.newInstance(config);
         } catch (Exception e) {
+            // 从注解获取标识符
+            String identifier = getIdentifierFromAnnotation();
             throw new StorageOperationException(
-                    "Failed to create instance for platform: " + getPlatformIdentifier(), e
+                    "Failed to create instance for platform: " + identifier, e
             );
         }
+    }
+
+    /**
+     * 从注解获取平台标识符
+     * 
+     * @return 平台标识符，如果未标注注解则返回 "unknown"
+     */
+    protected String getIdentifierFromAnnotation() {
+        StoragePlugin annotation = this.getClass().getAnnotation(StoragePlugin.class);
+        return annotation != null ? annotation.identifier() : "unknown";
     }
 
     /**

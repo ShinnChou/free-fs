@@ -8,11 +8,11 @@ import com.aliyun.oss.common.auth.DefaultCredentialProvider;
 import com.aliyun.oss.common.comm.SignVersion;
 import com.aliyun.oss.internal.Mimetypes;
 import com.aliyun.oss.model.*;
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.aliyunoss.config.AliyunOssConfig;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
+import com.xddcodec.fs.storage.plugin.core.annotation.StoragePlugin;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +24,57 @@ import java.util.*;
  * TODO: 待实现
  */
 @Slf4j
+@StoragePlugin(
+    identifier = "AliyunOSS",
+    name = "阿里云OSS",
+    description = "阿里云对象存储服务",
+    icon = "icon-aliyun1",
+    link = "https://www.aliyun.com/product/oss",
+    configSchema = """
+        [
+            {
+                "label": "Access-Key",
+                "dataType": "string",
+                "identifier": "accessKey",
+                "validation": {
+                    "required": true
+                }
+            },
+            {
+                "label": "Secret-key",
+                "dataType": "string",
+                "identifier": "secretKey",
+                "validation": {
+                    "required": true
+                }
+            },
+            {
+                "label": "服务器端点",
+                "dataType": "string",
+                "identifier": "endpoint",
+                "validation": {
+                    "required": true
+                }
+            },
+            {
+                "label": "存储桶名",
+                "dataType": "string",
+                "identifier": "bucket",
+                "validation": {
+                    "required": true
+                }
+            },
+            {
+                "label": "区域",
+                "dataType": "string",
+                "identifier": "region",
+                "validation": {
+                    "required": true
+                }
+            }
+        ]
+        """
+)
 public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService {
 
     private OSS ossClient;
@@ -38,11 +89,6 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     @SuppressWarnings("unused")
     public AliyunOssStorageServiceImpl(StorageConfig config) {
         super(config);
-    }
-
-    @Override
-    public String getPlatformIdentifier() {
-        return StoragePlatformIdentifierEnum.ALIYUN_OSS.getIdentifier();
     }
 
     @Override

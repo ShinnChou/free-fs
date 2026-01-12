@@ -1,8 +1,8 @@
 package com.xddcodec.fs.storage.plugin.boot;
 
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
+import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -91,7 +91,7 @@ public class LocalStorageManager {
     private IStorageOperationService createLocalInstance() {
         StorageConfig localConfig = StorageConfig.builder()
                 .configId(null) // Local 无需 configId
-                .platformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier())
+                .platformIdentifier(StorageUtils.LOCAL_PLATFORM_IDENTIFIER)
                 .enabled(true)
                 .properties(localStorageProperties.toPropertiesMap())
                 .build();

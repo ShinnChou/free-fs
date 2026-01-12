@@ -1,7 +1,6 @@
 package com.xddcodec.fs.storage.plugin.core.utils;
 
 import cn.hutool.core.util.StrUtil;
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 
 /**
  * 存储工具类
@@ -12,6 +11,11 @@ import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 public class StorageUtils {
 
     /**
+     * 本地存储平台标识符常量
+     */
+    public static final String LOCAL_PLATFORM_IDENTIFIER = "Local";
+
+    /**
      * 判断是否为 Local 存储配置
      *
      * @param configId 配置ID
@@ -19,7 +23,7 @@ public class StorageUtils {
      */
     public static boolean isLocalConfig(String configId) {
         return configId == null
-                || StoragePlatformIdentifierEnum.LOCAL.getIdentifier().equals(configId);
+                || LOCAL_PLATFORM_IDENTIFIER.equals(configId);
     }
 
     /**

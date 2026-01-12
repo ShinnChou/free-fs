@@ -1,5 +1,17 @@
 # Free-Fs Change Log
 
+## V1.3.0 @2026-01-12
+- 新增: 新增 `@StoragePlugin` 注解，支持声明式定义插件元数据
+- 新增: 新增存储插件自动注册功能，应用启动时自动同步插件信息到数据库
+- 新增: 新增 `StoragePluginMetadata` DTO，统一管理插件元数据
+- 重构: 重构 `StoragePluginRegistry`，基于注解验证和加载插件
+- 重构: 简化 `IStorageOperationService` 接口，移除 `getPlatformIdentifier()` 和 `getConfigSchema()` 方法
+- 废弃: 废弃 `StoragePlatformIdentifierEnum` 枚举类，改用 `@StoragePlugin` 注解
+- 优化: 统一使用 `StorageUtils.LOCAL_PLATFORM_IDENTIFIER` 常量管理 Local 标识符
+- 优化: Local 存储插件简化配置，仅保留必要的注解属性
+
+> **升级注意**: 自定义存储插件需要添加 `@StoragePlugin` 注解才能被系统识别，详见文档。
+
 ## V1.2.6 @2024-07-26
 - 升级: `Mybatis-Flex`版本升级到`1.9.4`
 - 新增: 新增对`AWS S3`存储平台的支持

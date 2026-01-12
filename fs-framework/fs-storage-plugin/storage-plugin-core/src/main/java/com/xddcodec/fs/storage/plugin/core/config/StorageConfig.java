@@ -1,6 +1,5 @@
 package com.xddcodec.fs.storage.plugin.core.config;
 
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import lombok.Builder;
@@ -183,7 +182,7 @@ public class StorageConfig {
             throw new StorageOperationException("平台标识符不能为空");
         }
 
-        if (!platformIdentifier.equals(StoragePlatformIdentifierEnum.LOCAL.getIdentifier()) && (userId == null || userId.isBlank())) {
+        if (!platformIdentifier.equals(StorageUtils.LOCAL_PLATFORM_IDENTIFIER) && (userId == null || userId.isBlank())) {
             throw new StorageOperationException("用户ID不能为空");
         }
 

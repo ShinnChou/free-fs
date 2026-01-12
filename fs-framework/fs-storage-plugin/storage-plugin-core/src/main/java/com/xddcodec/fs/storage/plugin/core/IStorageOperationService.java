@@ -19,28 +19,12 @@ import java.util.Set;
 public interface IStorageOperationService extends Closeable {
 
     /**
-     * 获取平台标识符
-     *
-     * @return 平台标识符（如：local、aliyun_oss、minio）
-     */
-    String getPlatformIdentifier();
-
-    /**
      * 创建配置化实例（工厂方法）
      *
      * @param config 存储配置
      * @return 配置化的实例
      */
     IStorageOperationService createConfiguredInstance(StorageConfig config);
-
-    /**
-     * 获取配置Schema（用于前端动态表单）
-     *
-     * @return JSON Schema字符串
-     */
-    default String getConfigSchema() {
-        return "{}";
-    }
 
     /**
      * 上传文件
