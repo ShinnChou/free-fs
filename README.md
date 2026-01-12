@@ -2,22 +2,22 @@
 
 # 🔥Free FS - 现代化文件管理网盘系统
 
-<img alt="Free FS Logo" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/logo.png" width="180"/>
+<img alt="Free FS Logo" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/logo.png" width="180"/>
 
 一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
 
  <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-blue.svg" alt="Downloads">
  <img src="https://img.shields.io/badge/Vue-3.2-blue.svg" alt="Downloads">
 
-[![star](https://gitee.com/xddcode/free-fs/badge/star.svg?theme=dark)](https://gitee.com/xddcode/free-fs/stargazers)
-[![fork](https://gitee.com/xddcode/free-fs/badge/fork.svg?theme=dark)](https://gitee.com/xddcode/free-fs/members)
-[![GitHub stars](https://img.shields.io/github/stars/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/xddcode/free-fs?logo=github)](https://github.com/xddcode/free-fs/network)
-[![AUR](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg)](https://gitee.com/xddcode/free-fs/blob/master/LICENSE)
+[![star](https://gitee.com/dromara/free-fs/badge/star.svg?theme=dark)](https://gitee.com/dromara/free-fs/stargazers)
+[![fork](https://gitee.com/dromara/free-fs/badge/fork.svg?theme=dark)](https://gitee.com/dromara/free-fs/members)
+[![GitHub stars](https://img.shields.io/github/stars/dromara/free-fs?logo=github)](https://github.com/dromara/free-fs/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/dromara/free-fs?logo=github)](https://github.com/dromara/free-fs/network)
+[![AUR](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg)](https://gitee.com/dromara/free-fs/blob/master/LICENSE)
 
-[问题反馈](https://gitee.com/xddcode/free-fs/issues) · [功能请求](https://gitee.com/xddcode/free-fs/issues/new)
+[问题反馈](https://gitee.com/dromara/free-fs/issues) · [功能请求](https://gitee.com/dromara/free-fs/issues/new)
 
-[项目文档](https://free-fs-doc.vercel.app/)
+[项目文档](https://doc.free-fs.top)
 
 </div>
 
@@ -25,9 +25,9 @@
 
 ## 源码地址
 
-[Gitee：https://gitee.com/xddcode/free-fs](https://gitee.com/xddcode/free-fs)
+[Gitee：https://gitee.com/dromara/free-fs](https://gitee.com/dromara/free-fs)
 
-[GitHub：https://github.com/xddcode/free-fs](https://github.com/xddcode/free-fs)
+[GitHub：https://github.com/dromara/free-fs](https://github.com/dromara/free-fs)
 
 
 ## 前端仓库
@@ -98,7 +98,7 @@ Markdown: md, markdown
 
 ```bash
 # 克隆项目
-git clone https://gitee.com/xddcode/free-fs.git
+git clone https://gitee.com/dromara/free-fs.git
 
 # 进入项目目录
 cd free-fs
@@ -153,15 +153,15 @@ mvn spring-boot:run
 
 | 功能   | 效果图                                                                                                                   | 效果图                                                                                                                     | 效果图                                                                                                                          |
 |------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/login.png"/>              | <img alt="register.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/register.png"/>          | <img alt="forget_password.png"  width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/forget_password.png"/> |
-| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/dashboard.png"/>       |                                                                                                                         |                                                                                                                              |
-| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/grid_file.png"/>       | <img alt="file.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/file.png"/>                   |                                                                                                                              |
-| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/recycle.png"/>           | <img alt="recycle_clear.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/recycle_clear.png"/> |                                                                                                                              |
-| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share.png"/>               | <img alt="share_create.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/share_list.png"/>            |
-| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/move.png"/>                 |                                                                                                                         |                                                                                                                              |
-| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
-| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/storage.png"/>           | <img alt="add_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/enable_storage.png"/>    |
-| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile.png"/>           | <img alt="profile_auth.png" width="600" src="https://gitee.com/xddcode/free-fs/raw/master/.images/profile_auth.png"/>   |                                                                                                                              |
+| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/login.png"/>              | <img alt="register.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/register.png"/>          | <img alt="forget_password.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/forget_password.png"/> |
+| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/dashboard.png"/>       |                                                                                                                         |                                                                                                                              |
+| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/grid_file.png"/>       | <img alt="file.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/file.png"/>                   |                                                                                                                              |
+| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/recycle.png"/>           | <img alt="recycle_clear.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/recycle_clear.png"/> |                                                                                                                              |
+| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share.png"/>               | <img alt="share_create.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share_list.png"/>            |
+| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/move.png"/>                 |                                                                                                                         |                                                                                                                              |
+| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
+| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/storage.png"/>           | <img alt="add_storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/enable_storage.png"/>    |
+| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/profile.png"/>           | <img alt="profile_auth.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/profile_auth.png"/>   |                                                                                                                              |
 
 ---
 
@@ -233,7 +233,7 @@ chore: 构建/工具链更新
 
 如果你发现了 Bug 或有功能建议，请通过以下方式反馈：
 
-- [Gitee Issues](https://gitee.com/xddcode/free-fs/issues)
+- [Gitee Issues](https://gitee.com/dromara/free-fs/issues)
 
 ---
 
@@ -268,11 +268,11 @@ chore: 构建/工具链更新
 
   **添加微信，请注明来意**
 
-<img alt="wx.png" height="300" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/wx.png" width="250"/>
+<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/wx.png" width="250"/>
 
 - 微信公众号：
 
-<img alt="wp.png" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/mp.png"/>
+<img alt="wp.png" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/mp.png"/>
 
 ---
 
@@ -282,7 +282,7 @@ chore: 构建/工具链更新
 
 请给一个 ⭐️ 支持一下！
 
-<img alt="pay.png" height="300" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/pay.png" width="250"/>
+<img alt="pay.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/pay.png" width="250"/>
 
 <div align="center">
 
