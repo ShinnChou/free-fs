@@ -25,8 +25,7 @@ import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.FileUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
-import com.xddcodec.fs.fs.framework.ws.core.UploadProgressDTO;
-import com.xddcodec.fs.fs.framework.ws.handler.UploadWebSocketHandler;
+import com.xddcodec.fs.file.service.TransferSseService;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
@@ -38,7 +37,6 @@ import org.redisson.api.RLock;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +60,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
     private final Converter converter;
     private final FileInfoService fileInfoService;
-    private final UploadWebSocketHandler wsHandler;
+    private final TransferSseService transferSseService;
     private final TransferTaskCacheManager cacheManager;
     private final UploadTaskExceptionHandler exceptionHandler;
     @Qualifier("chunkUploadExecutor")
@@ -86,7 +84,70 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 //        }
         queryWrapper.orderBy(FILE_TRANSFER_TASK.CREATED_AT.asc());
         List<FileTransferTask> tasks = this.list(queryWrapper);
-        return converter.convert(tasks, FileTransferTaskVO.class);
+        List<FileTransferTaskVO> voList = converter.convert(tasks, FileTransferTaskVO.class);
+        
+        // 计算并填充进度相关字段
+        for (FileTransferTaskVO vo : voList) {
+            calculateProgressFields(vo);
+        }
+        
+        return voList;
+    }
+    
+    /**
+     * 计算并填充进度相关字段
+     */
+    private void calculateProgressFields(FileTransferTaskVO vo) {
+        String taskId = vo.getTaskId();
+        
+        // 获取已上传字节数
+        long uploadedBytes = cacheManager.getTransferredBytes(taskId);
+        vo.setUploadedSize(uploadedBytes);
+        
+        // 计算进度百分比（整数，0-100）
+        if (vo.getFileSize() != null && vo.getFileSize() > 0) {
+            double progressPercent = (uploadedBytes * 100.0) / vo.getFileSize();
+            // 四舍五入取整
+            int progressInt = (int) Math.round(Math.min(progressPercent, 100.0));
+            vo.setProgress(progressInt);
+        } else {
+            vo.setProgress(0);
+        }
+        
+        // 计算速度和剩余时间（仅对进行中的任务）
+        if (vo.getStatus() != null && 
+            (vo.getStatus().name().equals("uploading") || vo.getStatus().name().equals("downloading"))) {
+            
+            Long startTime = cacheManager.getStartTime(taskId);
+            if (startTime != null && uploadedBytes > 0) {
+                long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+                
+                if (elapsedSeconds > 0) {
+                    // 计算平均速度 (bytes/s)
+                    long speed = uploadedBytes / elapsedSeconds;
+                    vo.setSpeed(speed);
+                    
+                    // 计算剩余时间（秒）
+                    if (speed > 0 && vo.getFileSize() != null) {
+                        long remainingBytes = vo.getFileSize() - uploadedBytes;
+                        int remainTime = (int) (remainingBytes / speed);
+                        vo.setRemainTime(remainTime);
+                    } else {
+                        vo.setRemainTime(null);
+                    }
+                } else {
+                    vo.setSpeed(0L);
+                    vo.setRemainTime(null);
+                }
+            } else {
+                vo.setSpeed(0L);
+                vo.setRemainTime(null);
+            }
+        } else {
+            // 非进行中的任务不显示速度和剩余时间
+            vo.setSpeed(null);
+            vo.setRemainTime(null);
+        }
     }
 
     /**
@@ -135,8 +196,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             cacheManager.cacheTask(task);
             cacheManager.recordStartTime(task.getTaskId());
 
-            // 推送初始化成功消息
-            wsHandler.pushInitialized(taskId);
+            // 推送初始化成功状态事件
+            transferSseService.sendStatusEvent(userId, taskId, 
+                TransferTaskStatus.initialized.name(), "任务初始化成功");
 
             log.info("初始化上传成功: fileName={}", cmd.getFileName());
             return task.getTaskId();
@@ -160,7 +222,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             }
             updateTaskStatus(task, TransferTaskStatus.checking);
 
-            wsHandler.pushChecking(taskId);
+            transferSseService.sendStatusEvent(userId, taskId, 
+                TransferTaskStatus.checking.name(), "正在校验文件");
 
             // 检查同存储平台是否存在相同MD5的文件（秒传）
             QueryWrapper queryWrapper = new QueryWrapper();
@@ -195,8 +258,10 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             updateTaskStatus(task, TransferTaskStatus.uploading);
 
-            // 推送可以开始上传消息
-            wsHandler.pushReadyToUpload(taskId, uploadId);
+            // 推送可以开始上传状态事件
+            transferSseService.sendStatusEvent(userId, taskId, 
+                TransferTaskStatus.uploading.name(), "校验完成，可以开始上传");
+            
             return CheckUploadResultVO.builder()
                     .isQuickUpload(false)
                     .taskId(taskId)
@@ -260,8 +325,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             // 清理缓存
             cacheManager.cleanTask(taskId);
 
-            // 推送已完成消息
-            wsHandler.pushComplete(taskId, fileId);
+            // 推送完成事件
+            transferSseService.sendCompleteEvent(task.getUserId(), taskId, fileId, 
+                displayName, task.getFileSize());
 
             log.info("秒传成功: taskId={}, newFileId={}, refObjectKey={}",
                     taskId, fileId, existFile.getObjectKey());
@@ -338,80 +404,21 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         cacheManager.addTransferredChunk(taskId, chunkIndex, eTag);
         cacheManager.recordTransferredBytes(taskId, fileBytes.length);
 
-        // 推送进度
-        UploadProgressDTO progressDTO = buildProgressDTO(task);
-        wsHandler.pushProgress(taskId, progressDTO);
+        // 推送进度事件
+        Integer uploadedChunks = cacheManager.getTransferredChunks(taskId);
+        long uploadedBytes = cacheManager.getTransferredBytes(taskId);
+        transferSseService.sendProgressEvent(task.getUserId(), taskId, 
+            uploadedBytes, task.getFileSize(), uploadedChunks, task.getTotalChunks());
 
         log.info("分片上传成功: taskId={}, chunkIndex={}, progress={}/{}",
-                taskId, chunkIndex, task.getUploadedChunks(), task.getTotalChunks());
-        // 检查是否需要触发合并
-        checkAndTriggerMerge(task);
-    }
-
-    /**
-     * 检查并触发合并
-     */
-    private void checkAndTriggerMerge(FileTransferTask task) {
-        String taskId = task.getTaskId();
-        Integer totalChunks = task.getTotalChunks();
-
-        if (!cacheManager.isAllChunksTransferred(taskId, totalChunks)) {
-            Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
-            log.debug("分片未全部上传: taskId={}, progress={}/{}",
-                    taskId, uploadedCount, totalChunks);
-            return;
-        }
-        RLock lock = cacheManager.getMergeLock(taskId);
-        try {
-            // 尝试获取锁（等待最多10秒，锁自动释放时间30秒）
-            if (lock.tryLock(10, 30, TimeUnit.SECONDS)) {
-                try {
-                    // 双重检查状态（从 Redis）
-                    FileTransferTask latestTask = cacheManager.getTaskFromCache(taskId);
-
-                    if (!TransferTaskStatus.uploading.equals(latestTask.getStatus())) {
-                        log.info("任务已在合并或已完成，跳过: taskId={}, status={}",
-                                taskId, latestTask.getStatus());
-                        return;
-                    }
-                    // 新状态为 merging（Redis + 数据库）
-                    cacheManager.updateTaskStatus(taskId, TransferTaskStatus.merging);
-
-                    int updatedRows = this.getMapper().updateStatusByTaskIdAndStatus(
-                            taskId,
-                            TransferTaskStatus.merging,
-                            TransferTaskStatus.uploading
-                    );
-                    if (updatedRows == 0) {
-                        log.warn("数据库状态更新失败，可能已被其他实例更新: taskId={}", taskId);
-                        return;
-                    }
-                    log.info("开始合并文件: taskId={}", taskId);
-                    // 异步合并文件
-                    CompletableFuture.runAsync(() -> {
-                        try {
-                            doMergeChunks(latestTask.getTaskId());
-                        } catch (Exception e) {
-                            log.error("文件合并失败: taskId={}", taskId, e);
-                            exceptionHandler.handleTaskFailed(taskId, "文件合并失败: " + e.getMessage(), e);
-                        }
-                    }, fileMergeExecutor);
-                } finally {
-                    lock.unlock();
-                }
-            } else {
-                log.warn("获取合并锁超时: taskId={}", taskId);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("获取合并锁被中断: taskId={}", taskId, e);
-        }
+                taskId, chunkIndex, uploadedChunks, task.getTotalChunks());
     }
 
     @Override
     public void pauseTransfer(String taskId) {
+        FileTransferTask task = null;
         try {
-            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            task = getTaskFromCacheOrDB(taskId);
             TransferTaskStatus currentStatus = task.getStatus();
             if (!TransferTaskStatus.uploading.equals(currentStatus)
                     && !TransferTaskStatus.downloading.equals(currentStatus)) {
@@ -419,23 +426,27 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             }
             // 更新数据库状态
             updateTaskStatus(task, TransferTaskStatus.paused);
-
-            // 更新缓存状态
-            cacheManager.updateTaskStatus(taskId, TransferTaskStatus.paused);
-            // 推送暂停消息
-            wsHandler.pushPaused(taskId);
+            
+            // 推送暂停状态事件
+            transferSseService.sendStatusEvent(task.getUserId(), taskId, 
+                TransferTaskStatus.paused.name(), "任务已暂停");
+            
             log.info("暂停任务: taskId={}", taskId);
         } catch (Exception e) {
             log.error("暂停失败: taskId={}", taskId, e);
-            wsHandler.pushError(taskId, "暂停失败: " + e.getMessage());
+            if (task != null) {
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, 
+                    "PAUSE_FAILED", "暂停失败: " + e.getMessage());
+            }
             throw new StorageOperationException("暂停失败: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void resumeTransfer(String taskId) {
+        FileTransferTask task = null;
         try {
-            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            task = getTaskFromCacheOrDB(taskId);
             if (!TransferTaskStatus.paused.equals(task.getStatus())) {
                 throw new StorageOperationException("当前任务状态不支持继续操作");
             }
@@ -446,13 +457,18 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             updateTaskStatus(task, newStatus);
 
             Map<Integer, String> transferredChunks = cacheManager.getTransferredChunkList(taskId);
-            Set<Integer> chunkIndexes = transferredChunks.keySet();
-
-            wsHandler.pushResumed(taskId, chunkIndexes);
+            
+            // 推送恢复状态事件
+            transferSseService.sendStatusEvent(task.getUserId(), taskId, 
+                newStatus.name(), "任务已恢复");
+            
             log.info("继续任务成功: taskId={}, transferredChunks={}/{}", taskId, transferredChunks.size(), task.getTotalChunks());
         } catch (Exception e) {
             log.error("继续任务失败: taskId={}", taskId, e);
-            wsHandler.pushError(taskId, "继续任务失败: " + e.getMessage());
+            if (task != null) {
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, 
+                    "RESUME_FAILED", "继续任务失败: " + e.getMessage());
+            }
             throw new StorageOperationException("继续任务失败: " + e.getMessage(), e);
         }
 
@@ -467,16 +483,23 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelTransfer(String taskId) {
+        FileTransferTask task = null;
         try {
-            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            task = getTaskFromCacheOrDB(taskId);
             TransferTaskStatus currentStatus = task.getStatus();
 
             // 检查任务状态是否可以取消
             if (TransferTaskStatus.completed.equals(currentStatus)) {
                 throw new StorageOperationException("任务已完成，无法取消");
             }
-            //即可通知前端不要再上传分片
-            wsHandler.pushCancelling(taskId);
+            
+            // 验证状态转换合法性
+            validateStateTransition(currentStatus, TransferTaskStatus.canceled);
+            
+            // 推送取消中状态事件
+            transferSseService.sendStatusEvent(task.getUserId(), taskId, 
+                "cancelling", "正在取消任务");
+            
             //修改状态为已取消
             cacheManager.updateTaskStatus(taskId, TransferTaskStatus.canceled);
             // 短暂延迟，确保前端收到消息并停止上传
@@ -503,11 +526,18 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             this.removeById(task.getId());
             cacheManager.cleanTask(taskId);
-            wsHandler.pushCancelled(taskId);
+            
+            // 推送已取消状态事件
+            transferSseService.sendStatusEvent(task.getUserId(), taskId, 
+                TransferTaskStatus.canceled.name(), "任务已取消");
+            
             log.info("取消传输任务成功: taskId={}", taskId);
         } catch (Exception e) {
             log.error("取消传输任务异常: taskId={}", taskId, e);
-            wsHandler.pushError(taskId, "取消失败: " + e.getMessage());
+            if (task != null) {
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, 
+                    "CANCEL_FAILED", "取消失败: " + e.getMessage());
+            }
             throw new StorageOperationException("取消传输任务失败: " + e.getMessage(), e);
         }
     }
@@ -519,12 +549,19 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     }
 
     public FileInfo doMergeChunks(String taskId) {
+        FileTransferTask task = null;
         try {
             log.info("开始合并文件: taskId={}", taskId);
-            FileTransferTask task = getByTaskId(taskId);
+            task = getByTaskId(taskId);
             if (task == null) {
                 throw new StorageOperationException("上传任务不存在: " + taskId);
             }
+            
+            // 验证当前状态是否允许合并
+            if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
+                throw new BusinessException("任务状态不正确，当前状态: " + task.getStatus());
+            }
+            
             Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
             if (!uploadedCount.equals(task.getTotalChunks())) {
                 log.error("分片未全部上传，拒绝合并: taskId={}, uploaded={}, total={}",
@@ -533,6 +570,15 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                         String.format("分片不完整：已上传 %d/%d", uploadedCount, task.getTotalChunks())
                 );
             }
+            
+            // 更新状态为 merging
+            updateTaskStatus(task, TransferTaskStatus.merging);
+            
+            // 推送 merging 状态事件
+            transferSseService.sendStatusEvent(task.getUserId(), taskId, 
+                TransferTaskStatus.merging.name(), "正在合并分片");
+            
+            log.info("状态已更新为 merging: taskId={}", taskId);
             IStorageOperationService storageService = storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
             Map<Integer, String> chunkETags = cacheManager.getTransferredChunkList(taskId);
             // 获取存储服务并完成分片合并
@@ -588,8 +634,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             cacheManager.cleanTask(taskId);
 
-            // 推送完成消息
-            wsHandler.pushComplete(taskId, fileInfo.getId());
+            // 推送完成事件
+            transferSseService.sendCompleteEvent(task.getUserId(), taskId, 
+                fileInfo.getId(), fileInfo.getOriginalName(), fileInfo.getSize());
 
             log.info("分片合并成功: taskId={}, fileId={}, fileName={}", taskId, fileInfo.getId(), fileInfo.getOriginalName());
 
@@ -597,54 +644,15 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
         } catch (Exception e) {
             log.error("分片合并失败: taskId={}", taskId, e);
-            // 推送错误消息
+            
+            // 推送错误事件
+            if (task != null) {
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, 
+                    "MERGE_FAILED", "文件合并失败: " + e.getMessage());
+            }
+            
             throw new StorageOperationException("分片合并失败: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * 构建进度DTO
-     */
-    private UploadProgressDTO buildProgressDTO(FileTransferTask task) {
-        String taskId = task.getTaskId();
-
-        // 从 Redis Set 获取真实已上传数量
-        Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
-        long uploadedBytes = cacheManager.getTransferredBytes(taskId);
-
-        // 计算进度百分比
-        double progress = task.getTotalChunks() > 0
-                ? (uploadedCount * 100.0 / task.getTotalChunks())
-                : 0;
-
-        // 计算上传速度
-        Long startTime = cacheManager.getStartTime(taskId);
-        long speed = 0;
-        int remainTime = 0;
-
-        if (startTime != null) {
-            long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
-            if (elapsedSeconds > 0) {
-                speed = uploadedBytes / elapsedSeconds;
-
-                // 计算剩余时间
-                long remainingBytes = task.getFileSize() - uploadedBytes;
-                if (speed > 0) {
-                    remainTime = (int) (remainingBytes / speed);
-                }
-            }
-        }
-
-        return UploadProgressDTO.builder()
-                .taskId(taskId)
-                .uploadedChunks(uploadedCount)  // ⭐ 真实数量
-                .totalChunks(task.getTotalChunks())
-                .uploadedSize(uploadedBytes)
-                .totalSize(task.getFileSize())
-                .progress(Math.min(progress, 100.0))
-                .speed(speed)
-                .remainTime(remainTime)
-                .build();
     }
 
     /**
@@ -676,9 +684,96 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     }
 
     /**
+     * 验证状态转换是否合法
+     * 
+     * @param currentStatus 当前状态
+     * @param newStatus 目标状态
+     * @throws BusinessException 如果状态转换不合法
+     */
+    private void validateStateTransition(TransferTaskStatus currentStatus, TransferTaskStatus newStatus) {
+        // 如果状态相同，允许（幂等操作）
+        if (currentStatus == newStatus) {
+            return;
+        }
+        
+        // 根据状态机规则验证转换合法性
+        boolean isValid = false;
+        
+        switch (currentStatus) {
+            case initialized:
+                // initialized 可以转换到: checking, failed, canceled
+                isValid = newStatus == TransferTaskStatus.checking 
+                       || newStatus == TransferTaskStatus.failed 
+                       || newStatus == TransferTaskStatus.canceled;
+                break;
+                
+            case checking:
+                // checking 可以转换到: uploading, completed, failed, canceled
+                isValid = newStatus == TransferTaskStatus.uploading 
+                       || newStatus == TransferTaskStatus.completed 
+                       || newStatus == TransferTaskStatus.failed 
+                       || newStatus == TransferTaskStatus.canceled;
+                break;
+                
+            case uploading:
+                // uploading 可以转换到: paused, merging, failed, canceled
+                isValid = newStatus == TransferTaskStatus.paused 
+                       || newStatus == TransferTaskStatus.merging 
+                       || newStatus == TransferTaskStatus.failed 
+                       || newStatus == TransferTaskStatus.canceled;
+                break;
+                
+            case paused:
+                // paused 可以转换到: uploading, downloading, canceled
+                isValid = newStatus == TransferTaskStatus.uploading 
+                       || newStatus == TransferTaskStatus.downloading 
+                       || newStatus == TransferTaskStatus.canceled;
+                break;
+                
+            case merging:
+                // merging 可以转换到: completed, failed
+                isValid = newStatus == TransferTaskStatus.completed 
+                       || newStatus == TransferTaskStatus.failed;
+                break;
+                
+            case failed:
+                // failed 可以转换到: initialized (重试)
+                isValid = newStatus == TransferTaskStatus.initialized;
+                break;
+                
+            case downloading:
+                // downloading 可以转换到: paused, completed, failed, canceled
+                isValid = newStatus == TransferTaskStatus.paused 
+                       || newStatus == TransferTaskStatus.completed 
+                       || newStatus == TransferTaskStatus.failed 
+                       || newStatus == TransferTaskStatus.canceled;
+                break;
+                
+            case completed:
+            case canceled:
+                // completed 和 canceled 是终态，不允许转换
+                isValid = false;
+                break;
+                
+            default:
+                isValid = false;
+                break;
+        }
+        
+        if (!isValid) {
+            throw new BusinessException(
+                String.format("非法的状态转换: %s -> %s", currentStatus, newStatus)
+            );
+        }
+    }
+
+    /**
      * 更新任务状态（数据库 + 缓存）
      */
     private void updateTaskStatus(FileTransferTask task, TransferTaskStatus newStatus) {
+        // 验证状态转换合法性
+        validateStateTransition(task.getStatus(), newStatus);
+        
         task.setStatus(newStatus);
         task.setUpdatedAt(LocalDateTime.now());
         this.updateById(task);

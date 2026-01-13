@@ -3,12 +3,14 @@ package com.xddcodec.fs.file.controller;
 import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
+import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.framework.common.domain.Result;
+import com.xddcodec.fs.framework.sse.SseConnectionManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -21,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -36,12 +39,20 @@ import java.util.Set;
 public class FileTransferController {
 
     private final FileTransferTaskService fileTransferTaskService;
+    private final SseConnectionManager sseConnectionManager;
 
     @GetMapping("/files")
     @Operation(summary = "获取传输列表", description = "获取传输列表")
     public Result<List<FileTransferTaskVO>> getTransferFiles(TransferFilesQry qry) {
         List<FileTransferTaskVO> result = fileTransferTaskService.getTransferFiles(qry);
         return Result.ok(result);
+    }
+
+    @GetMapping("/sse")
+    @Operation(summary = "建立SSE连接", description = "建立SSE连接以接收实时传输事件")
+    public SseEmitter subscribe(@RequestParam String userId) {
+        log.info("User {} requesting SSE connection", userId);
+        return sseConnectionManager.createConnection(userId);
     }
 
     @PostMapping("/init")
@@ -59,7 +70,7 @@ public class FileTransferController {
     }
 
     @PostMapping("/chunk")
-    @Operation(summary = "上传分片", description = "异步上传分片，立即返回，通过WebSocket推送进度")
+    @Operation(summary = "上传分片", description = "异步上传分片，立即返回，通过SSE推送进度")
     public Result<?> uploadChunk(
             @RequestParam("file") MultipartFile file,
             @RequestParam("taskId") String taskId,
@@ -94,6 +105,13 @@ public class FileTransferController {
     public Result<Void> cancelUpload(@PathVariable String taskId) {
         fileTransferTaskService.cancelTransfer(taskId);
         return Result.ok();
+    }
+
+    @PostMapping("/merge/{taskId}")
+    @Operation(summary = "合并分片", description = "所有分片上传完成后调用，合并分片并返回文件ID")
+    public Result<String> mergeChunks(@PathVariable String taskId) {
+        FileInfo fileInfo = fileTransferTaskService.mergeChunks(taskId);
+        return Result.ok(fileInfo.getId(), "合并成功");
     }
 
     @GetMapping("/chunks/{taskId}")

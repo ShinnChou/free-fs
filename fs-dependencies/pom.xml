@@ -98,7 +98,7 @@
             </dependency>
             <dependency>
                 <groupId>com.xddcodec.fs</groupId>
-                <artifactId>fs-websocket</artifactId>
+                <artifactId>fs-sse</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

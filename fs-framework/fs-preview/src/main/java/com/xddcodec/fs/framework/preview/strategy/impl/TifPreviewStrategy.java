@@ -18,12 +18,12 @@ public class TifPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum type) {
-        return type == FileTypeEnum.DRAWIO;
+        return type == FileTypeEnum.TIF;
     }
 
     @Override
     public String getTemplatePath() {
-        return "preview/drawio";
+        return "preview/tif";
     }
 
 }

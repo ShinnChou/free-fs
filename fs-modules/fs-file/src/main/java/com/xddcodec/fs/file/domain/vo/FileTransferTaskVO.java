@@ -87,4 +87,24 @@ public class FileTransferTaskVO implements Serializable {
      */
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime completeTime;
+    
+    /**
+     * 进度百分比 (0-100)，整数
+     */
+    private Integer progress;
+    
+    /**
+     * 上传速度 (bytes/s)
+     */
+    private Long speed;
+    
+    /**
+     * 剩余时间（秒）
+     */
+    private Integer remainTime;
+    
+    /**
+     * 已上传字节数
+     */
+    private Long uploadedSize;
 }
