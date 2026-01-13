@@ -53,11 +53,4 @@ public interface PreviewStrategy {
      * 获取响应的文件扩展名（可能因转换而改变）
      */
     String getResponseExtension(String originalExtension);
-
-    /**
-     * 优先级（数字越小优先级越高）
-     */
-    default int getPriority() {
-        return 100;
-    }
 }

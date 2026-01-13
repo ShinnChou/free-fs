@@ -9,6 +9,9 @@ import java.util.Map;
 
 /**
  * 本地存储配置（从application.yml读取）
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Data
 @Component

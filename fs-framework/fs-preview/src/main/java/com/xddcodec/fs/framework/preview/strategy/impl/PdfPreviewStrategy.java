@@ -28,8 +28,4 @@ public class PdfPreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
     }
 
-    @Override
-    public int getPriority() {
-        return 6;
-    }
 }

@@ -3,7 +3,6 @@ package com.xddcodec.fs.storage.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.xddcodec.fs.framework.common.constant.CommonConstant;
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.JsonUtils;
 import com.xddcodec.fs.storage.domain.StoragePlatform;
@@ -15,7 +14,10 @@ import com.xddcodec.fs.storage.domain.vo.StoragePlatformVO;
 import com.xddcodec.fs.storage.domain.vo.StorageSettingUserVO;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
+import com.xddcodec.fs.storage.plugin.boot.StoragePluginRegistry;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.storage.plugin.core.dto.StoragePluginMetadata;
+import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import com.xddcodec.fs.storage.service.StoragePlatformService;
 import com.xddcodec.fs.storage.service.StorageSettingService;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -51,6 +53,8 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
     private final StoragePlatformService storagePlatformService;
 
     private final StorageServiceFacade storageServiceFacade;
+    
+    private final StoragePluginRegistry storagePluginRegistry;
 
     @Override
     @Cacheable(value = "storageSettings", keyGenerator = "storageSettingKeyGenerator", unless = "#result == null || #result.isEmpty()")
@@ -88,10 +92,17 @@ public class StorageSettingServiceImpl extends ServiceImpl<StorageSettingMapper,
         List<StorageActivePlatformsVO> result = new ArrayList<>();
         // 添加默认本地存储平台
         StorageActivePlatformsVO localInstance = new StorageActivePlatformsVO();
-        localInstance.setSettingId(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
-        localInstance.setPlatformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier());
-        localInstance.setPlatformIcon(StoragePlatformIdentifierEnum.LOCAL.getIcon());
-        localInstance.setPlatformName(StoragePlatformIdentifierEnum.LOCAL.getDescription());
+        StoragePluginMetadata localMetadata = storagePluginRegistry.getMetadata(StorageUtils.LOCAL_PLATFORM_IDENTIFIER);
+        localInstance.setSettingId(StorageUtils.LOCAL_PLATFORM_IDENTIFIER);
+        localInstance.setPlatformIdentifier(StorageUtils.LOCAL_PLATFORM_IDENTIFIER);
+        if (localMetadata != null) {
+            localInstance.setPlatformIcon(localMetadata.getIcon());
+            localInstance.setPlatformName(localMetadata.getName());
+        } else {
+            // 回退到默认值
+            localInstance.setPlatformIcon("icon-bendicunchu1");
+            localInstance.setPlatformName("本地存储");
+        }
         localInstance.setIsEnabled(true);
         localInstance.setRemark("系统默认");
         if (storageSetting != null) {

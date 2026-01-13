@@ -2,10 +2,10 @@ package com.xddcodec.fs.storage.plugin.local;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
+import com.xddcodec.fs.storage.plugin.core.annotation.StoragePlugin;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,6 +23,10 @@ import java.util.*;
  * @Date: 2024/10/26 17:00
  */
 @Slf4j
+@StoragePlugin(
+    identifier = "Local",
+    name = "本地存储，默认插件"
+)
 public class LocalStorageOperationService extends AbstractStorageOperationService {
 
     private String basePath;
@@ -36,11 +40,6 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     @SuppressWarnings("unused")
     public LocalStorageOperationService(StorageConfig config) {
         super(config);
-    }
-
-    @Override
-    public String getPlatformIdentifier() {
-        return StoragePlatformIdentifierEnum.LOCAL.getIdentifier();
     }
 
     @Override

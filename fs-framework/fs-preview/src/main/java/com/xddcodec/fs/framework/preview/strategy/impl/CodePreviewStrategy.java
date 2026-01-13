@@ -29,7 +29,9 @@ public class CodePreviewStrategy extends AbstractPreviewStrategy {
             Map.entry("xml", "xml"),
             Map.entry("yaml", "yaml"),
             Map.entry("yml", "yaml"),
-            Map.entry("md", "markdown.html")
+            Map.entry("toml", "toml"),
+            Map.entry("c", "cpp"),
+            Map.entry("h", "hpp")
     );
 
     @Override
@@ -51,9 +53,4 @@ public class CodePreviewStrategy extends AbstractPreviewStrategy {
         model.addAttribute("language", language);
     }
 
-
-    @Override
-    public int getPriority() {
-        return 2;
-    }
 }

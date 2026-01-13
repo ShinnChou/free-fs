@@ -30,8 +30,4 @@ public class UnsupportedPreviewStrategy extends AbstractPreviewStrategy {
         model.addAttribute("message", "该文件类型暂不支持在线预览");
     }
 
-    @Override
-    public int getPriority() {
-        return 999; // 最低优先级（兜底）
-    }
 }
