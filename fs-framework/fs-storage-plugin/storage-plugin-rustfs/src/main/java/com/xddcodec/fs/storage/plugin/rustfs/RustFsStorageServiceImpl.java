@@ -15,22 +15,10 @@ import com.xddcodec.fs.storage.plugin.rustfs.config.RustFsConfig;
 @StoragePlugin(
         identifier = "RustFS",
         name = "RustFS对象存储",
-        description = "RustFS是一个高性能的S3兼容对象存储服务",
+        description = "RustFS 是一个基于 Rust 构建的高性能分布式对象存储系统。Rust 是全球最受开发者喜爱的编程语言之一，RustFS 完美结合了 MinIO 的简洁性与 Rust 的内存安全及高性能优势。它提供完整的 S3 兼容性，完全开源，并专为数据湖、人工智能（AI）和大数据负载进行了优化。",
         icon = "icon-bendicunchu1",
         link = "https://github.com/rustfs/rustfs",
-        configSchema = """
-                {
-                    "type": "object",
-                    "properties": {
-                        "endpoint": {"type": "string", "title": "Endpoint", "description": "RustFS服务端点"},
-                        "accessKey": {"type": "string", "title": "AccessKey", "description": "访问密钥ID"},
-                        "secretKey": {"type": "string", "title": "SecretKey", "description": "访问密钥Secret", "format": "password"},
-                        "bucket": {"type": "string", "title": "Bucket名称", "description": "存储桶名称"},
-                        "customDomain": {"type": "string", "title": "自定义域名", "description": "用于生成文件URL的自定义域名（可选）"}
-                    },
-                    "required": ["endpoint", "accessKey", "secretKey", "bucket"]
-                }
-                """
+        schemaResource = "classpath:schema/rustfs-schema.json"
 )
 public class RustFsStorageServiceImpl extends AbstractS3CompatibleStorageService<RustFsConfig> {
 

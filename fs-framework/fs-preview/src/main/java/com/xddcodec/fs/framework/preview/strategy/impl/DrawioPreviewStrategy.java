@@ -26,8 +26,4 @@ public class DrawioPreviewStrategy extends AbstractPreviewStrategy {
         return "preview/drawio";
     }
 
-    @Override
-    public int getPriority() {
-        return 9;
-    }
 }

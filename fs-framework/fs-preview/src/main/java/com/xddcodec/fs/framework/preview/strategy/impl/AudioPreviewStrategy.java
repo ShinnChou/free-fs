@@ -28,9 +28,5 @@ public class AudioPreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
     }
 
-    @Override
-    public int getPriority() {
-        return 1;
-    }
 }
 

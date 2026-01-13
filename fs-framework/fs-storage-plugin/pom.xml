@@ -20,5 +20,6 @@
         <module>storage-plugin-local</module>
         <module>storage-plugin-aliyunoss</module>
         <module>storage-plugin-rustfs</module>
+        <module>storage-plugin-kodo</module>
     </modules>
 </project>

@@ -29,8 +29,4 @@ public class MarkdownPreviewStrategy extends AbstractPreviewStrategy {
         return "preview/markdown";
     }
 
-    @Override
-    public int getPriority() {
-        return 4;
-    }
 }

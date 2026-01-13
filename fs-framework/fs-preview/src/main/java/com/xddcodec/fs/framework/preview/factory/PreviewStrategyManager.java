@@ -30,8 +30,6 @@ public class PreviewStrategyManager {
                 .orElseThrow(() -> new IllegalStateException("缺少 UnsupportedPreviewStrategy 实现"));
         this.sortedStrategies = strategies.stream()
                 .filter(s -> !(s instanceof UnsupportedPreviewStrategy))
-                // 优先级数字越小越靠前
-                .sorted(Comparator.comparingInt(PreviewStrategy::getPriority))
                 .collect(Collectors.toList());
 
         log.info("初始化预览策略管理器，已加载 {} 个策略", sortedStrategies.size());
