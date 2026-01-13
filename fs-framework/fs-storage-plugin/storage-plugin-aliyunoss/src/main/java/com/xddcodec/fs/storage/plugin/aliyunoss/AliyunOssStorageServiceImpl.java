@@ -5,14 +5,12 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.common.auth.DefaultCredentialProvider;
-import com.aliyun.oss.common.comm.SignVersion;
-import com.aliyun.oss.internal.Mimetypes;
 import com.aliyun.oss.model.*;
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.aliyunoss.config.AliyunOssConfig;
 import com.xddcodec.fs.storage.plugin.core.AbstractStorageOperationService;
+import com.xddcodec.fs.storage.plugin.core.annotation.StoragePlugin;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,9 +19,19 @@ import java.util.*;
 
 /**
  * 阿里云 OSS 存储插件实现
- * TODO: 待实现
+ *
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
+@StoragePlugin(
+        identifier = "AliyunOSS",
+        name = "阿里云OSS",
+        description = "阿里云对象存储 OSS（Object Storage Service）是一款海量、安全、低成本、高可靠的云存储服务",
+        icon = "icon-aliyun1",
+        link = "https://www.aliyun.com/product/oss",
+        schemaResource = "classpath:schema/aliyun-oss-schema.json"
+)
 public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService {
 
     private OSS ossClient;
@@ -38,11 +46,6 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     @SuppressWarnings("unused")
     public AliyunOssStorageServiceImpl(StorageConfig config) {
         super(config);
-    }
-
-    @Override
-    public String getPlatformIdentifier() {
-        return StoragePlatformIdentifierEnum.ALIYUN_OSS.getIdentifier();
     }
 
     @Override

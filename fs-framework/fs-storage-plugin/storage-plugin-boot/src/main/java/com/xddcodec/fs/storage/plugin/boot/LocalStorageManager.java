@@ -1,8 +1,8 @@
 package com.xddcodec.fs.storage.plugin.boot;
 
-import com.xddcodec.fs.framework.common.enums.StoragePlatformIdentifierEnum;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.config.StorageConfig;
+import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -15,13 +15,13 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Local 存储管理器
- * 职责：
- * 1. 管理 Local 存储全局单例
- * 2. 懒加载创建实例
- * 3. 提供线程安全的单例访问
+ *
+ * 管理 Local 存储全局单例
+ * 懒加载创建实例
+ * 提供线程安全的单例访问
  *
  * @Author: xddcode
- * @Date: 2024/10/26
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @Component
@@ -91,7 +91,7 @@ public class LocalStorageManager {
     private IStorageOperationService createLocalInstance() {
         StorageConfig localConfig = StorageConfig.builder()
                 .configId(null) // Local 无需 configId
-                .platformIdentifier(StoragePlatformIdentifierEnum.LOCAL.getIdentifier())
+                .platformIdentifier(StorageUtils.LOCAL_PLATFORM_IDENTIFIER)
                 .enabled(true)
                 .properties(localStorageProperties.toPropertiesMap())
                 .build();

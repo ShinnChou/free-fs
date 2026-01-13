@@ -9,13 +9,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * 存储实例工厂
- * 职责：
- * 1. 根据配置创建存储实例
- * 2. 验证配置有效性
- * 3. 处理创建异常
  *
  * @Author: xddcode
- * @Date: 2024/10/26
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 @Component

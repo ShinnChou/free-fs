@@ -28,9 +28,4 @@ public class ImagePreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
     }
 
-    @Override
-    public int getPriority() {
-        return 3;
-    }
-
 }

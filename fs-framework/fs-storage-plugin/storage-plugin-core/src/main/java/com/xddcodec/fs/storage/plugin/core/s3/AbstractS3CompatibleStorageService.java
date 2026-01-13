@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
  * 封装AWS S3 SDK的通用逻辑
  *
  * @param <T> 具体的S3兼容配置类型
+ * @Author: xddcode
+ * @Date: 2026/01/12 22:06
  */
 @Slf4j
 public abstract class AbstractS3CompatibleStorageService<T extends S3CompatibleConfig>

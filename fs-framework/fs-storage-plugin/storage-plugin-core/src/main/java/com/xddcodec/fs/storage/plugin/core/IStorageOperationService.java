@@ -14,16 +14,9 @@ import java.util.Set;
  * 定义了存储平台的基本操作，如上传、下载、删除等
  *
  * @Author: xddcode
- * @Date: 2025/10/22 10:00
+ * @Date: 2026/01/12 22:06
  */
 public interface IStorageOperationService extends Closeable {
-
-    /**
-     * 获取平台标识符
-     *
-     * @return 平台标识符（如：local、aliyun_oss、minio）
-     */
-    String getPlatformIdentifier();
 
     /**
      * 创建配置化实例（工厂方法）
@@ -32,15 +25,6 @@ public interface IStorageOperationService extends Closeable {
      * @return 配置化的实例
      */
     IStorageOperationService createConfiguredInstance(StorageConfig config);
-
-    /**
-     * 获取配置Schema（用于前端动态表单）
-     *
-     * @return JSON Schema字符串
-     */
-    default String getConfigSchema() {
-        return "{}";
-    }
 
     /**
      * 上传文件
