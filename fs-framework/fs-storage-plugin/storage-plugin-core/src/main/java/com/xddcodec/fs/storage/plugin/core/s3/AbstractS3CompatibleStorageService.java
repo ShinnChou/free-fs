@@ -186,6 +186,42 @@ public abstract class AbstractS3CompatibleStorageService<T extends S3CompatibleC
     }
 
     @Override
+    public InputStream downloadFileRange(String objectKey, long startByte, long endByte) {
+        ensureNotPrototype();
+        try {
+            if (startByte < 0 || endByte < startByte) {
+                throw new StorageOperationException("无效的字节范围: startByte=" + startByte + ", endByte=" + endByte);
+            }
+
+            // 构建 Range 请求头：bytes=startByte-endByte
+            String range = "bytes=" + startByte + "-" + endByte;
+            
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .range(range)
+                    .build();
+            
+            InputStream stream = s3Client.getObject(request, ResponseTransformer.toInputStream());
+            
+            log.debug("{} Range读取文件成功: objectKey={}, range={}", 
+                    getLogPrefix(), objectKey, range);
+            
+            return stream;
+        } catch (NoSuchKeyException e) {
+            throw new StorageOperationException("文件不存在: " + objectKey, e);
+        } catch (S3Exception e) {
+            log.error("{} S3 Range读取失败: objectKey={}, startByte={}, endByte={}, errorCode={}", 
+                    getLogPrefix(), objectKey, startByte, endByte, e.awsErrorDetails().errorCode(), e);
+            throw new StorageOperationException("S3 Range读取文件失败: " + e.awsErrorDetails().errorMessage(), e);
+        } catch (Exception e) {
+            log.error("{} Range读取文件失败: objectKey={}, startByte={}, endByte={}", 
+                    getLogPrefix(), objectKey, startByte, endByte, e);
+            throw new StorageOperationException("S3 Range读取文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void deleteFile(String objectKey) {
         ensureNotPrototype();
         try {

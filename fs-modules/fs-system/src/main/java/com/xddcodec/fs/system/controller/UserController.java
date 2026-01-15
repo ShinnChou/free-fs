@@ -77,4 +77,12 @@ public class UserController {
         SysUserTransferSetting userTransferSetting = userTransferSettingService.getByUser();
         return Result.ok(userTransferSetting);
     }
+
+    @Operation(summary = "修改用户传输配置")
+    @PutMapping("/transfer/setting")
+    public Result<SysUserTransferSetting> updateUserTransferSetting(@Validated @RequestBody UserTransferSettingEditCmd cmd) {
+        userTransferSettingService.updateUserTransferSetting(cmd);
+        return Result.ok();
+    }
+
 }

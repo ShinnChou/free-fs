@@ -9,14 +9,17 @@ import com.xddcodec.fs.file.cache.TransferTaskCacheManager;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
+import com.xddcodec.fs.file.domain.dto.InitDownloadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
+import com.xddcodec.fs.file.domain.vo.InitDownloadResultVO;
 import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.file.handler.UploadTaskExceptionHandler;
+import com.xddcodec.fs.file.handler.DownloadTaskExceptionHandler;
 import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
@@ -29,6 +32,7 @@ import com.xddcodec.fs.file.service.TransferSseService;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
+import com.xddcodec.fs.system.domain.SysUserTransferSetting;
 import com.xddcodec.fs.system.service.SysUserTransferSettingService;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +55,11 @@ import java.util.stream.Collectors;
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 import static com.xddcodec.fs.file.domain.table.FileTransferTaskTableDef.FILE_TRANSFER_TASK;
 
+/**
+ * 文件传输任务服务实现
+ * 
+ * @author xddcode
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -61,6 +70,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     private final TransferSseService transferSseService;
     private final TransferTaskCacheManager cacheManager;
     private final UploadTaskExceptionHandler exceptionHandler;
+    private final DownloadTaskExceptionHandler downloadExceptionHandler;
     @Qualifier("chunkUploadExecutor")
     private final ThreadPoolTaskExecutor chunkUploadExecutor;
     @Qualifier("fileMergeExecutor")
@@ -98,13 +108,13 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     private void calculateProgressFields(FileTransferTaskVO vo) {
         String taskId = vo.getTaskId();
         
-        // 获取已上传字节数
-        long uploadedBytes = cacheManager.getTransferredBytes(taskId);
-        vo.setUploadedSize(uploadedBytes);
+        // 获取已传输字节数（上传和下载都使用相同的缓存键）
+        long transferredBytes = cacheManager.getTransferredBytes(taskId);
+        vo.setUploadedSize(transferredBytes); // 字段名为 uploadedSize，但对下载任务也表示已下载字节数
         
         // 计算进度百分比（整数，0-100）
         if (vo.getFileSize() != null && vo.getFileSize() > 0) {
-            double progressPercent = (uploadedBytes * 100.0) / vo.getFileSize();
+            double progressPercent = (transferredBytes * 100.0) / vo.getFileSize();
             // 四舍五入取整
             int progressInt = (int) Math.round(Math.min(progressPercent, 100.0));
             vo.setProgress(progressInt);
@@ -117,17 +127,17 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             (vo.getStatus().name().equals("uploading") || vo.getStatus().name().equals("downloading"))) {
             
             Long startTime = cacheManager.getStartTime(taskId);
-            if (startTime != null && uploadedBytes > 0) {
+            if (startTime != null && transferredBytes > 0) {
                 long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
                 
                 if (elapsedSeconds > 0) {
                     // 计算平均速度 (bytes/s)
-                    long speed = uploadedBytes / elapsedSeconds;
+                    long speed = transferredBytes / elapsedSeconds;
                     vo.setSpeed(speed);
                     
                     // 计算剩余时间（秒）
                     if (speed > 0 && vo.getFileSize() != null) {
-                        long remainingBytes = vo.getFileSize() - uploadedBytes;
+                        long remainingBytes = vo.getFileSize() - transferredBytes;
                         int remainTime = (int) (remainingBytes / speed);
                         vo.setRemainTime(remainTime);
                     } else {
@@ -418,18 +428,25 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         try {
             task = getTaskFromCacheOrDB(taskId);
             TransferTaskStatus currentStatus = task.getStatus();
+            
+            // 验证当前状态是否支持暂停（上传或下载中）
             if (!TransferTaskStatus.uploading.equals(currentStatus)
                     && !TransferTaskStatus.downloading.equals(currentStatus)) {
                 throw new BusinessException("当前任务状态不支持暂停操作: " + currentStatus);
             }
+            
+            // 验证状态转换合法性
+            validateStateTransition(currentStatus, TransferTaskStatus.paused);
+            
             // 更新数据库状态
             updateTaskStatus(task, TransferTaskStatus.paused);
             
             // 推送暂停状态事件
+            String taskTypeDesc = task.getTaskType() == TransferTaskType.upload ? "上传" : "下载";
             transferSseService.sendStatusEvent(task.getUserId(), taskId, 
-                TransferTaskStatus.paused.name(), "任务已暂停");
+                TransferTaskStatus.paused.name(), taskTypeDesc + "任务已暂停");
             
-            log.info("暂停任务: taskId={}", taskId);
+            log.info("暂停{}任务: taskId={}, taskType={}", taskTypeDesc, taskId, task.getTaskType());
         } catch (Exception e) {
             log.error("暂停失败: taskId={}", taskId, e);
             if (task != null) {
@@ -445,22 +462,41 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         FileTransferTask task = null;
         try {
             task = getTaskFromCacheOrDB(taskId);
-            if (!TransferTaskStatus.paused.equals(task.getStatus())) {
-                throw new StorageOperationException("当前任务状态不支持继续操作");
+            TransferTaskStatus currentStatus = task.getStatus();
+            
+            // 验证当前状态是否支持恢复
+            if (!TransferTaskStatus.paused.equals(currentStatus)) {
+                throw new BusinessException("当前任务状态不支持继续操作: " + currentStatus);
             }
+            
+            // 根据任务类型确定目标状态
             TransferTaskStatus newStatus = task.getTaskType() == TransferTaskType.upload
                     ? TransferTaskStatus.uploading
                     : TransferTaskStatus.downloading;
-
+            
+            // 验证状态转换合法性
+            validateStateTransition(currentStatus, newStatus);
+            
+            // 更新任务状态
             updateTaskStatus(task, newStatus);
 
-            Map<Integer, String> transferredChunks = cacheManager.getTransferredChunkList(taskId);
+            // 获取已传输的分片信息（上传任务使用 transferredChunkList，下载任务使用 downloadedChunks）
+            int transferredCount;
+            if (task.getTaskType() == TransferTaskType.upload) {
+                Map<Integer, String> transferredChunks = cacheManager.getTransferredChunkList(taskId);
+                transferredCount = transferredChunks.size();
+            } else {
+                Set<Integer> downloadedChunks = getDownloadedChunks(taskId);
+                transferredCount = downloadedChunks.size();
+            }
             
             // 推送恢复状态事件
+            String taskTypeDesc = task.getTaskType() == TransferTaskType.upload ? "上传" : "下载";
             transferSseService.sendStatusEvent(task.getUserId(), taskId, 
-                newStatus.name(), "任务已恢复");
+                newStatus.name(), taskTypeDesc + "任务已恢复");
             
-            log.info("继续任务成功: taskId={}, transferredChunks={}/{}", taskId, transferredChunks.size(), task.getTotalChunks());
+            log.info("继续{}任务成功: taskId={}, taskType={}, transferredChunks={}/{}", 
+                taskTypeDesc, taskId, task.getTaskType(), transferredCount, task.getTotalChunks());
         } catch (Exception e) {
             log.error("继续任务失败: taskId={}", taskId, e);
             if (task != null) {
@@ -469,7 +505,6 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             }
             throw new StorageOperationException("继续任务失败: " + e.getMessage(), e);
         }
-
     }
 
     @Override
@@ -488,24 +523,27 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 检查任务状态是否可以取消
             if (TransferTaskStatus.completed.equals(currentStatus)) {
-                throw new StorageOperationException("任务已完成，无法取消");
+                throw new BusinessException("任务已完成，无法取消");
             }
             
             // 验证状态转换合法性
             validateStateTransition(currentStatus, TransferTaskStatus.canceled);
             
             // 推送取消中状态事件
+            String taskTypeDesc = task.getTaskType() == TransferTaskType.upload ? "上传" : "下载";
             transferSseService.sendStatusEvent(task.getUserId(), taskId, 
-                "cancelling", "正在取消任务");
+                "cancelling", "正在取消" + taskTypeDesc + "任务");
             
-            //修改状态为已取消
+            // 修改状态为已取消
             cacheManager.updateTaskStatus(taskId, TransferTaskStatus.canceled);
-            // 短暂延迟，确保前端收到消息并停止上传
+            
+            // 短暂延迟，确保前端收到消息并停止传输
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            
             // 如果是上传任务且已经初始化了分片上传，需要中止分片上传
             if (TransferTaskType.upload.equals(task.getTaskType())
                     && task.getUploadId() != null
@@ -522,14 +560,17 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                 }
             }
 
+            // 删除任务记录
             this.removeById(task.getId());
+            
+            // 清理缓存（包括下载任务的进度记录）
             cacheManager.cleanTask(taskId);
             
             // 推送已取消状态事件
             transferSseService.sendStatusEvent(task.getUserId(), taskId, 
-                TransferTaskStatus.canceled.name(), "任务已取消");
+                TransferTaskStatus.canceled.name(), taskTypeDesc + "任务已取消");
             
-            log.info("取消传输任务成功: taskId={}", taskId);
+            log.info("取消{}任务成功: taskId={}, taskType={}", taskTypeDesc, taskId, task.getTaskType());
         } catch (Exception e) {
             log.error("取消传输任务异常: taskId={}", taskId, e);
             if (task != null) {
@@ -844,6 +885,341 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         downloadVO.setFileSize(fileInfo.getSize());
         downloadVO.setResource(resource);
         return downloadVO;
+    }
+
+    /**
+     * 初始化下载任务
+     *
+     * @param cmd 初始化下载命令
+     * @return 初始化结果
+     * @author xddcode
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public InitDownloadResultVO initDownload(InitDownloadCmd cmd) {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        String taskId = null;
+        
+        try {
+            SysUserTransferSetting userSetting = userTransferSettingService.getByUser();
+            Integer maxConcurrentDownloads = userSetting != null && userSetting.getConcurrentDownloadQuantity() != null
+                    ? userSetting.getConcurrentDownloadQuantity()
+                    : 3;
+            
+            QueryWrapper queryWrapper = new QueryWrapper();
+            queryWrapper.where(FILE_TRANSFER_TASK.USER_ID.eq(userId)
+                    .and(FILE_TRANSFER_TASK.TASK_TYPE.eq(TransferTaskType.download))
+                    .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+                    .and(FILE_TRANSFER_TASK.STATUS.in(
+                            TransferTaskStatus.initialized,
+                            TransferTaskStatus.downloading,
+                            TransferTaskStatus.paused
+                    )));
+            long currentDownloadCount = this.count(queryWrapper);
+            
+            if (currentDownloadCount >= maxConcurrentDownloads) {
+                throw new BusinessException(
+                    String.format("已达到最大并发下载任务数限制（%d/%d），请等待其他任务完成后再试", 
+                        currentDownloadCount, maxConcurrentDownloads)
+                );
+            }
+            
+            FileInfo fileInfo = fileInfoService.getById(cmd.getFileId());
+            if (fileInfo == null) {
+                throw new BusinessException("文件不存在");
+            }
+            
+            if (!fileInfo.getUserId().equals(userId)) {
+                throw new BusinessException("无权限下载该文件");
+            }
+            
+            IStorageOperationService storageService = 
+                storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
+            if (!storageService.isFileExist(fileInfo.getObjectKey())) {
+                throw new BusinessException("文件在存储服务中不存在");
+            }
+            
+            Long chunkSize = cmd.getChunkSize();
+            if (chunkSize == null || chunkSize <= 0) {
+                chunkSize = userTransferSettingService.getChunkSize(userId);
+            }
+            
+            int totalChunks = calculateTotalChunks(fileInfo.getSize(), chunkSize);
+            
+            taskId = IdUtil.fastSimpleUUID();
+            FileTransferTask task = new FileTransferTask();
+            task.setTaskId(taskId);
+            task.setUserId(userId);
+            task.setParentId(fileInfo.getParentId());
+            task.setFileName(fileInfo.getDisplayName());
+            task.setFileSize(fileInfo.getSize());
+            task.setSuffix(fileInfo.getSuffix());
+            task.setMimeType(fileInfo.getMimeType());
+            task.setTotalChunks(totalChunks);
+            task.setUploadedChunks(0);
+            task.setTaskType(TransferTaskType.download);
+            task.setChunkSize(chunkSize);
+            task.setObjectKey(fileInfo.getObjectKey());
+            task.setStoragePlatformSettingId(fileInfo.getStoragePlatformSettingId());
+            task.setStatus(TransferTaskStatus.initialized);
+            task.setStartTime(LocalDateTime.now());
+            
+            this.save(task);
+            cacheManager.cacheTask(task);
+            cacheManager.recordStartTime(taskId);
+            
+            Set<Integer> downloadedChunks = getDownloadedChunks(taskId);
+            
+            transferSseService.sendStatusEvent(userId, taskId, 
+                TransferTaskStatus.initialized.name(), "下载任务初始化成功");
+            
+            log.info("初始化下载任务成功: taskId={}, fileId={}, fileName={}, totalChunks={}, currentDownloads={}/{}", 
+                taskId, cmd.getFileId(), fileInfo.getDisplayName(), totalChunks, 
+                currentDownloadCount + 1, maxConcurrentDownloads);
+            
+            return InitDownloadResultVO.builder()
+                .taskId(taskId)
+                .fileName(fileInfo.getDisplayName())
+                .fileSize(fileInfo.getSize())
+                .totalChunks(totalChunks)
+                .chunkSize(chunkSize)
+                .downloadedChunks(downloadedChunks)
+                .build();
+                
+        } catch (BusinessException e) {
+            log.error("初始化下载任务失败: fileId={}", cmd.getFileId(), e);
+            
+            if (taskId != null) {
+                if (e.getMessage().contains("无权限")) {
+                    downloadExceptionHandler.handlePermissionDenied(taskId, userId, cmd.getFileId());
+                } else if (e.getMessage().contains("不存在")) {
+                    downloadExceptionHandler.handleFileNotFound(taskId, cmd.getFileId());
+                } else {
+                    downloadExceptionHandler.handleDownloadTaskFailed(taskId, e.getMessage(), e);
+                }
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("初始化下载任务失败: fileId={}", cmd.getFileId(), e);
+            
+            if (taskId != null) {
+                downloadExceptionHandler.handleDownloadTaskFailed(taskId, 
+                    "初始化下载任务失败: " + e.getMessage(), e);
+            }
+            throw new StorageOperationException("初始化下载任务失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 下载分片
+     *
+     * @param taskId     任务ID
+     * @param chunkIndex 分片索引
+     * @return 分片数据流
+     * @author xddcode
+     */
+    @Override
+    public InputStream downloadChunk(String taskId, Integer chunkIndex) {
+        FileTransferTask task = null;
+        
+        try {
+            task = getTaskFromCacheOrDB(taskId);
+            
+            if (task.getTaskType() != TransferTaskType.download) {
+                throw new BusinessException("任务类型不正确，期望: download，实际: " + task.getTaskType());
+            }
+            
+            if (chunkIndex < 0 || chunkIndex >= task.getTotalChunks()) {
+                throw new BusinessException(
+                    String.format("分片索引无效: %d，有效范围: [0, %d)", chunkIndex, task.getTotalChunks())
+                );
+            }
+            
+            long startByte = (long) chunkIndex * task.getChunkSize();
+            long endByte = Math.min(startByte + task.getChunkSize() - 1, task.getFileSize() - 1);
+            
+            log.info("下载分片: taskId={}, chunkIndex={}, range=[{}, {}]", 
+                taskId, chunkIndex, startByte, endByte);
+            
+            IStorageOperationService storageService = 
+                storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
+            InputStream inputStream = storageService.downloadFileRange(
+                task.getObjectKey(), startByte, endByte);
+            
+            SysUserTransferSetting userSetting = userTransferSettingService.getByUser();
+            if (userSetting != null && userSetting.getDownloadSpeedLimit() != null 
+                    && userSetting.getDownloadSpeedLimit() > 0) {
+                long maxBytesPerSecond = (long) userSetting.getDownloadSpeedLimit() * 1024 * 1024;
+                inputStream = new com.xddcodec.fs.file.utils.ThrottledInputStream(inputStream, maxBytesPerSecond);
+                log.debug("应用下载速率限制: taskId={}, speedLimit={} MB/s", 
+                    taskId, userSetting.getDownloadSpeedLimit());
+            }
+            
+            CompletableFuture.runAsync(() -> {
+                try {
+                    markChunkDownloaded(taskId, chunkIndex);
+                } catch (Exception e) {
+                    log.error("记录下载进度失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
+                }
+            }, chunkUploadExecutor);
+            
+            return inputStream;
+            
+        } catch (BusinessException e) {
+            log.error("下载分片失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
+            
+            // 处理业务异常
+            if (task != null) {
+                if (e.getMessage().contains("分片索引无效")) {
+                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex, 
+                        "分片索引无效", e);
+                } else if (e.getMessage().contains("任务类型不正确")) {
+                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex, 
+                        "任务类型不正确", e);
+                } else {
+                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex, 
+                        e.getMessage(), e);
+                }
+            }
+            throw e;
+        } catch (StorageOperationException e) {
+            log.error("存储读取失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
+            
+            // 处理存储操作异常
+            if (task != null) {
+                downloadExceptionHandler.handleStorageReadFailed(taskId, task.getObjectKey(), e);
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("下载分片失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
+            
+            // 处理其他异常
+            if (task != null) {
+                downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex, 
+                    "下载分片失败: " + e.getMessage(), e);
+            }
+            throw new StorageOperationException("下载分片失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 记录分片下载完成
+     *
+     * @param taskId     任务ID
+     * @param chunkIndex 分片索引
+     * @author xddcode
+     */
+    @Override
+    public void markChunkDownloaded(String taskId, Integer chunkIndex) {
+        try {
+            String chunksKey = "download:chunks:" + taskId;
+            if (cacheManager.sHasKey(chunksKey, chunkIndex)) {
+                log.debug("分片已记录，跳过: taskId={}, chunkIndex={}", taskId, chunkIndex);
+                return;
+            }
+            
+            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            
+            cacheManager.sSetAndTime(chunksKey, 7 * 24 * 60 * 60, chunkIndex);
+            
+            Long downloadedCount = cacheManager.sGetSetSize(chunksKey);
+            task.setUploadedChunks(downloadedCount.intValue());
+            this.updateById(task);
+            
+            long chunkBytes = task.getChunkSize();
+            if (chunkIndex == task.getTotalChunks() - 1) {
+                long lastChunkSize = task.getFileSize() - ((long) chunkIndex * task.getChunkSize());
+                chunkBytes = lastChunkSize;
+            }
+            cacheManager.recordTransferredBytes(taskId, chunkBytes);
+            
+            long downloadedBytes = cacheManager.getTransferredBytes(taskId);
+            transferSseService.sendProgressEvent(task.getUserId(), taskId, 
+                downloadedBytes, task.getFileSize(), downloadedCount.intValue(), task.getTotalChunks());
+            
+            log.info("记录下载进度: taskId={}, chunkIndex={}, progress={}/{}", 
+                taskId, chunkIndex, downloadedCount, task.getTotalChunks());
+            
+            if (downloadedCount.intValue() >= task.getTotalChunks()) {
+                updateTaskStatus(task, TransferTaskStatus.completed);
+                task.setCompleteTime(LocalDateTime.now());
+                this.updateById(task);
+                
+                transferSseService.sendCompleteEvent(task.getUserId(), taskId, 
+                    task.getFileName(), task.getFileName(), task.getFileSize());
+                
+                try {
+                    cacheManager.deleteKey(chunksKey);
+                    log.debug("清理下载分片记录: taskId={}", taskId);
+                } catch (Exception cleanupEx) {
+                    log.warn("清理下载分片记录失败: taskId={}", taskId, cleanupEx);
+                }
+                
+                log.info("下载任务完成: taskId={}, fileName={}", taskId, task.getFileName());
+            }
+            
+        } catch (Exception e) {
+            log.error("记录下载进度失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
+            // 不抛出异常，避免影响下载流程
+        }
+    }
+
+    /**
+     * 获取已下载的分片列表
+     *
+     * @param taskId 任务ID
+     * @return 已下载分片索引集合
+     * @author xddcode
+     */
+    @Override
+    public Set<Integer> getDownloadedChunks(String taskId) {
+        try {
+            String chunksKey = "download:chunks:" + taskId;
+            Set<Object> chunks = cacheManager.sGet(chunksKey);
+            
+            if (chunks == null || chunks.isEmpty()) {
+                return Collections.emptySet();
+            }
+            
+            // 转换为 Integer Set
+            Set<Integer> result = new HashSet<>();
+            for (Object chunk : chunks) {
+                if (chunk instanceof Integer) {
+                    result.add((Integer) chunk);
+                } else {
+                    try {
+                        result.add(Integer.parseInt(chunk.toString()));
+                    } catch (NumberFormatException e) {
+                        log.error("解析分片索引失败: chunk={}", chunk, e);
+                    }
+                }
+            }
+            
+            log.debug("查询已下载分片: taskId={}, count={}", taskId, result.size());
+            return result;
+            
+        } catch (Exception e) {
+            log.error("查询已下载分片失败: taskId={}", taskId, e);
+            return Collections.emptySet();
+        }
+    }
+
+    @Override
+    public FileTransferTask getTask(String taskId) {
+        if (StringUtils.isBlank(taskId)) {
+            throw new BusinessException("任务ID不能为空");
+        }
+        
+        QueryWrapper queryWrapper = QueryWrapper.create()
+                .where(FILE_TRANSFER_TASK.TASK_ID.eq(taskId));
+        
+        FileTransferTask task = this.getOne(queryWrapper);
+        if (task == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
+        
+        return task;
     }
 
 }

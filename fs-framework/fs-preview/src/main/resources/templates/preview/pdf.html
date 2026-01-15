@@ -153,7 +153,7 @@
     // 使用 Blob 方式加载 PDF，避免 IDM 等下载工具拦截
     async function loadPdfWithBlob() {
         try {
-            loading.innerHTML = '<div class="spinner"></div><div>正在加载 PDF...</div>';
+            loading.innerHTML = '<div class="spinner"></div><div>加载中...</div>';
 
             // 通过 fetch 获取 PDF 数据
             const response = await fetch(streamUrl, {

@@ -44,6 +44,16 @@ public interface IStorageOperationService extends Closeable {
     InputStream downloadFile(String objectKey);
 
     /**
+     * 按字节范围读取文件（用于分片下载）
+     *
+     * @param objectKey 对象键（文件路径）
+     * @param startByte 起始字节位置（包含，从0开始）
+     * @param endByte   结束字节位置（包含）
+     * @return 指定范围的文件流
+     */
+    InputStream downloadFileRange(String objectKey, long startByte, long endByte);
+
+    /**
      * 删除文件
      *
      * @param objectKey 对象键

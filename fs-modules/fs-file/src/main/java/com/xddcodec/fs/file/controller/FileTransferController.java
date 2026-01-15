@@ -1,13 +1,16 @@
 package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.dto.CheckUploadCmd;
+import com.xddcodec.fs.file.domain.dto.InitDownloadCmd;
 import com.xddcodec.fs.file.domain.dto.InitUploadCmd;
 import com.xddcodec.fs.file.domain.dto.UploadChunkCmd;
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.qry.DownloadChunkQry;
 import com.xddcodec.fs.file.domain.qry.TransferFilesQry;
 import com.xddcodec.fs.file.domain.vo.CheckUploadResultVO;
 import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileTransferTaskVO;
+import com.xddcodec.fs.file.domain.vo.InitDownloadResultVO;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.framework.sse.SseConnectionManager;
@@ -17,19 +20,29 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 文件传输控制器
+ * 
+ * @author xddcode
+ */
 @Validated
 @Slf4j
 @RestController
@@ -126,6 +139,59 @@ public class FileTransferController {
     public Result<Set<Integer>> clearTransfers() {
         fileTransferTaskService.clearTransfers();
         return Result.ok();
+    }
+
+    @PostMapping("/init-download")
+    @Operation(summary = "初始化下载任务", description = "创建下载任务并返回任务信息")
+    public Result<InitDownloadResultVO> initDownload(@RequestBody @Validated InitDownloadCmd cmd) {
+        InitDownloadResultVO result = fileTransferTaskService.initDownload(cmd);
+        return Result.ok(result, "初始化下载任务成功");
+    }
+
+    @GetMapping("/download/chunk")
+    @Operation(summary = "下载分片", description = "下载指定分片，返回206 Partial Content")
+    public ResponseEntity<StreamingResponseBody> downloadChunk(@Validated DownloadChunkQry qry) {
+        try {
+            // 获取任务信息
+            com.xddcodec.fs.file.domain.FileTransferTask task = fileTransferTaskService.getTask(qry.getTaskId());
+            
+            // 计算字节范围
+            long startByte = (long) qry.getChunkIndex() * task.getChunkSize();
+            long endByte = Math.min(startByte + task.getChunkSize() - 1, task.getFileSize() - 1);
+            long contentLength = endByte - startByte + 1;
+            
+            // 创建流式响应
+            StreamingResponseBody responseBody = outputStream -> {
+                try (InputStream inputStream = fileTransferTaskService.downloadChunk(
+                        qry.getTaskId(), qry.getChunkIndex())) {
+                    IOUtils.copy(inputStream, outputStream);
+                    outputStream.flush();
+                } catch (Exception e) {
+                    log.error("下载分片失败: taskId={}, chunkIndex={}", qry.getTaskId(), qry.getChunkIndex(), e);
+                    throw new RuntimeException("下载分片失败", e);
+                }
+            };
+            
+            // 设置响应头
+            return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                    .header(HttpHeaders.CONTENT_RANGE, 
+                            String.format("bytes %d-%d/%d", startByte, endByte, task.getFileSize()))
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(contentLength))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=\"" + URLEncoder.encode(task.getFileName(), StandardCharsets.UTF_8) + "\"")
+                    .body(responseBody);
+        } catch (Exception e) {
+            log.error("下载分片失败: taskId={}, chunkIndex={}", qry.getTaskId(), qry.getChunkIndex(), e);
+            throw new RuntimeException("下载分片失败", e);
+        }
+    }
+
+    @GetMapping("/download/chunks/{taskId}")
+    @Operation(summary = "查询已下载分片", description = "获取已下载的分片索引列表")
+    public Result<Set<Integer>> getDownloadedChunks(@PathVariable String taskId) {
+        Set<Integer> downloadedChunks = fileTransferTaskService.getDownloadedChunks(taskId);
+        return Result.ok(downloadedChunks);
     }
 
     @GetMapping("/download/{fileId}")
