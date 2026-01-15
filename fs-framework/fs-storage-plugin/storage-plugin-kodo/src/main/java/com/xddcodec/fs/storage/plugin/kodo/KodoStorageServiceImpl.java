@@ -111,6 +111,15 @@ public class KodoStorageServiceImpl extends AbstractStorageOperationService {
     }
 
     @Override
+    public InputStream downloadFileRange(String objectKey, long startByte, long endByte) {
+        ensureNotPrototype();
+        // 七牛云Kodo暂不支持Range读取，返回null
+        // 如需实现，可以通过HTTP Range请求实现
+        log.warn("{} 七牛云Kodo暂不支持Range读取: objectKey={}", getLogPrefix(), objectKey);
+        throw new StorageOperationException("七牛云Kodo暂不支持Range读取功能");
+    }
+
+    @Override
     public void deleteFile(String objectKey) {
         ensureNotPrototype();
         try {

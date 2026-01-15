@@ -116,6 +116,7 @@ security:
     - /apis/share/verify/code
     - /apis/share/**/info
     - /apis/share/**/download/**
+    - /apis/transfer/sse
 
 --- #Sa-Token 配置
 sa-token:

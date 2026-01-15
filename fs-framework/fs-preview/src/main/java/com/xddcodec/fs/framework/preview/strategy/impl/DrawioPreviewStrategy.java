@@ -18,7 +18,7 @@ public class DrawioPreviewStrategy extends AbstractPreviewStrategy {
 
     @Override
     public boolean support(FileTypeEnum type) {
-        return type == FileTypeEnum.TIF;
+        return type == FileTypeEnum.DRAWIO;
     }
 
     @Override

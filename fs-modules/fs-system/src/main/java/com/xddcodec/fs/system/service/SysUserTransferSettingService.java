@@ -39,4 +39,12 @@ public interface SysUserTransferSettingService extends IService<SysUserTransferS
      * @param userId 用户id
      */
     void deleteUserTransferSetting(String userId);
+
+    /**
+     * 获取用户的分片大小配置
+     *
+     * @param userId 用户id
+     * @return 分片大小（字节），默认 5MB
+     */
+    Long getChunkSize(String userId);
 }

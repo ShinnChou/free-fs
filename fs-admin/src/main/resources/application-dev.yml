@@ -32,7 +32,7 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: insentek
+      password: 123456
       database: 0
       # 连接超时时间
       timeout: 10s
@@ -54,16 +54,6 @@ spring:
       time-to-live: 3600000
       # 缓存null值，防止缓存穿透
       cache-null-values: true
-# Redisson 配置
-redisson:
-  config: |
-    singleServerConfig:
-      address: "redis://127.0.0.1:6379"
-      password: "insentek"
-      database: 0
-      timeout: 3000 
-      connectionPoolSize: 64
-      connectionMinimumIdleSize: 10
 
 fs:
   # 分享配置
@@ -84,12 +74,12 @@ fs:
     # 缓冲区大小（字节），默认8KB
     buffer-size: 8192
     office:
-      enabled: false
+      enabled: true
       #LibreOffice 安装路径
       # Linux: /usr/lib/libreoffice
       # Windows: C:/Program Files/LibreOffice
       # Mac: /Applications/LibreOffice.app/Contents
-      office-home: C:/Program Files/LibreOffice
+#      office-home: C:/Program Files/LibreOffice
       pool-size: 2
       task-execution-timeout: 120000
       task-queue-timeout: 30000

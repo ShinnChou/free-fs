@@ -25,6 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 文件流控制器
+ * 
+ * @author xddcode
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/file/stream")
@@ -126,7 +131,7 @@ public class FileStreamController {
     }
 
     /**
-     * 构建响应头（核心修复位置）
+     * 构建响应头
      */
     private HttpHeaders buildHeaders(FileInfo file, PreviewStrategy strategy,
                                      long visibleLength, boolean isRange) {
@@ -135,26 +140,17 @@ public class FileStreamController {
         String responseExtension = strategy.getResponseExtension(file.getSuffix());
         String fileName = changeExtension(file.getDisplayName(), responseExtension);
 
-        // === 核心修复开始 ===
-
-        // 1. 设置 Content-Type
-        // 如果是PDF预览，强制设置 application/pdf，否则有些浏览器会下载而不是预览
+        // 设置 Content-Type
         if ("pdf".equalsIgnoreCase(responseExtension)) {
             headers.setContentType(MediaType.APPLICATION_PDF);
         } else {
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         }
 
-        // 2. 智能设置 Content-Length
-        // 如果该策略需要转换(needConvert=true, 如Word转PDF)，因为文件大小变了，
-        // 所以不能使用数据库里的原始文件大小。不设置Length，走Chunked传输。
-        // 如果是Range请求，说明是流片段，长度是确定的，必须设置。
+        // 智能设置 Content-Length：转换流不设置长度，Range请求必须设置
         if (isRange || !strategy.needConvert()) {
             headers.setContentLength(visibleLength);
         }
-        // 这里的 Else 就是核心：needConvert=true 且不是Range请求 -> 不设置 Content-Length
-
-        // === 核心修复结束 ===
 
         headers.set(HttpHeaders.CONTENT_DISPOSITION,
                 "inline; filename*=UTF-8''" + encodeFileName(fileName));
@@ -164,7 +160,6 @@ public class FileStreamController {
             headers.setCacheControl("public, max-age=604800");
         } else {
             headers.set(HttpHeaders.ACCEPT_RANGES, "none");
-            // 转换后的流尽量不长缓存，或者根据业务需求调整
             headers.setCacheControl("no-cache");
         }
 

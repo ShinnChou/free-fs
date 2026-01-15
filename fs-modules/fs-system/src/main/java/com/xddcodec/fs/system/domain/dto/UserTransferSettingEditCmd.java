@@ -28,4 +28,7 @@ public class UserTransferSettingEditCmd {
     @NotNull(message = "下载并发数不能为空")
     @Max(value = 3, message = "下载并发数不能超过3")
     private Integer concurrentDownloadQuantity;
+
+    @NotNull(message = "分片大小不能为空")
+    private Long chunkSize;
 }
