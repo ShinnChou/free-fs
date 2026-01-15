@@ -139,6 +139,43 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
     }
 
     @Override
+    public InputStream downloadFileRange(String objectKey, long startByte, long endByte) {
+        ensureNotPrototype();
+
+        try {
+            String fullPath = resolveFullPath(objectKey);
+            File file = new File(fullPath);
+
+            if (!file.exists()) {
+                throw new StorageOperationException("文件不存在: " + objectKey);
+            }
+
+            if (startByte < 0 || endByte < startByte) {
+                throw new StorageOperationException("无效的字节范围: startByte=" + startByte + ", endByte=" + endByte);
+            }
+
+            if (startByte >= file.length()) {
+                throw new StorageOperationException("起始字节超出文件大小: startByte=" + startByte + ", fileSize=" + file.length());
+            }
+
+            // 使用 RandomAccessFile 定位到起始字节
+            RandomAccessFile raf = new RandomAccessFile(file, "r");
+            raf.seek(startByte);
+            
+            // 计算需要读取的字节数
+            long length = Math.min(endByte - startByte + 1, file.length() - startByte);
+            
+            log.debug("{} Range读取文件: objectKey={}, startByte={}, endByte={}, length={}", 
+                    getLogPrefix(), objectKey, startByte, endByte, length);
+            
+            // 返回限制长度的 InputStream
+            return new BoundedFileInputStream(raf, length);
+        } catch (IOException e) {
+            throw new StorageOperationException("Range读取文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void deleteFile(String objectKey) {
         ensureNotPrototype();
 
@@ -391,5 +428,54 @@ public class LocalStorageOperationService extends AbstractStorageOperationServic
      */
     private String getTempDir(String uploadId) {
         return basePath + File.separator + "temp" + File.separator + uploadId + File.separator;
+    }
+
+    /**
+     * 限制读取长度的 InputStream 包装类
+     * 用于实现 Range 读取功能
+     */
+    private static class BoundedFileInputStream extends InputStream {
+        private final RandomAccessFile raf;
+        private long remaining;
+
+        public BoundedFileInputStream(RandomAccessFile raf, long length) {
+            this.raf = raf;
+            this.remaining = length;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (remaining <= 0) {
+                return -1;
+            }
+            int result = raf.read();
+            if (result != -1) {
+                remaining--;
+            }
+            return result;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            if (remaining <= 0) {
+                return -1;
+            }
+            int toRead = (int) Math.min(len, remaining);
+            int bytesRead = raf.read(b, off, toRead);
+            if (bytesRead > 0) {
+                remaining -= bytesRead;
+            }
+            return bytesRead;
+        }
+
+        @Override
+        public void close() throws IOException {
+            raf.close();
+        }
+
+        @Override
+        public int available() throws IOException {
+            return (int) Math.min(remaining, Integer.MAX_VALUE);
+        }
     }
 }

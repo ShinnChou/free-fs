@@ -7,6 +7,8 @@ import com.xddcodec.fs.system.domain.SysUserTransferSetting;
 import com.xddcodec.fs.system.domain.dto.UserTransferSettingEditCmd;
 import com.xddcodec.fs.system.mapper.SysUserTransferSettingMapper;
 import com.xddcodec.fs.system.service.SysUserTransferSettingService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import static com.xddcodec.fs.system.domain.table.SysUserTransferSettingTableDef.SYS_USER_TRANSFER_SETTING;
@@ -22,32 +24,54 @@ public class SysUserTransferSettingServiceImpl extends ServiceImpl<SysUserTransf
 
     @Override
     public void initUserTransferSetting(String userId) {
-        SysUserTransferSetting transferSetting = new SysUserTransferSetting();
-        transferSetting.setUserId(userId);
+        SysUserTransferSetting transferSetting = SysUserTransferSetting.init(userId);
         this.save(transferSetting);
     }
 
     @Override
+    @Cacheable(value = "userTransferSetting", keyGenerator = "userKeyGenerator")
     public SysUserTransferSetting getByUser() {
         String userId = StpUtil.getLoginIdAsString();
         return this.getOne(new QueryWrapper().where(SYS_USER_TRANSFER_SETTING.USER_ID.eq(userId)));
     }
 
     @Override
+    @CacheEvict(value = "userTransferSetting", keyGenerator = "userKeyGenerator")
     public void updateUserTransferSetting(UserTransferSettingEditCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
-        SysUserTransferSetting transferSetting = new SysUserTransferSetting();
-        transferSetting.setUserId(userId);
-        transferSetting.setDownloadLocation(cmd.getDownloadLocation());
-        transferSetting.setIsDefaultDownloadLocation(cmd.getIsDefaultDownloadLocation());
-        transferSetting.setConcurrentDownloadQuantity(cmd.getConcurrentDownloadQuantity());
-        transferSetting.setConcurrentUploadQuantity(cmd.getConcurrentUploadQuantity());
-        transferSetting.setDownloadSpeedLimit(cmd.getDownloadSpeedLimit());
-        this.updateById(transferSetting);
+
+        SysUserTransferSetting transferSetting = this.getOne(
+                new QueryWrapper()
+                        .where(SYS_USER_TRANSFER_SETTING.USER_ID.eq(userId))
+        );
+        if (transferSetting == null) {
+            SysUserTransferSetting newTransferSetting = SysUserTransferSetting.init(userId);
+            this.save(newTransferSetting);
+        } else {
+            transferSetting.setUserId(userId);
+            transferSetting.setDownloadLocation(cmd.getDownloadLocation());
+            transferSetting.setIsDefaultDownloadLocation(cmd.getIsDefaultDownloadLocation());
+            transferSetting.setConcurrentDownloadQuantity(cmd.getConcurrentDownloadQuantity());
+            transferSetting.setConcurrentUploadQuantity(cmd.getConcurrentUploadQuantity());
+            transferSetting.setDownloadSpeedLimit(cmd.getDownloadSpeedLimit());
+            transferSetting.setChunkSize(cmd.getChunkSize());
+            this.updateById(transferSetting);
+        }
     }
 
     @Override
+    @CacheEvict(value = "userTransferSetting", key = "#userId")
     public void deleteUserTransferSetting(String userId) {
         this.remove(new QueryWrapper().where(SYS_USER_TRANSFER_SETTING.USER_ID.eq(userId)));
+    }
+
+    @Override
+    public Long getChunkSize(String userId) {
+        SysUserTransferSetting setting = getByUser();
+        if (setting != null && setting.getChunkSize() != null && setting.getChunkSize() > 0) {
+            return setting.getChunkSize();
+        }
+        // 默认分片大小：5MB
+        return 5L * 1024 * 1024;
     }
 }

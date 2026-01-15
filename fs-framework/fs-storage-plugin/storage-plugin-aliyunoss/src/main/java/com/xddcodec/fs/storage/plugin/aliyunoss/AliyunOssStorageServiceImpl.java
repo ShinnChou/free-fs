@@ -148,6 +148,43 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
+    public InputStream downloadFileRange(String objectKey, long startByte, long endByte) {
+        ensureNotPrototype();
+        try {
+            if (startByte < 0 || endByte < startByte) {
+                throw new StorageOperationException("无效的字节范围: startByte=" + startByte + ", endByte=" + endByte);
+            }
+
+            // 创建GetObjectRequest并设置Range
+            GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey);
+            getObjectRequest.setRange(startByte, endByte);
+            
+            OSSObject ossObject = ossClient.getObject(getObjectRequest);
+            if (ossObject == null) {
+                throw new StorageOperationException("文件不存在: " + objectKey);
+            }
+            
+            log.debug("{} Range读取文件成功: objectKey={}, startByte={}, endByte={}", 
+                    getLogPrefix(), objectKey, startByte, endByte);
+            
+            return ossObject.getObjectContent();
+        } catch (OSSException e) {
+            if ("NoSuchKey".equals(e.getErrorCode())) {
+                log.warn("{} 文件不存在: objectKey={}", getLogPrefix(), objectKey);
+                throw new StorageOperationException("文件不存在: " + objectKey, e);
+            }
+            log.error("{} Range读取文件失败: objectKey={}, startByte={}, endByte={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, startByte, endByte, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS Range读取文件失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} Range读取文件失败: objectKey={}, startByte={}, endByte={}", 
+                    getLogPrefix(), objectKey, startByte, endByte, e);
+            throw new StorageOperationException("阿里云OSS Range读取文件失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void deleteFile(String objectKey) {
         ensureNotPrototype();
         try {

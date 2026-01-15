@@ -54,16 +54,6 @@ spring:
       time-to-live: 3600000
       # 缓存null值，防止缓存穿透
       cache-null-values: true
-# Redisson 配置
-redisson:
-  config: |
-    singleServerConfig:
-      address: "redis://127.0.0.1:6379"
-      password: ""
-      database: 0
-      timeout: 3000 
-      connectionPoolSize: 64
-      connectionMinimumIdleSize: 10
 
 fs:
   # 分享配置

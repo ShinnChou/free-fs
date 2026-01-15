@@ -6,13 +6,10 @@ import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.framework.redis.repository.RedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 上传任务 Redis 缓存管理器
@@ -23,7 +20,6 @@ import java.util.stream.Collectors;
 public class TransferTaskCacheManager {
 
     private final RedisRepository redisRepository;
-    private final RedissonClient redissonClient;
     private static final String TASK_PREFIX = "transfer:task:";
     private static final String CHUNKS_PREFIX = "transfer:chunks:";
     private static final String BYTES_PREFIX = "transfer:bytes:";
@@ -205,14 +201,6 @@ public class TransferTaskCacheManager {
     }
 
     /**
-     * 获取分布式锁（Redisson）
-     */
-    public RLock getMergeLock(String taskId) {
-        String lockKey = MERGE_LOCK_PREFIX + taskId;
-        return redissonClient.getLock(lockKey);
-    }
-
-    /**
      * 清理任务缓存
      */
     public void cleanTask(String taskId) {
@@ -220,7 +208,8 @@ public class TransferTaskCacheManager {
                 TASK_PREFIX + taskId,
                 CHUNKS_PREFIX + taskId,
                 BYTES_PREFIX + taskId,
-                START_TIME_PREFIX + taskId
+                START_TIME_PREFIX + taskId,
+                "download:chunks:" + taskId  // 清理下载任务的分片记录
         );
         log.info("清理任务缓存: taskId={}", taskId);
     }
@@ -243,5 +232,40 @@ public class TransferTaskCacheManager {
         redisRepository.expire(CHUNKS_PREFIX + taskId, seconds);
         redisRepository.expire(BYTES_PREFIX + taskId, seconds);
         redisRepository.expire(START_TIME_PREFIX + taskId, seconds);
+    }
+
+    /**
+     * 检查 Set 中是否存在某个值
+     */
+    public boolean sHasKey(String key, Object value) {
+        return redisRepository.sHasKey(key, value);
+    }
+
+    /**
+     * 将数据放入 Set 缓存并设置过期时间
+     */
+    public Long sSetAndTime(String key, long time, Object... values) {
+        return redisRepository.sSetAndTime(key, time, values);
+    }
+
+    /**
+     * 获取 Set 缓存的大小
+     */
+    public Long sGetSetSize(String key) {
+        return redisRepository.sGetSetSize(key);
+    }
+
+    /**
+     * 获取 Set 中的所有值
+     */
+    public Set<Object> sGet(String key) {
+        return redisRepository.sGet(key);
+    }
+
+    /**
+     * 删除指定的 Redis key
+     */
+    public void deleteKey(String key) {
+        redisRepository.del(key);
     }
 }

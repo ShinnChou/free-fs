@@ -237,17 +237,6 @@ COMMENT ON COLUMN "storage_platform"."is_default" IS '是否默认存储平台 0
 COMMENT ON COLUMN "storage_platform"."desc" IS '存储平台描述';
 
 -- ----------------------------
--- Records of storage_platform
--- ----------------------------
-INSERT INTO "storage_platform" VALUES
-                                   (1, '阿里云OSS', 'AliyunOSS', '[{"label": "Access-Key", "dataType": "string", "identifier": "accessKey", "validation": {"required": true}}, {"label": "Secret-key", "dataType": "string", "identifier": "secretKey", "validation": {"required": true}}, {"label": "服务器端点", "dataType": "string", "identifier": "endpoint", "validation": {"required": true}}, {"label": "存储桶名", "dataType": "string", "identifier": "bucket", "validation": {"required": true}}, {"label": "区域", "dataType": "string", "identifier": "region", "validation": {"required": true}}]', 'icon-aliyun1', 'https://www.aliyun.com/product/oss?utm_content=se_1020894540', false, '阿里云对象存储 OSS（Object Storage Service）是一款海量、安全、低成本、高可靠的云存储服务'),
-                                   (2, 'RustFS', 'RustFS', '[{"label": "Access-Key", "dataType": "string", "identifier": "accessKey", "validation": {"required": true}}, {"label": "Secret-key", "dataType": "string", "identifier": "secretKey", "validation": {"required": true}}, {"label": "服务器端点", "dataType": "string", "identifier": "endpoint", "validation": {"required": true}}, {"label": "存储桶名", "dataType": "string", "identifier": "bucket", "validation": {"required": true}}]', 'icon-bendicunchu1', 'https://rustfs.com.cn', false, 'RustFS 是一个基于 Rust 构建的高性能分布式对象存储系统。Rust 是全球最受开发者喜爱的编程语言之一，RustFS 完美结合了 MinIO 的简洁性与 Rust 的内存安全及高性能优势。它提供完整的 S3 兼容性，完全开源，并专为数据湖、人工智能（AI）和大数据负载进行了优化。'),
-                                   (3, '七牛云', 'Kodo', '[{"label": "Access-Key", "dataType": "string", "identifier": "accessKey", "validation": {"required": true}}, {"label": "Secret-key", "dataType": "string", "identifier": "secretKey", "validation": {"required": true}}, {"label": "服务器端点", "dataType": "string", "identifier": "endpoint", "validation": {"required": true}}, {"label": "存储桶名", "dataType": "string", "identifier": "bucket", "validation": {"required": true}}]', 'icon-normal-logo-blue', 'https://www.qiniu.com/products/kodo', false, '七牛云海量存储系统（Kodo）是自主研发的非结构化数据存储管理平台，支持中心和边缘存储。');
-
--- 重置序列
-SELECT setval('storage_platform_id_seq', 3, true);
-
--- ----------------------------
 -- Table structure for storage_settings
 -- ----------------------------
 DROP TABLE IF EXISTS "storage_settings";
@@ -392,6 +381,7 @@ CREATE TABLE "sys_user_transfer_setting" (
                                              "download_speed_limit" INTEGER NOT NULL DEFAULT 5,
                                              "concurrent_upload_quantity" INTEGER NOT NULL DEFAULT 1,
                                              "concurrent_download_quantity" INTEGER NOT NULL DEFAULT 1,
+                                             "chunk_size" BIGINT NOT NULL DEFAULT 5242880,
                                              "created_at" TIMESTAMP NOT NULL,
                                              "updated_at" TIMESTAMP NOT NULL,
                                              PRIMARY KEY ("id")
@@ -406,6 +396,7 @@ COMMENT ON COLUMN "sys_user_transfer_setting"."is_default_download_location" IS 
 COMMENT ON COLUMN "sys_user_transfer_setting"."download_speed_limit" IS '下载速率限制 单位：MB/S';
 COMMENT ON COLUMN "sys_user_transfer_setting"."concurrent_upload_quantity" IS '并发上传数量';
 COMMENT ON COLUMN "sys_user_transfer_setting"."concurrent_download_quantity" IS '并发下载数量';
+COMMENT ON COLUMN "sys_user_transfer_setting"."chunk_size" IS '分片大小 单位：字节，默认5MB';
 COMMENT ON COLUMN "sys_user_transfer_setting"."created_at" IS '创建时间';
 COMMENT ON COLUMN "sys_user_transfer_setting"."updated_at" IS '修改时间';
 

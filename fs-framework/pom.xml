@@ -23,6 +23,6 @@
         <module>fs-security</module>
         <module>fs-swagger</module>
         <module>fs-storage-plugin</module>
-        <module>fs-websocket</module>
+        <module>fs-sse</module>
     </modules>
 </project>

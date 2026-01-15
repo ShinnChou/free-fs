@@ -4,7 +4,7 @@ import com.xddcodec.fs.file.cache.TransferTaskCacheManager;
 import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
-import com.xddcodec.fs.fs.framework.ws.handler.UploadWebSocketHandler;
+import com.xddcodec.fs.file.service.TransferSseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ public class UploadTaskExceptionHandler {
 
     private final FileTransferTaskMapper fileTransferTaskMapper;
     private final TransferTaskCacheManager cacheManager;
-    private final UploadWebSocketHandler wsHandler;
+    private final TransferSseService transferSseService;
 
     /**
      * 处理任务失败
@@ -45,6 +45,9 @@ public class UploadTaskExceptionHandler {
                 task.setErrorMsg(truncateErrorMsg(errorMsg));
                 task.setUpdatedAt(LocalDateTime.now());
                 fileTransferTaskMapper.update(task);
+                
+                // 推送失败消息通过SSE
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, "TASK_FAILED", errorMsg);
             }
 
             // 更新缓存状态
@@ -52,9 +55,6 @@ public class UploadTaskExceptionHandler {
 
             // 延长缓存过期时间（保留1小时供查询）
             cacheManager.extendTaskExpire(taskId, 1);
-
-            // 推送失败消息
-            wsHandler.pushError(taskId, errorMsg);
 
         } catch (Exception ex) {
             log.error("处理任务失败时发生异常: taskId={}", taskId, ex);
@@ -72,8 +72,17 @@ public class UploadTaskExceptionHandler {
     public void handleChunkUploadFailed(String taskId, Integer chunkIndex, String errorMsg, Exception e) {
         log.error("分片上传失败: taskId={}, chunkIndex={}, error={}", taskId, chunkIndex, errorMsg, e);
 
-        // 推送错误消息（不改变任务状态，允许重试）
-        wsHandler.pushError(taskId, String.format("分片 %d 上传失败: %s", chunkIndex, errorMsg));
+        // 获取任务信息以获取userId
+        FileTransferTask task = fileTransferTaskMapper.selectOneByQuery(
+                com.mybatisflex.core.query.QueryWrapper.create()
+                        .where(FileTransferTask::getTaskId).eq(taskId)
+        );
+        
+        if (task != null) {
+            // 推送错误消息通过SSE（不改变任务状态，允许重试）
+            transferSseService.sendErrorEvent(task.getUserId(), taskId, "CHUNK_UPLOAD_FAILED", 
+                String.format("分片 %d 上传失败: %s", chunkIndex, errorMsg));
+        }
     }
 
     /**
