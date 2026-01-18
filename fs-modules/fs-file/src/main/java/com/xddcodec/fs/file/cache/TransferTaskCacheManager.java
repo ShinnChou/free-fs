@@ -52,7 +52,7 @@ public class TransferTaskCacheManager {
         String key = TASK_PREFIX + taskId;
         Object obj = redisRepository.get(key);
         if (obj == null) {
-            log.debug("📭 缓存中不存在任务: taskId={}", taskId);
+            log.debug("缓存中不存在任务: taskId={}", taskId);
             return null;
         }
         if (obj instanceof FileTransferTask) {
@@ -194,9 +194,8 @@ public class TransferTaskCacheManager {
             task.setUploadedChunks(realCount);
             cacheTask(task);
 
-            String typeEmoji = task.getTaskType() == TransferTaskType.upload ? "📤" : "📥";
-            log.info("{} 任务完成: taskId={}, type={}, transferredChunks={}",
-                    typeEmoji, taskId, task.getTaskType(), realCount);
+            log.info("任务完成: taskId={}, type={}, transferredChunks={}",
+                    taskId, task.getTaskType(), realCount);
         }
     }
 
@@ -267,5 +266,67 @@ public class TransferTaskCacheManager {
      */
     public void deleteKey(String key) {
         redisRepository.del(key);
+    }
+    
+    /**
+     * 尝试获取分布式锁
+     * 
+     * @param lockKey 锁的键
+     * @param expireSeconds 锁的过期时间（秒）
+     * @return 是否成功获取锁
+     */
+    public boolean tryLock(String lockKey, long expireSeconds) {
+        try {
+            // 使用 SETNX 实现分布式锁
+            Boolean result = redisRepository.setIfAbsent(lockKey, "locked", expireSeconds);
+            boolean locked = result != null && result;
+            log.debug("尝试获取锁: key={}, result={}", lockKey, locked);
+            return locked;
+        } catch (Exception e) {
+            log.error("获取锁失败: key={}", lockKey, e);
+            return false;
+        }
+    }
+    
+    /**
+     * 释放分布式锁
+     * 
+     * @param lockKey 锁的键
+     */
+    public void releaseLock(String lockKey) {
+        try {
+            redisRepository.del(lockKey);
+            log.debug("释放锁: key={}", lockKey);
+        } catch (Exception e) {
+            log.error("释放锁失败: key={}", lockKey, e);
+        }
+    }
+    
+    /**
+     * 缓存完成事件数据（供前端轮询使用）
+     * 
+     * @param taskId 任务ID
+     * @param completeData 完成事件数据
+     */
+    public void cacheCompleteEvent(String taskId, Object completeData) {
+        String key = "transfer:complete:" + taskId;
+        redisRepository.setExpire(key, completeData, TASK_EXPIRE_DAYS);
+        log.debug("缓存完成事件: taskId={}", taskId);
+    }
+    
+    /**
+     * 获取并删除完成事件数据（前端轮询接口使用）
+     * 
+     * @param taskId 任务ID
+     * @return 完成事件数据，如果不存在返回 null
+     */
+    public Object getAndRemoveCompleteEvent(String taskId) {
+        String key = "transfer:complete:" + taskId;
+        Object data = redisRepository.get(key);
+        if (data != null) {
+            redisRepository.del(key);
+            log.debug("获取并删除完成事件: taskId={}", taskId);
+        }
+        return data;
     }
 }

@@ -8,6 +8,7 @@ import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.file.service.TransferSseService;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -59,9 +60,10 @@ public class DownloadTaskExceptionHandler {
                 task.setUpdatedAt(LocalDateTime.now());
                 fileTransferTaskMapper.update(task);
                 
-                // 推送失败消息通过SSE
+                // 推送失败消息通过SSE（使用用户友好的错误信息）
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(errorMsg);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId, 
-                    errorCode.getCode(), errorCode.getMessage() + ": " + errorMsg);
+                    errorCode.getCode(), errorCode.getMessage() + ": " + userFriendlyMsg);
                 
                 log.info("已推送下载失败事件: taskId={}, errorCode={}", taskId, errorCode.getCode());
             }
@@ -145,9 +147,10 @@ public class DownloadTaskExceptionHandler {
         );
         
         if (task != null) {
-            // 推送错误消息通过SSE（不改变任务状态，允许重试）
+            // 推送错误消息通过SSE（使用用户友好的错误信息）
+            String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(errorMsg);
             transferSseService.sendErrorEvent(task.getUserId(), taskId, errorCode.getCode(), 
-                String.format("分片 %d 下载失败: %s", chunkIndex, errorMsg));
+                String.format("分片 %d 下载失败: %s", chunkIndex, userFriendlyMsg));
         }
     }
 

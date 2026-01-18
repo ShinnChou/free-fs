@@ -81,9 +81,13 @@ public class StorageServiceFacade {
             return;
         }
 
-        log.info("刷新存储实例: configId={}", configId);
+        // 检查是否有缓存实例
+        boolean hasInstance = pluginManager.hasInstance(configId);
+        if (!hasInstance) {
+            return;
+        }
 
-        // 直接失效缓存，下次使用时自动重新加载
+        // 失效缓存，下次使用时自动重新加载
         pluginManager.invalidateConfig(configId);
     }
 

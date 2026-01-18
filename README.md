@@ -179,7 +179,7 @@ free-fs/
 │   ├── fs-redis/                # Redis 配置模块
 │   ├── fs-security/             # 安全认证模块
 │   ├── fs-swagger/              # API 文档配置
-│   ├── fs-websocket/            # WebSocket 支持
+│   ├── fs-sse/                  # SSE 支持
 │   └── fs-storage-plugin/       # 存储插件框架
 │       ├── storage-plugin-core/        # 插件核心接口
 │       ├── storage-plugin-local/       # 本地存储插件

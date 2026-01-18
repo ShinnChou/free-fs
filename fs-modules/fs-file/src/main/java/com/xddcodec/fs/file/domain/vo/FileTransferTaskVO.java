@@ -107,4 +107,9 @@ public class FileTransferTaskVO implements Serializable {
      * 已上传字节数
      */
     private Long uploadedSize;
+    
+    /**
+     * 完成事件数据（仅当 SSE 推送失败时通过轮询返回）
+     */
+    private Object completeEventData;
 }
