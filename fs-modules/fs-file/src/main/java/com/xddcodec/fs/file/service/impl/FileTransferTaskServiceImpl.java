@@ -26,6 +26,7 @@ import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
 import com.xddcodec.fs.framework.common.utils.FileUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
 import com.xddcodec.fs.file.service.TransferSseService;
@@ -97,6 +98,15 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         // 计算并填充进度相关字段
         for (FileTransferTaskVO vo : voList) {
             calculateProgressFields(vo);
+            
+            // 检查是否有缓存的完成事件（SSE 推送失败的情况）
+            if (vo.getStatus() == TransferTaskStatus.completed) {
+                Object completeEvent = cacheManager.getAndRemoveCompleteEvent(vo.getTaskId());
+                if (completeEvent != null) {
+                    log.info("检测到未推送的完成事件，通过轮询返回: taskId={}", vo.getTaskId());
+                    vo.setCompleteEventData(completeEvent);
+                }
+            }
         }
         
         return voList;
@@ -366,11 +376,74 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         CompletableFuture.runAsync(() -> {
             try {
                 doUploadChunk(fileBytes, cmd);
+                
+                // 检查是否所有分片都已上传完成
+                checkAndAutoMerge(taskId);
             } catch (Exception e) {
                 log.error("分片上传失败: taskId={}, chunkIndex={}", taskId, cmd.getChunkIndex(), e);
                 exceptionHandler.handleChunkUploadFailed(taskId, chunkIndex, e.getMessage(), e);
             }
         }, chunkUploadExecutor);
+    }
+    
+    /**
+     * 检查并自动触发合并（当所有分片上传完成时）
+     */
+    private void checkAndAutoMerge(String taskId) {
+        try {
+            FileTransferTask task = getTaskFromCacheOrDB(taskId);
+            
+            // 只有 uploading 状态才检查
+            if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
+                return;
+            }
+            
+            Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
+            
+            // 所有分片都上传完成
+            if (uploadedCount.equals(task.getTotalChunks())) {
+                // 使用分布式锁防止并发检查导致重复触发合并
+                String lockKey = "merge:lock:" + taskId;
+                boolean locked = cacheManager.tryLock(lockKey, 300); // 5分钟锁
+                
+                if (!locked) {
+                    log.debug("合并任务已被其他线程触发，跳过: taskId={}", taskId);
+                    return;
+                }
+                
+                try {
+                    // 再次检查状态（双重检查，防止状态已变更）
+                    task = getTaskFromCacheOrDB(taskId);
+                    if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
+                        log.debug("任务状态已变更，跳过合并: taskId={}, status={}", taskId, task.getStatus());
+                        return;
+                    }
+                    
+                    log.info("所有分片上传完成，触发自动合并: taskId={}", taskId);
+                    
+                    // 异步执行合并，避免阻塞上传线程
+                    // 注意：锁会在合并完成后由合并任务自己释放
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            doMergeChunks(taskId);
+                        } catch (Exception e) {
+                            log.error("自动合并失败: taskId={}", taskId, e);
+                            exceptionHandler.handleTaskFailed(taskId, "文件合并失败: " + e.getMessage(), e);
+                        } finally {
+                            // 合并完成后释放锁
+                            cacheManager.releaseLock(lockKey);
+                        }
+                    }, fileMergeExecutor);
+                } catch (Exception e) {
+                    // 如果提交异步任务失败，需要释放锁
+                    cacheManager.releaseLock(lockKey);
+                    throw e;
+                }
+            }
+        } catch (Exception e) {
+            log.error("检查自动合并失败: taskId={}", taskId, e);
+            // 不抛出异常，避免影响分片上传
+        }
     }
 
     /**
@@ -450,8 +523,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (Exception e) {
             log.error("暂停失败: taskId={}", taskId, e);
             if (task != null) {
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId, 
-                    "PAUSE_FAILED", "暂停失败: " + e.getMessage());
+                    "PAUSE_FAILED", "暂停失败: " + userFriendlyMsg);
             }
             throw new StorageOperationException("暂停失败: " + e.getMessage(), e);
         }
@@ -500,8 +574,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (Exception e) {
             log.error("继续任务失败: taskId={}", taskId, e);
             if (task != null) {
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId, 
-                    "RESUME_FAILED", "继续任务失败: " + e.getMessage());
+                    "RESUME_FAILED", "继续任务失败: " + userFriendlyMsg);
             }
             throw new StorageOperationException("继续任务失败: " + e.getMessage(), e);
         }
@@ -574,8 +649,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (Exception e) {
             log.error("取消传输任务异常: taskId={}", taskId, e);
             if (task != null) {
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId, 
-                    "CANCEL_FAILED", "取消失败: " + e.getMessage());
+                    "CANCEL_FAILED", "取消失败: " + userFriendlyMsg);
             }
             throw new StorageOperationException("取消传输任务失败: " + e.getMessage(), e);
         }
@@ -610,6 +686,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                 );
             }
             
+            log.info("所有分片上传完成，开始合并: taskId={}, totalChunks={}", taskId, task.getTotalChunks());
+            
             // 更新状态为 merging
             updateTaskStatus(task, TransferTaskStatus.merging);
             
@@ -620,12 +698,26 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             log.info("状态已更新为 merging: taskId={}", taskId);
             IStorageOperationService storageService = storageServiceFacade.getStorageService(task.getStoragePlatformSettingId());
             Map<Integer, String> chunkETags = cacheManager.getTransferredChunkList(taskId);
+            
+            // 验证所有分片的 ETag 都存在
+            log.info("验证分片ETag完整性: taskId={}, totalChunks={}, cachedChunks={}", 
+                    taskId, task.getTotalChunks(), chunkETags.size());
+            
+            if (chunkETags.size() != task.getTotalChunks()) {
+                log.error("缓存的分片数量与总数不匹配: taskId={}, cached={}, expected={}", 
+                        taskId, chunkETags.size(), task.getTotalChunks());
+                throw new StorageOperationException(
+                        String.format("分片数量不匹配：缓存 %d，期望 %d", chunkETags.size(), task.getTotalChunks())
+                );
+            }
+            
             // 获取存储服务并完成分片合并
             List<Map<String, Object>> partETags = new ArrayList<>();
             for (int i = 0; i < task.getTotalChunks(); i++) {
                 String etag = chunkETags.get(i);
                 if (etag == null || etag.isEmpty()) {
-                    log.error("分片ETag丢失: taskId={}, chunkIndex={}", taskId, i);
+                    log.error("分片ETag丢失: taskId={}, chunkIndex={}, allETags={}", 
+                            taskId, i, chunkETags);
                     throw new StorageOperationException(
                             String.format("分片 %d 的 ETag 丢失", i)
                     );
@@ -635,6 +727,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                 partInfo.put("eTag", etag);
                 partETags.add(partInfo);
             }
+            
+            log.info("分片ETag验证通过，准备合并: taskId={}, partCount={}", taskId, partETags.size());
             storageService.completeMultipartUpload(
                     task.getObjectKey(),
                     task.getUploadId(),
@@ -686,8 +780,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             
             // 推送错误事件
             if (task != null) {
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId, 
-                    "MERGE_FAILED", "文件合并失败: " + e.getMessage());
+                    "MERGE_FAILED", "文件合并失败: " + userFriendlyMsg);
             }
             
             throw new StorageOperationException("分片合并失败: " + e.getMessage(), e);

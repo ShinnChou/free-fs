@@ -144,7 +144,7 @@ public class StorageConfig {
 
     /**
      * 生成缓存键
-     * Local 存储返回 "local:system"，用户配置返回 "{platform}:{configId}" 格式
+     * Local 存储返回 "local:system"，用户配置返回 "{configId}:{platform}" 格式
      *
      * @return 缓存键
      */

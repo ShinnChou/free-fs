@@ -5,6 +5,7 @@ import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
 import com.xddcodec.fs.file.service.TransferSseService;
+import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -46,8 +47,9 @@ public class UploadTaskExceptionHandler {
                 task.setUpdatedAt(LocalDateTime.now());
                 fileTransferTaskMapper.update(task);
                 
-                // 推送失败消息通过SSE
-                transferSseService.sendErrorEvent(task.getUserId(), taskId, "TASK_FAILED", errorMsg);
+                // 推送失败消息通过SSE（使用用户友好的错误信息）
+                String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(errorMsg);
+                transferSseService.sendErrorEvent(task.getUserId(), taskId, "TASK_FAILED", userFriendlyMsg);
             }
 
             // 更新缓存状态
@@ -79,9 +81,10 @@ public class UploadTaskExceptionHandler {
         );
         
         if (task != null) {
-            // 推送错误消息通过SSE（不改变任务状态，允许重试）
+            // 推送错误消息通过SSE（使用用户友好的错误信息）
+            String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(errorMsg);
             transferSseService.sendErrorEvent(task.getUserId(), taskId, "CHUNK_UPLOAD_FAILED", 
-                String.format("分片 %d 上传失败: %s", chunkIndex, errorMsg));
+                String.format("分片 %d 上传失败: %s", chunkIndex, userFriendlyMsg));
         }
     }
 

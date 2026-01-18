@@ -7,6 +7,7 @@ import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.ErrorCode;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -106,8 +107,10 @@ public class GlobalExceptionHandler {
      * @return
      */
     @ExceptionHandler(StorageOperationException.class)
-    public Result<?> handleBusinessException(StorageOperationException e) {
-        return defHandler(e.getMessage(), e);
+    public Result<?> handleStorageOperationException(StorageOperationException e) {
+        String userFriendlyMessage = ErrorMessageUtils.extractUserFriendlyMessage(e);
+        log.error("存储操作异常: {}", e.getMessage(), e);
+        return Result.error(userFriendlyMessage);
     }
 
     /**
@@ -116,7 +119,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(StorageConfigException.class)
     public Result<?> handleStorageConfigException(StorageConfigException e) {
-        return defHandler(e.getMessage(), e);
+        String userFriendlyMessage = ErrorMessageUtils.extractUserFriendlyMessage(e);
+        log.error("存储配置异常: {}", e.getMessage(), e);
+        return Result.error(userFriendlyMessage);
     }
 
     /**
