@@ -18,7 +18,7 @@ public class StorageInstanceCache {
 
     /**
      * 主缓存：cacheKey -> 实例
-     * cacheKey 格式：configId:platformIdentifier:userId
+     * cacheKey 格式：configId:platformIdentifier
      */
     private final Map<String, IStorageOperationService> cache = new ConcurrentHashMap<>();
 
@@ -54,7 +54,6 @@ public class StorageInstanceCache {
     public IStorageOperationService getOrCreate(String cacheKey, Supplier<IStorageOperationService> creator) {
         IStorageOperationService instance = cache.get(cacheKey);
         if (instance != null) {
-            log.debug("缓存命中（快速路径）: cacheKey={}", cacheKey);
             return instance;
         }
 
@@ -63,17 +62,15 @@ public class StorageInstanceCache {
         try {
             instance = cache.get(cacheKey);
             if (instance != null) {
-                log.debug("缓存命中（等待锁期间）: cacheKey={}", cacheKey);
                 return instance;
             }
 
-            log.debug("缓存未命中，开始创建实例: cacheKey={}", cacheKey);
             instance = creator.get();
 
             // 使用 put 方法，自动维护索引
             put(cacheKey, instance);
 
-            log.info("实例创建并缓存成功: cacheKey={}, 当前缓存数: {}", cacheKey, cache.size());
+            log.debug("实例创建并缓存: cacheKey={}", cacheKey);
             return instance;
 
         } finally {
@@ -103,7 +100,7 @@ public class StorageInstanceCache {
     }
 
     /**
-     * 根据 configId 失效缓存（新增方法）
+     * 根据 configId 失效缓存
      *
      * @param configId 配置ID
      */
@@ -111,10 +108,22 @@ public class StorageInstanceCache {
         String cacheKey = configIdToCacheKey.get(configId);
 
         if (cacheKey != null) {
-            log.info("通过 configId 定位到缓存: configId={}, cacheKey={}", configId, cacheKey);
             invalidate(cacheKey);
-        } else {
-            log.debug("configId 无对应缓存实例: configId={}", configId);
+            return;
+        }
+
+        // 如果反向索引中找不到，尝试遍历所有缓存查找（兼容旧数据）
+        String foundCacheKey = null;
+        for (String key : cache.keySet()) {
+            String extractedConfigId = extractConfigId(key);
+            if (configId.equals(extractedConfigId)) {
+                foundCacheKey = key;
+                break;
+            }
+        }
+
+        if (foundCacheKey != null) {
+            invalidate(foundCacheKey);
         }
     }
 
@@ -194,7 +203,7 @@ public class StorageInstanceCache {
 
     /**
      * 从 cacheKey 提取 configId
-     * cacheKey 格式：configId:platformIdentifier:userId
+     * cacheKey 格式：configId:platformIdentifier
      *
      * @param cacheKey 缓存键
      * @return configId，如果格式不正确返回 null

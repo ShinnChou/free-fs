@@ -153,6 +153,27 @@ public class RedisRepository {
     }
 
     /**
+     * 仅当 key 不存在时设置值（分布式锁）
+     *
+     * @param key   键
+     * @param value 值
+     * @param time  过期时间(秒)
+     * @return true成功 false失败
+     */
+    public Boolean setIfAbsent(String key, Object value, long time) {
+        try {
+            if (time > 0) {
+                return redisTemplate.opsForValue().setIfAbsent(key, value, time, TimeUnit.SECONDS);
+            } else {
+                return redisTemplate.opsForValue().setIfAbsent(key, value);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
      * 递增
      *
      * @param key   键

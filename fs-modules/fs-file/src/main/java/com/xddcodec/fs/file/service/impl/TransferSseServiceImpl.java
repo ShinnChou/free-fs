@@ -74,11 +74,6 @@ public class TransferSseServiceImpl implements TransferSseService {
     
     @Override
     public void sendCompleteEvent(String userId, String taskId, String fileId, String fileName, Long fileSize) {
-        if (!sseConnectionManager.hasConnection(userId)) {
-            log.warn("用户无SSE连接，跳过完成推送: userId={}, taskId={}", userId, taskId);
-            return;
-        }
-        
         CompleteEventDTO data = CompleteEventDTO.builder()
                 .taskId(taskId)
                 .fileId(fileId)
@@ -86,11 +81,25 @@ public class TransferSseServiceImpl implements TransferSseService {
                 .fileSize(fileSize)
                 .build();
         
+        // 先缓存完成事件数据，供前端轮询使用（7天过期）
+        try {
+            transferTaskCacheManager.cacheCompleteEvent(taskId, data);
+            log.debug("缓存完成事件: taskId={}, fileId={}", taskId, fileId);
+        } catch (Exception e) {
+            log.error("缓存完成事件失败: taskId={}", taskId, e);
+        }
+        
+        // 尝试通过 SSE 推送
+        if (!sseConnectionManager.hasConnection(userId)) {
+            log.warn("⚠️ 用户无SSE连接，完成事件已缓存，等待前端轮询: userId={}, taskId={}", userId, taskId);
+            return;
+        }
+        
         try {
             sseConnectionManager.sendEvent(userId, SseEventType.COMPLETE.getValue(), data);
-            log.info("推送完成事件: userId={}, taskId={}, fileId={}", userId, taskId, fileId);
+            log.info("推送完成事件成功: userId={}, taskId={}, fileId={}", userId, taskId, fileId);
         } catch (Exception e) {
-            log.error("推送完成事件失败: userId={}, taskId={}", userId, taskId, e);
+            log.error("推送完成事件失败，已缓存供轮询: userId={}, taskId={}", userId, taskId, e);
         }
     }
     

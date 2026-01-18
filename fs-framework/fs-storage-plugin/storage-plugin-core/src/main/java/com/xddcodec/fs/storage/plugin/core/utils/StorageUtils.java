@@ -60,6 +60,7 @@ public class StorageUtils {
         if (platformIdentifier == null || platformIdentifier.isBlank()) {
             throw new IllegalArgumentException("平台标识符不能为空: configId=" + configId);
         }
-        return platformIdentifier + ":" + configId;
+        // 格式：configId:platformIdentifier（configId 在前，方便提取）
+        return configId + ":" + platformIdentifier;
     }
 }
