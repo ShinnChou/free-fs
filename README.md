@@ -1,8 +1,10 @@
 <div align="center">
 
-# 🔥Free FS - 现代化文件管理网盘系统
+<img alt="Free FS Logo" src="https://gitee.com/xddcode/free-fs/raw/feature-vue/.images/logo.svg" width="100"/>
 
-<img alt="Free FS Logo" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/logo.svg" width="180"/>
+# Free FS
+
+### 现代化文件管理网盘系统
 
 一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
 
@@ -17,7 +19,7 @@
 
 [问题反馈](https://gitee.com/dromara/free-fs/issues) · [功能请求](https://gitee.com/dromara/free-fs/issues/new)
 
-[项目文档](https://doc.free-fs.top)
+[项目文档](https://free-fs-doc.vercel.app/)
 
 </div>
 
