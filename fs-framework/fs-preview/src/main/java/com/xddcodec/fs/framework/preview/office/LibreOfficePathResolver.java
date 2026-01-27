@@ -182,13 +182,14 @@ public class LibreOfficePathResolver {
         // 检查关键文件是否存在（Windows: soffice.exe, Linux/Mac: soffice）
         File sofficeExe = new File(officeHomeDir, "program/soffice.exe");
         File soffice = new File(officeHomeDir, "program/soffice");
+        File sofficeMac = new File(officeHomeDir, "MacOS/soffice");
         
-        boolean isValid = sofficeExe.exists() || soffice.exists();
+        boolean isValid = sofficeExe.exists() || soffice.exists() || sofficeMac.exists();
         
         if (isValid) {
             log.debug("LibreOffice 路径验证成功: {}", path);
         } else {
-            log.debug("LibreOffice 路径缺少关键文件 (program/soffice.exe 或 program/soffice): {}", path);
+            log.debug("LibreOffice 路径缺少关键文件 (program/soffice.exe 或 program/soffice 或 MacOS/soffice): {}", path);
         }
         
         return isValid;
