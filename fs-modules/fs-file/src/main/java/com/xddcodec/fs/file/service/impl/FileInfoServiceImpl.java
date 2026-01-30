@@ -439,12 +439,22 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
             wrapper.and("fuf.file_id IS NOT NULL");
         }
+
         // 父目录过滤
-        if (qry.getParentId() == null) {
-            wrapper.and(FILE_INFO.PARENT_ID.isNull());
-        } else {
-            wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+        // 判断是否是特殊筛选视图（不限制父目录）
+        boolean isTypeFilter = StrUtil.isNotBlank(qry.getFileType());
+        boolean isFavoriteView = Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null;
+        boolean isDirFilter = Boolean.TRUE.equals(qry.getIsDir()) && qry.getParentId() == null;
+
+        // 只有在非特殊筛选视图下才限制父目录
+        if (!isTypeFilter && !isFavoriteView && !isDirFilter) {
+            if (qry.getParentId() == null) {
+                wrapper.and(FILE_INFO.PARENT_ID.isNull());
+            } else {
+                wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+            }
         }
+
         // 关键词搜索
         if (StrUtil.isNotBlank(qry.getKeyword())) {
             String keyword = "%" + qry.getKeyword().trim() + "%";
