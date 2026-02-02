@@ -34,6 +34,14 @@
 
 ## 前端仓库
 
+### 🚀 推荐仓库 (最新)
+[![Free FS/free-fs-frontend](https://gitee.com/xddcode/free-fs-frontend/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-frontend.git)
+
+---
+
+### ⚠️ 已废弃仓库 (停止更新)
+![Deprecated](https://img.shields.io/badge/Status-DEPRECATED-red.svg)
+
 [![Free FS/free-fs-vue](https://gitee.com/xddcode/free-fs-vue/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-vue.git)
 
 ---
@@ -288,8 +296,6 @@ chore: 构建/工具链更新
 
 <div align="center">
 
-**[⬆ 回到顶部](#free-fs---现代化文件管理网盘系统)**
-
-Made with ❤️ by [@Freedom](https://gitee.com/xddcode)
+Made with ❤️ by [@xddcode](https://gitee.com/xddcode)
 
 </div>

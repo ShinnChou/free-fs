@@ -9,145 +9,139 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-/**
- * SSE连接管理器实现
- * 使用ConcurrentHashMap管理用户连接，确保线程安全
- * 支持心跳保活机制，防止连接超时
- * 
- * @author xddcodec
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SseConnectionManagerImpl implements SseConnectionManager {
-    
-    /**
-     * SSE连接超时时间：60分钟（毫秒）
-     */
+
     private static final long SSE_TIMEOUT = 60 * 60 * 1000L;
-    
-    /**
-     * 心跳间隔：25秒（避免 Nginx 默认 30 秒超时）
-     */
     private static final long HEARTBEAT_INTERVAL = 25 * 1000L;
-    
-    /**
-     * 用户连接池，key为用户ID，value为SseEmitter
-     */
+
     private final ConcurrentHashMap<String, SseEmitter> connections = new ConcurrentHashMap<>();
-    
-    /**
-     * 心跳任务调度器
-     */
-    private final ConcurrentHashMap<String, java.util.concurrent.ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
-    
-    /**
-     * JSON序列化工具
-     */
+    private final ConcurrentHashMap<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
-    
-    /**
-     * 心跳任务执行器
-     */
-    private final java.util.concurrent.ScheduledExecutorService heartbeatExecutor = 
-            java.util.concurrent.Executors.newScheduledThreadPool(2);
-    
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(2);
+
     @Override
     public SseEmitter createConnection(String userId) {
         log.info("Creating SSE connection for user: {}", userId);
-        
-        // 如果用户已有连接，先清理旧连接（不调用 complete，避免异常）
-        SseEmitter oldEmitter = connections.remove(userId);
-        if (oldEmitter != null) {
-            log.info("User {} already has a connection, replacing with new connection", userId);
-            stopHeartbeat(userId);
-            // 不调用 complete()，让旧连接自然断开
-        }
-        
-        // 创建新的SseEmitter，设置超时时间
+
+        // 清理旧连接
+        cleanupOldConnection(userId);
+
+        // 创建新连接
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
-        
-        // 设置完成回调
+
+        // 设置回调
         emitter.onCompletion(() -> {
             log.info("SSE connection completed for user: {}", userId);
-            stopHeartbeat(userId);
-            connections.remove(userId);
+            cleanup(userId);
         });
-        
-        // 设置超时回调
+
         emitter.onTimeout(() -> {
             log.warn("SSE connection timeout for user: {}", userId);
-            stopHeartbeat(userId);
-            connections.remove(userId);
+            cleanup(userId);
         });
-        
-        // 设置错误回调
+
         emitter.onError(throwable -> {
-            log.warn("SSE connection closed with error for user: {}, reason: {}", 
+            log.warn("SSE connection error for user: {}, reason: {}",
                     userId, throwable.getMessage());
-            stopHeartbeat(userId);
-            connections.remove(userId);
+            cleanup(userId);
         });
-        
+
         // 保存连接
         connections.put(userId, emitter);
-        
+
         // 启动心跳
         startHeartbeat(userId, emitter);
-        
-        // 发送连接成功事件（可选，帮助前端确认连接建立）
+
+        // 发送连接确认
         try {
             emitter.send(SseEmitter.event()
                     .name("connected")
                     .data("{\"message\":\"SSE connection established\"}"));
-            log.debug("Sent connection confirmation to user: {}", userId);
         } catch (IOException e) {
-            log.warn("Failed to send connection confirmation to user: {}", userId, e);
+            log.warn("Failed to send connection confirmation to user: {}", userId);
         }
-        
+
         log.info("SSE connection created successfully for user: {}", userId);
-        
         return emitter;
     }
-    
+
+    /**
+     * 清理旧连接（不调用 complete，避免异常）
+     */
+    private void cleanupOldConnection(String userId) {
+        SseEmitter oldEmitter = connections.remove(userId);
+        if (oldEmitter != null) {
+            log.info("Replacing existing connection for user: {}", userId);
+            stopHeartbeat(userId);
+            // 不调用 complete()，让旧连接自然断开
+        }
+    }
+
+    /**
+     * 统一的清理方法
+     */
+    private void cleanup(String userId) {
+        stopHeartbeat(userId);
+        connections.remove(userId);
+    }
+
     /**
      * 启动心跳任务
      */
     private void startHeartbeat(String userId, SseEmitter emitter) {
-        // 停止旧的心跳任务（如果存在）
         stopHeartbeat(userId);
-        
-        // 创建新的心跳任务
-        java.util.concurrent.ScheduledFuture<?> task = heartbeatExecutor.scheduleAtFixedRate(() -> {
+
+        ScheduledFuture<?> task = heartbeatExecutor.scheduleAtFixedRate(() -> {
             try {
-                // 发送心跳注释（SSE 注释不会触发客户端事件）
+                // 检查连接是否还存在
+                if (!connections.containsKey(userId)) {
+                    log.debug("Connection no longer exists for user: {}, stopping heartbeat", userId);
+                    stopHeartbeat(userId);
+                    return;
+                }
+
+                // 发送心跳
                 emitter.send(SseEmitter.event().comment("heartbeat"));
                 log.debug("Heartbeat sent to user: {}", userId);
+
+            } catch (IllegalStateException e) {
+                // 连接已关闭（正常情况）
+                log.debug("Connection already completed for user: {}, stopping heartbeat", userId);
+                cleanup(userId);
             } catch (IOException e) {
-                log.warn("Heartbeat failed for user: {}, connection may be closed", userId);
-                stopHeartbeat(userId);
-                removeConnection(userId);
+                // 网络错误
+                log.debug("Heartbeat failed for user: {}, connection closed", userId);
+                cleanup(userId);
             } catch (Exception e) {
+                // 其他异常
                 log.error("Unexpected error in heartbeat for user: {}", userId, e);
+                cleanup(userId);
             }
-        }, HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, java.util.concurrent.TimeUnit.MILLISECONDS);
-        
+        }, HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, TimeUnit.MILLISECONDS);
+
         heartbeatTasks.put(userId, task);
         log.debug("Heartbeat started for user: {}, interval: {}ms", userId, HEARTBEAT_INTERVAL);
     }
-    
+
     /**
      * 停止心跳任务
      */
     private void stopHeartbeat(String userId) {
-        java.util.concurrent.ScheduledFuture<?> task = heartbeatTasks.remove(userId);
-        if (task != null) {
+        ScheduledFuture<?> task = heartbeatTasks.remove(userId);
+        if (task != null && !task.isCancelled()) {
             task.cancel(false);
             log.debug("Heartbeat stopped for user: {}", userId);
         }
     }
-    
+
     @Override
     public void removeConnection(String userId) {
         stopHeartbeat(userId);
@@ -156,44 +150,45 @@ public class SseConnectionManagerImpl implements SseConnectionManager {
             try {
                 emitter.complete();
                 log.info("SSE connection removed for user: {}", userId);
+            } catch (IllegalStateException e) {
+                // 连接已经关闭，忽略
+                log.debug("Connection already completed for user: {}", userId);
             } catch (Exception e) {
                 log.error("Error completing SSE connection for user: {}", userId, e);
             }
         }
     }
-    
+
     @Override
     public void sendEvent(String userId, String eventType, Object data) {
         SseEmitter emitter = connections.get(userId);
-        
+
         if (emitter == null) {
             log.warn("No active SSE connection found for user: {}, eventType: {}", userId, eventType);
             return;
         }
-        
+
         try {
-            // 将数据序列化为JSON字符串
             String jsonData = objectMapper.writeValueAsString(data);
-            
-            // 发送SSE事件
             emitter.send(SseEmitter.event()
                     .name(eventType)
                     .data(jsonData));
-            
             log.debug("SSE event sent to user {}: type={}", userId, eventType);
+
+        } catch (IllegalStateException e) {
+            // 连接已关闭
+            log.debug("Connection already completed for user: {}, cannot send event", userId);
+            cleanup(userId);
         } catch (IOException e) {
-            // SSE 连接断开是正常现象（客户端关闭、网络问题等），使用 WARN 级别
-            log.warn("SSE connection closed, failed to send event to user {}: type={}, reason: {}", 
-                    userId, eventType, e.getMessage());
-            // 发送失败，移除失效连接
-            removeConnection(userId);
+            log.warn("Failed to send event to user {}: type={}, connection closed",
+                    userId, eventType);
+            cleanup(userId);
         } catch (Exception e) {
-            log.error("Unexpected error sending SSE event to user {}: type={}", userId, eventType, e);
-            // 发生异常也移除连接
-            removeConnection(userId);
+            log.error("Unexpected error sending event to user {}: type={}", userId, eventType, e);
+            cleanup(userId);
         }
     }
-    
+
     @Override
     public boolean hasConnection(String userId) {
         return connections.containsKey(userId);
