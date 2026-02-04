@@ -190,48 +190,57 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void moveFile(MoveFileCmd cmd) {
         if (CollUtil.isEmpty(cmd.getFileIds())) {
             throw new BusinessException("文件ID列表不能为空");
         }
 
-        // 处理空字符串，统一转为null表示根目录
         String targetDirId = StringUtils.isBlank(cmd.getDirId()) ? null : cmd.getDirId();
 
-        // 如果dirId不为空，校验目标目录是否存在且为目录类型
         if (targetDirId != null) {
             FileInfo dirInfo = getById(targetDirId);
-            if (dirInfo == null) {
-                throw new BusinessException("目标目录不存在");
-            }
-            if (!dirInfo.getIsDir()) {
-                throw new BusinessException("目标必须是目录");
+            if (dirInfo == null || !dirInfo.getIsDir()) {
+                throw new BusinessException("目标目录不存在或非法");
             }
         }
 
-        // 批量移动文件
-        for (String fileId : cmd.getFileIds()) {
-            FileInfo fileInfo = getById(fileId);
-            if (fileInfo == null) {
+        List<FileInfo> fileInfos = listByIds(cmd.getFileIds());
+        List<FileInfo> updateList = new ArrayList<>();
+
+        for (FileInfo fileInfo : fileInfos) {
+            if (Objects.equals(fileInfo.getParentId(), targetDirId)) {
                 continue;
             }
-            // 防止将目录移动到自己或自己的子目录下
+
             if (targetDirId != null && fileInfo.getIsDir()) {
-                if (fileId.equals(targetDirId) || isSubDirectory(fileId, targetDirId)) {
-                    throw new BusinessException("不能将目录移动到自身或子目录下");
+                if (fileInfo.getId().equals(targetDirId) || isSubDirectory(fileInfo.getId(), targetDirId)) {
+                    throw new BusinessException("不能将目录 [" + fileInfo.getDisplayName() + "] 移动到自身或子目录下");
                 }
             }
-            // 设置新的父目录ID（null表示根目录）
-            fileInfo.setParentId(targetDirId);
+
+            String finalName = generateUniqueName(
+                    fileInfo.getUserId(),
+                    targetDirId,
+                    fileInfo.getDisplayName(),
+                    fileInfo.getIsDir(),
+                    fileInfo.getId(),
+                    fileInfo.getStoragePlatformSettingId()
+            );
 
             FileInfo updateEntity = UpdateEntity.of(FileInfo.class, fileInfo.getId());
             updateEntity.setParentId(targetDirId);
-            updateById(updateEntity);
+            updateEntity.setDisplayName(finalName);
+            updateEntity.setUpdateTime(LocalDateTime.now());
+            updateList.add(updateEntity);
         }
 
+        if (!updateList.isEmpty()) {
+            this.updateBatch(updateList);
+        }
     }
 
-    // 检查targetId是否是sourceId的子目录
+    // 检查target Id是否是source Id的子目录
     private boolean isSubDirectory(String sourceId, String targetId) {
         FileInfo current = getById(targetId);
         while (current != null && current.getParentId() != null) {
@@ -300,16 +309,24 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         QueryWrapper query = new QueryWrapper();
 
         query.where(FILE_INFO.USER_ID.eq(userId))
-                .and(FILE_INFO.PARENT_ID.eq(parentId))
                 .and(FILE_INFO.IS_DIR.eq(isDir))
-                .and(FILE_INFO.IS_DELETED.eq(false))
-                .and(FILE_INFO.DISPLAY_NAME.like(baseName + "%"));
+                .and(FILE_INFO.IS_DELETED.eq(false));
+
+        if (StrUtil.isBlank(parentId)) {
+            query.and(FILE_INFO.PARENT_ID.isNull());
+        } else {
+            query.and(FILE_INFO.PARENT_ID.eq(parentId));
+        }
+        // ------------------------------------
+
+        query.and(FILE_INFO.DISPLAY_NAME.like(baseName + "%"));
+
         if (StringUtils.isEmpty(storagePlatformSettingId)) {
             query.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
         } else {
             query.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         }
-        // 如果是重命名场景，排除当前文件
+
         if (StrUtil.isNotBlank(excludeFileId)) {
             query.and(FILE_INFO.ID.ne(excludeFileId));
         }
@@ -439,12 +456,22 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
             wrapper.and("fuf.file_id IS NOT NULL");
         }
+
         // 父目录过滤
-        if (qry.getParentId() == null) {
-            wrapper.and(FILE_INFO.PARENT_ID.isNull());
-        } else {
-            wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+        // 判断是否是特殊筛选视图（不限制父目录）
+        boolean isTypeFilter = StrUtil.isNotBlank(qry.getFileType());
+        boolean isFavoriteView = Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null;
+        boolean isDirFilter = Boolean.TRUE.equals(qry.getIsDir()) && qry.getParentId() == null;
+
+        // 只有在非特殊筛选视图下才限制父目录
+        if (!isTypeFilter && !isFavoriteView && !isDirFilter) {
+            if (qry.getParentId() == null) {
+                wrapper.and(FILE_INFO.PARENT_ID.isNull());
+            } else {
+                wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+            }
         }
+
         // 关键词搜索
         if (StrUtil.isNotBlank(qry.getKeyword())) {
             String keyword = "%" + qry.getKeyword().trim() + "%";
@@ -487,7 +514,59 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     public FileDetailVO getFileDetails(String fileId) {
-        return null;
+        FileInfo fileInfo = getById(fileId);
+        if (fileInfo == null) {
+            throw new BusinessException("文件不存在");
+        }
+        FileDetailVO vo = converter.convert(fileInfo, FileDetailVO.class);
+        if (vo.getIsDir()) {
+            Map<String, Long> stats = new HashMap<>();
+            stats.put("size", 0L);
+            stats.getOrDefault("fileCount", 0L);
+            stats.put("fileCount", 0L);
+            stats.put("folderCount", 0L);
+            recursiveAccumulate(fileId, stats);
+
+            //如果为文件夹则需要统计该文件夹下所有文件
+            vo.setSize(stats.get("size"));
+            vo.setIncludeFiles(stats.get("fileCount").intValue());
+            vo.setIncludeFolders(stats.get("folderCount").intValue());
+        } else {
+            vo.setIncludeFiles(0);
+            vo.setIncludeFolders(0);
+        }
+        return vo;
+    }
+
+    /**
+     * 递归统计文件夹信息
+     */
+    private void recursiveAccumulate(String parentId, Map<String, Long> stats) {
+        String userId = StpUtil.getLoginIdAsString();
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        // 查询当前目录下的直接子级
+        List<FileInfo> children = this.list(new QueryWrapper()
+                .where(FILE_INFO.PARENT_ID.eq(parentId))
+                .and(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
+                .and(FILE_INFO.IS_DELETED.eq(false)));
+
+        if (CollUtil.isEmpty(children)) {
+            return;
+        }
+
+        for (FileInfo child : children) {
+            if (child.getIsDir()) {
+                // 统计文件夹个数并向下递归
+                stats.put("folderCount", stats.get("folderCount") + 1);
+                recursiveAccumulate(child.getId(), stats);
+            } else {
+                // 统计文件个数及大小
+                stats.put("fileCount", stats.get("fileCount") + 1);
+                long fileSize = child.getSize() != null ? child.getSize() : 0L;
+                stats.put("size", stats.get("size") + fileSize);
+            }
+        }
     }
 
     @Override
@@ -503,6 +582,8 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
         if (StrUtil.isNotBlank(parentId)) {
             wrapper.and(FILE_INFO.PARENT_ID.eq(parentId));
+        } else {
+            wrapper.and(FILE_INFO.PARENT_ID.isNull());
         }
         wrapper.orderBy(FILE_INFO.UPDATE_TIME.desc());
         return this.listAs(wrapper, FileVO.class);

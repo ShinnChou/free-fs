@@ -949,7 +949,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                 .and(FILE_TRANSFER_TASK.USER_ID.eq(userId))
                 .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         List<FileTransferTask> tasks = this.list(queryWrapper);
-        this.removeByIds(tasks);
+
+        this.remove(queryWrapper);
 
         List<String> taskIds = tasks.stream()
                 .map(FileTransferTask::getTaskId)

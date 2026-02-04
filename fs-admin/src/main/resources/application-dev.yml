@@ -94,6 +94,6 @@ fs:
 
 mybatis-flex:
   # sql审计
-  audit_enable: false
+  audit_enable: true
   # sql打印
-  sql_print: false
+  sql_print: true
