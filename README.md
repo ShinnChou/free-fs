@@ -280,6 +280,10 @@ chore: 构建/工具链更新
 
 <img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/wx.png" width="250"/>
 
+- 微信群：
+
+<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/wx_group.png" width="250"/>
+
 - 微信公众号：
 
 <img alt="wp.png" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/mp.png"/>

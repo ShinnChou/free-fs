@@ -8,6 +8,8 @@ server:
     buffer-size: 1024
     # 是否分配的直接内存(NIO直接分配的堆外内存)
     direct-buffers: true
+    # 允许非标准 HTTP 方法
+    allow-unescaped-characters-in-url: true
 spring:
   application:
     name: free-fs
@@ -117,6 +119,8 @@ security:
     - /apis/share/**/info
     - /apis/share/**/download/**
     - /apis/transfer/sse
+    - /dav/**
+    - /webdav-test/**
 
 --- #Sa-Token 配置
 sa-token:

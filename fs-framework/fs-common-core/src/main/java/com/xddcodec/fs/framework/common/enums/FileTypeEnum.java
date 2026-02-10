@@ -209,6 +209,17 @@ public enum FileTypeEnum {
     }
 
     /**
+     * 判断文件扩展名是否为图片
+     */
+    public static boolean isImageFile(String extension) {
+        if (extension == null || extension.trim().isEmpty()) {
+            return false;
+        }
+        FileTypeEnum fileType = fromSuffix(extension);
+        return fileType == IMAGE;
+    }
+
+    /**
      * 获取分类下所有后缀（用于前端筛选）
      */
     public static List<String> getSuffixesByCategory(FileCategory category) {
