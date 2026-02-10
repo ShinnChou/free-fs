@@ -278,15 +278,15 @@ chore: 构建/工具链更新
 
   **添加微信，请注明来意**
 
-<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/wx.png" width="250"/>
+<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/wx.png" width="250"/>
 
 - 微信群：
 
-<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/wx_group.png" width="250"/>
+<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/wx_group.png" width="250"/>
 
 - 微信公众号：
 
-<img alt="wp.png" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/mp.png"/>
+<img alt="wp.png" src="https://gitee.com/dromara/free-fs/raw/master/.images/mp.png"/>
 
 ---
 
@@ -296,7 +296,7 @@ chore: 构建/工具链更新
 
 请给一个 ⭐️ 支持一下！
 
-<img alt="pay.png" height="300" src="https://gitee.com/dromara/free-fs/raw/feature-vue/.images/pay.png" width="250"/>
+<img alt="pay.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/pay.png" width="250"/>
 
 <div align="center">
 
