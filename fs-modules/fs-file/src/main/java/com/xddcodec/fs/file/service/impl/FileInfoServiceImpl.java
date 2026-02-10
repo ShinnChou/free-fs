@@ -18,6 +18,7 @@ import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
+import com.xddcodec.fs.storage.domain.StoragePlatform;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -488,7 +489,26 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         wrapper.orderBy(FILE_INFO.IS_DIR.desc())
                 .orderBy(FILE_INFO.UPDATE_TIME.desc())
                 .orderBy(orderBy, isAsc);
-        return this.listAs(wrapper, FileVO.class);
+        List<FileVO> list = this.listAs(wrapper, FileVO.class);
+
+        if (CollUtil.isNotEmpty(list)) {
+            list.parallelStream().forEach(vo -> vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), vo.getObjectKey())));
+        }
+        return list;
+    }
+
+    /**
+     * 填充图片封面链接
+     */
+    private String fillThumbnailUrl(String suffix, String objectKey) {
+        // 如果非图片文件跳过
+        if (!FileTypeEnum.isImageFile(suffix)) {
+            return null;
+        }
+        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        IStorageOperationService storageService = storageServiceFacade.getStorageService(storagePlatformSettingId);
+
+        return storageService.getFileUrl(objectKey, 3600);
     }
 
     @Override
@@ -534,6 +554,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         } else {
             vo.setIncludeFiles(0);
             vo.setIncludeFolders(0);
+            vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), fileInfo.getObjectKey()));
         }
         return vo;
     }

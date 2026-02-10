@@ -68,6 +68,11 @@ public class FileVO implements Serializable {
     private String userId;
 
     /**
+     * 缩略图URL
+     */
+    private String thumbnailUrl;
+
+    /**
      * 上传时间
      */
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)

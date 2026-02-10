@@ -45,6 +45,12 @@ public class FileDetailVO implements Serializable {
      * 是否文件夹
      */
     private Boolean isDir;
+
+    /**
+     * 缩略图URL
+     */
+    private String thumbnailUrl;
+
     /**
      * 上传时间
      */
