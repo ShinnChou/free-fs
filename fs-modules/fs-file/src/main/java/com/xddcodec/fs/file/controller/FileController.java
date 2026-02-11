@@ -1,5 +1,6 @@
 package com.xddcodec.fs.file.controller;
 
+import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
@@ -83,9 +84,9 @@ public class FileController {
 
     @PostMapping("/directory")
     @Operation(summary = "创建目录", description = "在指定目录下创建新目录")
-    public Result<?> createDirectory(@RequestBody @Validated CreateDirectoryCmd cmd) {
-        fileInfoService.createDirectory(cmd);
-        return Result.ok();
+    public Result<FileInfo> createDirectory(@RequestBody @Validated CreateDirectoryCmd cmd) {
+        FileInfo fileInfo = fileInfoService.createDirectory(cmd);
+        return Result.ok(fileInfo);
     }
 
     @PutMapping("/{fileId}/rename")
