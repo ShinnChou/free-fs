@@ -51,7 +51,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param cmd 创建目录请求参数
      * @return
      */
-    void createDirectory(CreateDirectoryCmd cmd);
+    FileInfo createDirectory(CreateDirectoryCmd cmd);
 
     /**
      * 生成唯一的文件名（处理重名冲突）

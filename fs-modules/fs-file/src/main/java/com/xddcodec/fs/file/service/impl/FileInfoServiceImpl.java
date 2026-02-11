@@ -131,7 +131,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createDirectory(CreateDirectoryCmd cmd) {
+    public FileInfo createDirectory(CreateDirectoryCmd cmd) {
         // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
@@ -159,6 +159,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         dirInfo.setUpdateTime(now);
         dirInfo.setIsDeleted(false);
         save(dirInfo);
+        return dirInfo;
     }
 
     @Override
@@ -451,7 +452,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                     .limit(20);
 
             log.info("用户 {} 查询最近使用文件", userId);
-            return this.listAs(wrapper, FileVO.class);
+            List<FileVO> list = this.listAs(wrapper, FileVO.class);
+            if (CollUtil.isNotEmpty(list)) {
+                list.parallelStream().forEach(vo -> vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), vo.getObjectKey())));
+            }
+            return list;
         }
         // 收藏过滤
         if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
