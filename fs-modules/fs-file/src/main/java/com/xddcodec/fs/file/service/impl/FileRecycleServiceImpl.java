@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 
@@ -50,10 +51,13 @@ public class FileRecycleServiceImpl implements FileRecycleService {
     public List<FileRecycleVO> getRecycles(String keyword) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+
+        // 先查询所有已删除的文件
         QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_INFO.USER_ID.eq(userId));
-        wrapper.and(FILE_INFO.IS_DELETED.eq(true));
-        wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        wrapper.where(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.IS_DELETED.eq(true))
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+
         if (StrUtil.isNotBlank(keyword)) {
             keyword = "%" + keyword.trim() + "%";
             wrapper.and(
@@ -61,9 +65,32 @@ public class FileRecycleServiceImpl implements FileRecycleService {
                             .or(FILE_INFO.DISPLAY_NAME.like(keyword))
             );
         }
-        List<FileInfo> fileInfos = fileInfoService.list(wrapper);
-        return converter.convert(fileInfos, FileRecycleVO.class);
+
+        wrapper.orderBy(FILE_INFO.DELETED_TIME.desc());
+
+        List<FileInfo> allDeletedFiles = fileInfoService.list(wrapper);
+
+        if (CollUtil.isEmpty(allDeletedFiles)) {
+            return Collections.emptyList();
+        }
+
+        // 构建已删除文件的ID集合
+        Set<String> deletedFileIds = allDeletedFiles.stream()
+                .map(FileInfo::getId)
+                .collect(Collectors.toSet());
+
+        // 过滤出顶层删除项（父目录为空或父目录未被删除）
+        List<FileInfo> topLevelDeletedFiles = allDeletedFiles.stream()
+                .filter(file -> {
+                    String parentId = file.getParentId();
+                    // 父目录为空，或者父目录未在已删除列表中
+                    return StrUtil.isBlank(parentId) || !deletedFileIds.contains(parentId);
+                })
+                .collect(Collectors.toList());
+
+        return converter.convert(topLevelDeletedFiles, FileRecycleVO.class);
     }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -165,15 +192,36 @@ public class FileRecycleServiceImpl implements FileRecycleService {
     public void clearRecycles() {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        List<FileInfo> deletedFiles = fileInfoService.list(new QueryWrapper()
-                .where(FILE_INFO.USER_ID.eq(userId)
-                        .and(FILE_INFO.IS_DELETED.eq(true)
-                                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                        ))
+
+        // 查询所有已删除的文件
+        List<FileInfo> allDeletedFiles = fileInfoService.list(new QueryWrapper()
+                .where(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.IS_DELETED.eq(true))
+                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
         );
-        List<String> deletedFileIds = deletedFiles.stream().map(FileInfo::getId).toList();
-        this.permanentlyDeleteFiles(deletedFileIds);
+
+        if (CollUtil.isEmpty(allDeletedFiles)) {
+            return;
+        }
+
+        // 构建已删除文件的ID集合
+        Set<String> deletedFileIds = allDeletedFiles.stream()
+                .map(FileInfo::getId)
+                .collect(Collectors.toSet());
+
+        // 过滤出顶层删除项
+        List<String> topLevelDeletedFileIds = allDeletedFiles.stream()
+                .filter(file -> {
+                    String parentId = file.getParentId();
+                    return StrUtil.isBlank(parentId) || !deletedFileIds.contains(parentId);
+                })
+                .map(FileInfo::getId)
+                .collect(Collectors.toList());
+
+        // 递归删除顶层项（会自动处理子项）
+        this.permanentlyDeleteFiles(topLevelDeletedFileIds);
     }
+
 
     /**
      * 递归收集文件ID（通用方法）

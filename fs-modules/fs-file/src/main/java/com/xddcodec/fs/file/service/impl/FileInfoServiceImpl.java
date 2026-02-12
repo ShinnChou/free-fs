@@ -109,23 +109,72 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (fileIds == null || fileIds.isEmpty()) {
             return;
         }
+
         List<FileInfo> fileInfoList = listByIds(fileIds);
         if (fileInfoList.isEmpty()) {
             return;
         }
-        List<FileInfo> toDeleteList = fileInfoList.stream()
-                .filter(fileInfo -> !fileInfo.getIsDeleted())
-                .collect(Collectors.toList());
+
+        // 收集所有需要删除的文件（包括子文件）
+        List<FileInfo> toDeleteList = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (FileInfo fileInfo : fileInfoList) {
+            if (!fileInfo.getIsDeleted()) {
+                toDeleteList.add(fileInfo);
+
+                // 如果是文件夹，递归获取所有子文件和子文件夹
+                if (fileInfo.getIsDir()) {
+                    List<FileInfo> children = getAllChildrenRecursively(fileInfo.getId(), false);
+                    toDeleteList.addAll(children);
+                }
+            }
+        }
 
         if (toDeleteList.isEmpty()) {
             return;
         }
+
+        // 批量标记为删除
         toDeleteList.forEach(fileInfo -> {
             fileInfo.setIsDeleted(true);
-            fileInfo.setDeletedTime(LocalDateTime.now());
+            fileInfo.setDeletedTime(now);
         });
 
         this.updateBatch(toDeleteList);
+    }
+
+
+    /**
+     * 递归获取文件夹下的所有子文件和子文件夹
+     *
+     * @param parentId       父文件夹ID
+     * @param includeDeleted 是否包含已删除的文件
+     * @return 所有子文件列表
+     */
+    private List<FileInfo> getAllChildrenRecursively(String parentId, boolean includeDeleted) {
+        List<FileInfo> allChildren = new ArrayList<>();
+
+        // 查询直接子文件
+        QueryWrapper query = new QueryWrapper()
+                .where(FILE_INFO.PARENT_ID.eq(parentId));
+
+        if (!includeDeleted) {
+            query.and(FILE_INFO.IS_DELETED.eq(false));
+        }
+
+        List<FileInfo> directChildren = list(query);
+
+        for (FileInfo child : directChildren) {
+            allChildren.add(child);
+
+            // 如果是文件夹，递归查询
+            if (child.getIsDir()) {
+                allChildren.addAll(getAllChildrenRecursively(child.getId(), includeDeleted));
+            }
+        }
+
+        return allChildren;
     }
 
 
