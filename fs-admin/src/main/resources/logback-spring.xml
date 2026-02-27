@@ -53,6 +53,13 @@
         </root>
     </springProfile>
 
+    <springProfile name="docker">
+        <root level="INFO">
+            <!-- 输出到控制台 -->
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
     <!-- development env -->
     <springProfile name="test">
         <root level="INFO">

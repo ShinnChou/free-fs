@@ -14,7 +14,7 @@ spring:
   application:
     name: free-fs
   profiles:
-    active: dev
+    active: docker
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
